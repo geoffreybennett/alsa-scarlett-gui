@@ -334,9 +334,11 @@ static void create_routing_grid(struct alsa_card *card) {
 }
 
 static GtkWidget *make_socket_widget(void) {
-  return gtk_picture_new_for_resource(
+  GtkWidget *w = gtk_picture_new_for_resource(
     "/vu/b4/alsa-scarlett-gui/icons/socket.svg"
   );
+  gtk_widget_set_align(w, GTK_ALIGN_CENTER, GTK_ALIGN_CENTER);
+  return w;
 }
 
 // something was dropped on a routing source
