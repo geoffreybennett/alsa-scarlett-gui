@@ -1,0 +1,88 @@
+state.USB {
+	control.1 {
+		iface PCM
+		name 'Playback Channel Map'
+		value.0 0
+		value.1 0
+		comment {
+			access read
+			type INTEGER
+			count 2
+			range '0 - 36'
+		}
+	}
+	control.2 {
+		iface PCM
+		name 'Capture Channel Map'
+		value.0 0
+		value.1 0
+		comment {
+			access read
+			type INTEGER
+			count 2
+			range '0 - 36'
+		}
+	}
+	control.3 {
+		iface CARD
+		name 'USB Internal Validity'
+		value true
+		comment {
+			access read
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.4 {
+		iface MIXER
+		name 'Line In 2 Level Capture Enum'
+		value Line
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Line
+			item.1 Inst
+		}
+	}
+	control.5 {
+		iface MIXER
+		name 'Line In 1 Air Capture Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.6 {
+		iface MIXER
+		name 'Line In 1 Phantom Power Capture Switch'
+		value true
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.7 {
+		iface MIXER
+		name 'Phantom Power Persistence Capture Switch'
+		value true
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.8 {
+		iface MIXER
+		name 'Direct Monitor Playback Switch'
+		value true
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+}

@@ -1,0 +1,1384 @@
+state.USB {
+	control.1 {
+		iface PCM
+		name 'Playback Channel Map'
+		value.0 0
+		value.1 0
+		value.2 0
+		value.3 0
+		comment {
+			access read
+			type INTEGER
+			count 4
+			range '0 - 36'
+		}
+	}
+	control.2 {
+		iface PCM
+		name 'Capture Channel Map'
+		value.0 0
+		value.1 0
+		value.2 0
+		value.3 0
+		value.4 0
+		value.5 0
+		comment {
+			access read
+			type INTEGER
+			count 6
+			range '0 - 36'
+		}
+	}
+	control.3 {
+		iface CARD
+		name 'USB Internal Validity'
+		value true
+		comment {
+			access read
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.4 {
+		iface MIXER
+		name 'Line 01 (Monitor L) Playback Volume'
+		value 127
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 127 (step 1)'
+			dbmin -12700
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.5 {
+		iface MIXER
+		name 'Line 01 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.6 {
+		iface MIXER
+		name 'Line 02 (Monitor R) Playback Volume'
+		value 127
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 127 (step 1)'
+			dbmin -12700
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.7 {
+		iface MIXER
+		name 'Line 02 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.8 {
+		iface MIXER
+		name 'Line 03 (Headphones L) Playback Volume'
+		value 127
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 127 (step 1)'
+			dbmin -12700
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.9 {
+		iface MIXER
+		name 'Line 03 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.10 {
+		iface MIXER
+		name 'Line 04 (Headphones R) Playback Volume'
+		value 127
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 127 (step 1)'
+			dbmin -12700
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.11 {
+		iface MIXER
+		name 'Line 04 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.12 {
+		iface MIXER
+		name 'Line In 1 Level Capture Enum'
+		value Line
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Line
+			item.1 Inst
+		}
+	}
+	control.13 {
+		iface MIXER
+		name 'Line In 2 Level Capture Enum'
+		value Line
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Line
+			item.1 Inst
+		}
+	}
+	control.14 {
+		iface MIXER
+		name 'Line In 1 Pad Capture Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.15 {
+		iface MIXER
+		name 'Line In 2 Pad Capture Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.16 {
+		iface MIXER
+		name 'Line In 1 Air Capture Switch'
+		value true
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.17 {
+		iface MIXER
+		name 'Line In 2 Air Capture Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.18 {
+		iface MIXER
+		name 'Line In 1-2 Phantom Power Capture Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.19 {
+		iface MIXER
+		name 'Phantom Power Persistence Capture Switch'
+		value true
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.20 {
+		iface MIXER
+		name 'Analogue Output 01 Playback Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.21 {
+		iface MIXER
+		name 'Analogue Output 02 Playback Enum'
+		value 'Analogue 2'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.22 {
+		iface MIXER
+		name 'Analogue Output 03 Playback Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.23 {
+		iface MIXER
+		name 'Analogue Output 04 Playback Enum'
+		value 'Analogue 2'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.24 {
+		iface MIXER
+		name 'Mixer Input 01 Capture Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.25 {
+		iface MIXER
+		name 'Mixer Input 02 Capture Enum'
+		value 'Analogue 2'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.26 {
+		iface MIXER
+		name 'Mixer Input 03 Capture Enum'
+		value 'Analogue 3'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.27 {
+		iface MIXER
+		name 'Mixer Input 04 Capture Enum'
+		value 'Analogue 4'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.28 {
+		iface MIXER
+		name 'Mixer Input 05 Capture Enum'
+		value 'PCM 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.29 {
+		iface MIXER
+		name 'Mixer Input 06 Capture Enum'
+		value 'PCM 2'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.30 {
+		iface MIXER
+		name 'Mixer Input 07 Capture Enum'
+		value 'Mix E'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.31 {
+		iface MIXER
+		name 'Mixer Input 08 Capture Enum'
+		value 'Mix F'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.32 {
+		iface MIXER
+		name 'PCM 01 Capture Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.33 {
+		iface MIXER
+		name 'PCM 02 Capture Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.34 {
+		iface MIXER
+		name 'PCM 03 Capture Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.35 {
+		iface MIXER
+		name 'PCM 04 Capture Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.36 {
+		iface MIXER
+		name 'PCM 05 Capture Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.37 {
+		iface MIXER
+		name 'PCM 06 Capture Enum'
+		value 'Analogue 1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Mix A'
+			item.6 'Mix B'
+			item.7 'Mix C'
+			item.8 'Mix D'
+			item.9 'Mix E'
+			item.10 'Mix F'
+			item.11 'PCM 1'
+			item.12 'PCM 2'
+			item.13 'PCM 3'
+			item.14 'PCM 4'
+		}
+	}
+	control.38 {
+		iface MIXER
+		name 'Mix A Input 01 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.39 {
+		iface MIXER
+		name 'Mix A Input 02 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.40 {
+		iface MIXER
+		name 'Mix A Input 03 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.41 {
+		iface MIXER
+		name 'Mix A Input 04 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.42 {
+		iface MIXER
+		name 'Mix A Input 05 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.43 {
+		iface MIXER
+		name 'Mix A Input 06 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.44 {
+		iface MIXER
+		name 'Mix A Input 07 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.45 {
+		iface MIXER
+		name 'Mix A Input 08 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.46 {
+		iface MIXER
+		name 'Mix B Input 01 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.47 {
+		iface MIXER
+		name 'Mix B Input 02 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.48 {
+		iface MIXER
+		name 'Mix B Input 03 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.49 {
+		iface MIXER
+		name 'Mix B Input 04 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.50 {
+		iface MIXER
+		name 'Mix B Input 05 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.51 {
+		iface MIXER
+		name 'Mix B Input 06 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.52 {
+		iface MIXER
+		name 'Mix B Input 07 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.53 {
+		iface MIXER
+		name 'Mix B Input 08 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.54 {
+		iface MIXER
+		name 'Mix C Input 01 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.55 {
+		iface MIXER
+		name 'Mix C Input 02 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.56 {
+		iface MIXER
+		name 'Mix C Input 03 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.57 {
+		iface MIXER
+		name 'Mix C Input 04 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.58 {
+		iface MIXER
+		name 'Mix C Input 05 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.59 {
+		iface MIXER
+		name 'Mix C Input 06 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.60 {
+		iface MIXER
+		name 'Mix C Input 07 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.61 {
+		iface MIXER
+		name 'Mix C Input 08 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.62 {
+		iface MIXER
+		name 'Mix D Input 01 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.63 {
+		iface MIXER
+		name 'Mix D Input 02 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.64 {
+		iface MIXER
+		name 'Mix D Input 03 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.65 {
+		iface MIXER
+		name 'Mix D Input 04 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.66 {
+		iface MIXER
+		name 'Mix D Input 05 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.67 {
+		iface MIXER
+		name 'Mix D Input 06 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.68 {
+		iface MIXER
+		name 'Mix D Input 07 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.69 {
+		iface MIXER
+		name 'Mix D Input 08 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.70 {
+		iface MIXER
+		name 'Mix E Input 01 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.71 {
+		iface MIXER
+		name 'Mix E Input 02 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.72 {
+		iface MIXER
+		name 'Mix E Input 03 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.73 {
+		iface MIXER
+		name 'Mix E Input 04 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.74 {
+		iface MIXER
+		name 'Mix E Input 05 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.75 {
+		iface MIXER
+		name 'Mix E Input 06 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.76 {
+		iface MIXER
+		name 'Mix E Input 07 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.77 {
+		iface MIXER
+		name 'Mix E Input 08 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.78 {
+		iface MIXER
+		name 'Mix F Input 01 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.79 {
+		iface MIXER
+		name 'Mix F Input 02 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.80 {
+		iface MIXER
+		name 'Mix F Input 03 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.81 {
+		iface MIXER
+		name 'Mix F Input 04 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.82 {
+		iface MIXER
+		name 'Mix F Input 05 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.83 {
+		iface MIXER
+		name 'Mix F Input 06 Playback Volume'
+		value 160
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 0
+		}
+	}
+	control.84 {
+		iface MIXER
+		name 'Mix F Input 07 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.85 {
+		iface MIXER
+		name 'Mix F Input 08 Playback Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 172 (step 1)'
+			dbmin -8000
+			dbmax 600
+			dbvalue.0 -8000
+		}
+	}
+	control.86 {
+		iface PCM
+		name 'Level Meter'
+		value.0 11
+		value.1 0
+		value.2 0
+		value.3 0
+		value.4 0
+		value.5 0
+		value.6 0
+		value.7 1
+		value.8 0
+		value.9 0
+		value.10 0
+		value.11 0
+		value.12 0
+		value.13 1
+		value.14 0
+		value.15 0
+		value.16 9
+		value.17 9
+		comment {
+			access 'read volatile'
+			type INTEGER
+			count 18
+			range '0 - 4095 (step 1)'
+		}
+	}
+	control.87 {
+		iface MIXER
+		name 'Sync Status'
+		value Locked
+		comment {
+			access read
+			type ENUMERATED
+			count 1
+			item.0 Unlocked
+			item.1 Locked
+		}
+	}
+}

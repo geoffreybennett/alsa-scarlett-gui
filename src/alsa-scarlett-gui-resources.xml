@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/vu/b4/alsa-scarlett-gui/icons">
+    <file alias="alsa-scarlett-gui-logo.png">img/alsa-scarlett-gui-logo.png</file>
+    <file alias="socket.svg">img/socket.svg</file>
+  </gresource>
+  <gresource prefix="/vu/b4/alsa-scarlett-gui/icons/48x48/apps">
+    <file alias="alsa-scarlett-gui.png">img/alsa-scarlett-gui-48.png</file>
+  </gresource>
+  <gresource prefix="/vu/b4/alsa-scarlett-gui/icons/256x256/apps">
+    <file alias="alsa-scarlett-gui.png">img/alsa-scarlett-gui-256.png</file>
+  </gresource>
+  <gresource prefix="/vu/b4/alsa-scarlett-gui">
+    <file>alsa-scarlett-gui.css</file>
+  </gresource>
+</gresources>

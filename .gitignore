@@ -1,0 +1,5 @@
+*.o
+.deps
+.gdb_history
+alsa-scarlett-gui
+alsa-scarlett-gui-resources.c
