@@ -39,13 +39,13 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     GtkWidget *l_left = gtk_label_new(name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_left,
-      0, i, 1, 1
+      0, i + 2, 1, 1
     );
 
     GtkWidget *l_right = gtk_label_new(name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_right,
-      card->routing_out_count[PC_MIX] + 1, i, 1, 1
+      card->routing_out_count[PC_MIX] + 1, i + 2, 1, 1
     );
   }
 
@@ -74,7 +74,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
     // create the gain control and attach to the grid
     GtkWidget *w = make_gain_alsa_elem(elem);
-    gtk_grid_attach(GTK_GRID(mixer_top), w, input_num + 1, mix_num, 1, 1);
+    gtk_grid_attach(GTK_GRID(mixer_top), w, input_num + 1, mix_num + 2, 1, 1);
 
     // look up the r_dst entry for the mixer input number
     struct routing_dst *r_dst = get_mixer_r_dst(card, input_num + 1);
@@ -83,17 +83,22 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
       continue;
     }
 
-    // lookup the label for the mixer input
-    GtkWidget *l = r_dst->mixer_label;
+    // lookup the top label for the mixer input
+    GtkWidget *l_top = r_dst->mixer_label_top;
 
-    // if the label doesn't already exist, create it and attach it to
-    // the bottom of the grid
-    if (!l) {
-      l = r_dst->mixer_label = gtk_label_new("");
+    // if the top label doesn't already exist the bottom doesn't
+    // either; create them both and attach to the grid
+    if (!l_top) {
+      l_top = r_dst->mixer_label_top = gtk_label_new("");
+      GtkWidget *l_bottom = r_dst->mixer_label_bottom = gtk_label_new("");
 
       gtk_grid_attach(
-        GTK_GRID(mixer_top), l,
-        input_num, card->routing_in_count[PC_MIX] + input_num % 2, 3, 1
+        GTK_GRID(mixer_top), l_top,
+        input_num, (input_num + 1) % 2, 3, 1
+      );
+      gtk_grid_attach(
+        GTK_GRID(mixer_top), l_bottom,
+        input_num, card->routing_in_count[PC_MIX] + input_num % 2 + 2, 3, 1
       );
     }
   }
@@ -120,7 +125,9 @@ void update_mixer_labels(struct alsa_card *card) {
       card->routing_srcs, struct routing_src, routing_src_idx
     );
 
-    if (r_dst->mixer_label)
-      gtk_label_set_text(GTK_LABEL(r_dst->mixer_label), r_src->name);
+    if (r_dst->mixer_label_top) {
+      gtk_label_set_text(GTK_LABEL(r_dst->mixer_label_top), r_src->name);
+      gtk_label_set_text(GTK_LABEL(r_dst->mixer_label_bottom), r_src->name);
+    }
   }
 }

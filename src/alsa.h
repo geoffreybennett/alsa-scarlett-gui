@@ -95,8 +95,9 @@ struct routing_dst {
   // 0-based count within port_category
   int port_num;
 
-  // the mixer label widget for this destination
-  GtkWidget *mixer_label;
+  // the mixer label widgets for this destination
+  GtkWidget *mixer_label_top;
+  GtkWidget *mixer_label_bottom;
 };
 
 // entry in alsa_card elems (ALSA control elements) array
