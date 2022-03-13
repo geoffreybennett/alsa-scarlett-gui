@@ -26,6 +26,8 @@ had 84 ALSA controls.
 
 Announcing the ALSA Scarlett Gen 2/3 Control Panel!
 
+![Demonstration](img/demo.gif)
+
 The GUI supports all features presented by the driver (if not, please
 report a bug).
 
