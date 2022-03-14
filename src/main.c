@@ -30,7 +30,6 @@ static void load_css(void) {
 // gtk init
 
 static void startup(GtkApplication *app, gpointer user_data) {
-  gtk_window_set_default_icon_name("alsa-scarlett-gui");
   gtk_application_set_menubar(app, G_MENU_MODEL(create_app_menu(app)));
 
   alsa_inotify_init();

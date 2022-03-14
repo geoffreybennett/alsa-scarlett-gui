@@ -32,13 +32,14 @@ XML_OBJ := $(patsubst %.xml,%.c,$(XML_SRC))
 SRCS := $(sort $(wildcard *.c) $(XML_OBJ))
 OBJS := $(patsubst %.c,%.o,$(SRCS))
 TARGET := alsa-scarlett-gui
+DESKTOP_FILE := vu.b4.$(TARGET).desktop
 
 GLIB_COMPILE_RESOURCES := $(shell $(PKG_CONFIG) --variable=glib_compile_resources gio-2.0)
 
-all: $(TARGET)
+all: $(TARGET) $(DESKTOP_FILE)
 
 clean:
-	rm -f $(TARGET) $(OBJS) $(XML_OBJ)
+	rm -f $(TARGET) $(DESKTOP_FILE) $(OBJS) $(XML_OBJ)
 
 depclean:
 	rm -rf $(DEPDIR)
@@ -52,3 +53,28 @@ include $(wildcard $(DEPFILES))
 
 $(TARGET): $(OBJS)
 	cc ${LDFLAGS} -lm -o $(TARGET) $(OBJS)
+
+ifeq ($(PREFIX),)
+  PREFIX := /usr/local
+endif
+
+BINDIR := $(DESTDIR)$(PREFIX)/bin
+ICONTOP := $(DESTDIR)$(PREFIX)/share/icons/hicolor
+ICONDIR := $(ICONTOP)/256x256/apps
+DESKTOPDIR := $(DESTDIR)$(PREFIX)/share/applications
+
+$(DESKTOP_FILE): $(DESKTOP_FILE).template
+	sed 's_PREFIX_$(PREFIX)_' < $< > $@
+
+install: all
+	install -d $(BINDIR)
+	install -m 755 $(TARGET) $(BINDIR)
+	install -d $(ICONDIR)
+	install -m 644 img/$(TARGET).png $(ICONDIR)
+	install -d $(DESKTOPDIR)
+	install -m 644 $(DESKTOP_FILE) $(DESKTOPDIR)
+
+uninstall:
+	rm -f $(BINDIR)/$(TARGET)
+	rm -f $(ICONDIR)/$(TARGET).png
+	rm -f $(DESKTOPDIR)/$(DESKTOP_FILE)

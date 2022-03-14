@@ -71,6 +71,19 @@ To run:
 ./alsa-scarlett-gui
 ```
 
+You can install it into `/usr/local` (binary, desktop file, and icon)
+with:
+
+```
+sudo make install
+```
+
+And uninstall with:
+
+```
+sudo make uninstall
+```
+
 ## No interface connected
 
 If no interface is detected (usually because there isn’t one
