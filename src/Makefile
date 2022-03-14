@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022 Geoffrey D. Bennett <g@b4.vu>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Credit to Tom Tromey and Paul D. Smith:
 # http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
 
