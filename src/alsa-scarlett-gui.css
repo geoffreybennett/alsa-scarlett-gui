@@ -3,12 +3,12 @@
 }
 
 .route-label:hover {
-  background: #e0e0e0;
+  background: @theme_selected_bg_color;
 }
 
 .route-label:drop(active) {
   box-shadow: none;
-  background: #e0e0e0;
+  background: @theme_selected_bg_color;
 }
 
 button {
