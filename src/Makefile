@@ -4,10 +4,12 @@
 # Credit to Tom Tromey and Paul D. Smith:
 # http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
 
+VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 CFLAGS := -Wall -Werror -ggdb -fno-omit-frame-pointer -O2 -D_FORTIFY_SOURCE=2
+CFLAGS += -DVERSION=\"$(VERSION)\"
 
 PKG_CONFIG=pkg-config
 
