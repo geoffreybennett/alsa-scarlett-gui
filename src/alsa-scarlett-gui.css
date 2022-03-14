@@ -1,4 +1,16 @@
-.route-label { font-size: smaller; }
-.route-label:hover { background: #e0e0e0; }
-.route-label:drop(active) { box-shadow: none; background: #e0e0e0; }
-button { padding: 0px 5px 0px 5px; }
+.route-label {
+  font-size: smaller;
+}
+
+.route-label:hover {
+  background: #e0e0e0;
+}
+
+.route-label:drop(active) {
+  box-shadow: none;
+  background: #e0e0e0;
+}
+
+button {
+  padding: 0px 5px 0px 5px;
+}
