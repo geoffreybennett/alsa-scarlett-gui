@@ -57,7 +57,7 @@ $(DEPFILES):
 include $(wildcard $(DEPFILES))
 
 $(TARGET): $(OBJS)
-	cc ${LDFLAGS} -lm -o $(TARGET) $(OBJS)
+	cc -o $(TARGET) $(OBJS) ${LDFLAGS} -lm 
 
 ifeq ($(PREFIX),)
   PREFIX := /usr/local
