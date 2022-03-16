@@ -83,3 +83,11 @@ uninstall:
 	rm -f $(BINDIR)/$(TARGET)
 	rm -f $(ICONDIR)/$(TARGET).png
 	rm -f $(DESKTOPDIR)/$(DESKTOP_FILE)
+
+help:
+	@echo "alsa-scarlett-gui"
+	@echo
+	@echo "This Makefile knows about:"
+	@echo "  make"
+	@echo "  make install"
+	@echo "  make uninstall"
