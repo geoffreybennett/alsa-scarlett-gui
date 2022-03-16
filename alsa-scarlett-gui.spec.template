@@ -1,0 +1,33 @@
+Summary: ALSA Scarlett Gen 2/3 Control Panel
+Name: alsa-scarlett-gui
+Version: VERSION
+Release: 1%{?dist}
+License: GPLv3+ LGPLv3+
+Url: https://github.com/geoffreybennett/alsa-scarlett-gui
+Source: %{name}-%{version}.tar.gz
+
+%description
+
+alsa-scarlett-gui is a Gtk4 GUI for the ALSA controls presented by the
+Linux kernel Focusrite Scarlett Gen 2/3 Mixer Driver.
+
+%prep
+%setup
+
+%build
+make -C src -j4 VERSION=%{version} PREFIX=/usr
+
+%install
+%make_install -C src PREFIX=/usr
+DOCDIR=%{buildroot}/usr/share/doc/%{name}-%{version}
+mkdir -p $DOCDIR/img
+mkdir $DOCDIR/demo
+cp *.md $DOCDIR
+cp img/* $DOCDIR/img
+cp demo/* $DOCDIR/demo
+
+%files
+%doc /usr/share/doc/%{name}-%{version}
+/usr/bin/alsa-scarlett-gui
+/usr/share/applications/vu.b4.alsa-scarlett-gui.desktop
+/usr/share/icons/hicolor/256x256/apps/alsa-scarlett-gui.png

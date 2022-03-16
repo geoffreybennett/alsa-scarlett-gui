@@ -1,3 +1,4 @@
+*.tar.gz
 *.o
 .deps
 .gdb_history
