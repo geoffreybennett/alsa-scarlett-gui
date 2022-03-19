@@ -355,7 +355,7 @@ driver hides this from you.
 
 - 19× Hardware Inputs
   - Analogue 1–2: Mic/Line/Inst In 1–2 (Air, Pad)
-  - Analogue 3–8: Mic/Line In 3–4 (Air, Pad)
+  - Analogue 3–8: Mic/Line In 3–8 (Air, Pad)
   - Analogue 9: Talkback Mic
   - S/PDIF 1–2
   - ADAT 1–8
