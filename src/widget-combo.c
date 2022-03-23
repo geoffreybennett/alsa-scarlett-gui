@@ -3,6 +3,9 @@
 
 #include "widget-combo.h"
 
+#include <libintl.h>
+#define _(String) gettext (String)
+
 static void combo_box_changed(GtkWidget *widget, struct alsa_elem *elem) {
   int value = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
@@ -19,7 +22,7 @@ GtkWidget *make_combo_box_alsa_elem(struct alsa_elem *elem) {
   int count = alsa_get_item_count(elem);
 
   for (int i = 0; i < count; i++) {
-    const char *text = alsa_get_item_name(elem, i);
+    const char *text = _(alsa_get_item_name(elem, i));
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_box), NULL, text);
   }
 

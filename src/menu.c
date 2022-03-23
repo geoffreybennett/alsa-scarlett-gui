@@ -6,6 +6,9 @@
 #include "menu.h"
 #include "window-hardware.h"
 
+#include <libintl.h>
+#define _(String) gettext (String)
+
 static void activate_hardware(
   GSimpleAction *action,
   GVariant      *parameter,
@@ -115,23 +118,23 @@ GMenu *create_app_menu(GtkApplication *app) {
   GMenu *menu = g_menu_new();
 
   GMenu *file_menu = g_menu_new();
-  g_menu_append_submenu(menu, "_File", G_MENU_MODEL(file_menu));
-  g_menu_append(file_menu, "_Load Configuration",   "win.load");
-  g_menu_append(file_menu, "_Save Configuration",   "win.save");
-  g_menu_append(file_menu, "_Interface Simulation", "win.sim");
-  g_menu_append(file_menu, "E_xit", "app.quit");
+  g_menu_append_submenu(menu, _("_File"), G_MENU_MODEL(file_menu));
+  g_menu_append(file_menu, _("_Load Configuration"),   "win.load");
+  g_menu_append(file_menu, _("_Save Configuration"),   "win.save");
+  g_menu_append(file_menu, _("_Interface Simulation"), "win.sim");
+  g_menu_append(file_menu, _("E_xit"), "app.quit");
 
   GMenu *view_menu = g_menu_new();
-  g_menu_append_submenu(menu, "_View", G_MENU_MODEL(view_menu));
-  g_menu_append(view_menu, "_Routing", "win.routing");
-  g_menu_append(view_menu, "_Mixer",   "win.mixer");
-//g_menu_append(view_menu, "_Levels",  "win.levels");
-  g_menu_append(view_menu, "_Startup", "win.startup");
+  g_menu_append_submenu(menu, _("_View"), G_MENU_MODEL(view_menu));
+  g_menu_append(view_menu, _("_Routing"), "win.routing");
+  g_menu_append(view_menu, _("_Mixer"),   "win.mixer");
+//g_menu_append(view_menu, _("_Levels"),  "win.levels");
+  g_menu_append(view_menu, _("_Startup"), "win.startup");
 
   GMenu *help_menu = g_menu_new();
-  g_menu_append_submenu(menu, "_Help", G_MENU_MODEL(help_menu));
-  g_menu_append(help_menu, "_Supported Hardware", "app.hardware");
-  g_menu_append(help_menu, "_About",              "win.about");
+  g_menu_append_submenu(menu, _("_Help"), G_MENU_MODEL(help_menu));
+  g_menu_append(help_menu, _("_Supported Hardware"), "app.hardware");
+  g_menu_append(help_menu, _("_About"),              "win.about");
 
   return menu;
 }

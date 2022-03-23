@@ -1,0 +1,634 @@
+# German translations for alsa-scarlett-gui package.
+# Copyright (C) 2022 THE alsa-scarlett-gui'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the alsa-scarlett-gui package.
+# Sebastian Kaminski <sebastian.kaminski@rwth-aachen.de>, 2022.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: alsa-scarlett-gui VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-04-01 21:56+0200\n"
+"PO-Revision-Date: 2022-04-01 21:56+0200\n"
+"Last-Translator: Sebastian Kaminski <sebastian.kaminski@rwth-aachen.de>\n"
+"Language-Team: German <>\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0\n"
+
+#: ../window-hardware.c:43
+msgid "2nd Gen"
+msgstr "2. Generation"
+
+#: ../iface-mixer.c:236 ../iface-no-mixer.c:83
+msgid "48V Off"
+msgstr "48V Aus"
+
+#: ../iface-mixer.c:236 ../iface-no-mixer.c:83
+msgid "48V On"
+msgstr "48V An"
+
+#: ../driver-strings.txt:9
+msgid "ADAT"
+msgstr "ADAT"
+
+#: ../about.c:23 ../iface-none.c:24
+msgid "ALSA Scarlett Gen 2/3 Control Panel"
+msgstr "ALSA Scarlett Gen 2/3 Steuerung"
+
+#: ../window-hardware.c:95
+msgid "ALSA Scarlett Supported Hardware"
+msgstr "Unterstützte Geräte"
+
+#: ../about.c:30
+msgid "About ALSA Scarlett Mixer Interface"
+msgstr "Über ALSA Scarlett Steuerung"
+
+#: ../iface-mixer.c:215
+msgid "Air"
+msgstr "Air"
+
+#: ../iface-no-mixer.c:77
+msgid "Air Off"
+msgstr "Air aus"
+
+#: ../iface-no-mixer.c:77
+msgid "Air On"
+msgstr "Air an"
+
+#: ../iface-mixer.c:97
+msgid "Alt"
+msgstr "Alternativ"
+
+#: ../iface-no-mixer.c:54
+#, c-format
+msgid "Analogue %d"
+msgstr "Analog %d"
+
+#: ../iface-mixer.c:173
+msgid "Analogue Inputs"
+msgstr "Analoge Eingänge"
+
+#: ../iface-mixer.c:259
+msgid "Analogue Outputs"
+msgstr "Analoge Ausgänge"
+
+#: ../iface-unknown.c:26
+msgid "Are you running a recent kernel with Scarlett Gen 2/3 support enabled?"
+msgstr "Ist Unterstützung für Scarlett Gen 2/3 im Kernel aktiviert?"
+
+#: ../window-hardware.c:49
+msgid "Big 3rd Gen"
+msgstr "3. Generation (groß)"
+
+#: ../iface-unknown.c:28
+#, c-format
+msgid "Check dmesg output for \"%s\""
+msgstr "Überprüfen Sie die dmesg-Ausgabe für \"%s\""
+
+#: ../window-routing.c:232
+msgid "Clear"
+msgstr "Alle trennen"
+
+#: ../iface-mixer.c:41
+msgid "Clock Source"
+msgstr "Taktgeber"
+
+#: ../iface-mixer.c:35
+msgid ""
+"Clock Source selects where the interface receives its digital clock from. If "
+"you aren't using S/PDIF or ADAT inputs, set this to Internal."
+msgstr ""
+"Taktgeber wählt aus woher das Taktsignal kommt. Wenn Sie weder S/PDIF noch "
+"ADAT benutzen, wählen Sie \"intern\"."
+
+#: ../about.c:27
+msgid "Copyright 2022 Geoffrey D. Bennett"
+msgstr "Copyright 2022 Geoffrey D. Bennett"
+
+#: ../window-routing.c:343
+msgid "Destinations"
+msgstr "Ziele"
+
+#: ../iface-mixer.c:349
+msgid "Dim (lower volume) of HW controlled outputs"
+msgstr "Erniedrige die Lautstärker der HW-kontrollierten Eingänge"
+
+#: ../window-routing.c:233
+msgid "Direct"
+msgstr "Direkt"
+
+#: ../iface-no-mixer.c:97
+msgid "Direct Monitor"
+msgstr "Direktmonitor"
+
+#: ../iface-no-mixer.c:88
+msgid "Direct Monitor Off"
+msgstr "Direktmonitor aus"
+
+#: ../iface-no-mixer.c:88
+msgid "Direct Monitor On"
+msgstr "Direktmonitor an"
+
+#: ../iface-no-mixer.c:92 ../iface-no-mixer.c:103
+msgid ""
+"Direct Monitor sends the analogue input signals to the analogue outputs for "
+"zero-latency monitoring."
+msgstr ""
+"Direktmonitor sendet die analogen Eingangssignale ohne Latenz zu den "
+"analogen Ausgängen ."
+
+#: ../iface-mixer.c:124 ../window-startup.c:60 ../window-startup.c:95
+#: ../window-startup.c:129
+msgid "Disabled"
+msgstr "Deaktiviert"
+
+#: ../menu.c:125
+msgid "E_xit"
+msgstr "_Beenden"
+
+#: ../iface-mixer.c:124 ../window-startup.c:60 ../window-startup.c:95
+#: ../window-startup.c:129
+msgid "Enabled"
+msgstr "Aktiviert"
+
+#: ../tooltips.c:19
+msgid ""
+"Enabling 48V sends “Phantom Power” to the XLR microphone input. This is "
+"required for some microphones (such as condensor microphones), and damaging "
+"to some microphones (particularly vintage ribbon microphones)."
+msgstr ""
+"Aktivieren von 48V gibt Phantomspeisung auf die XLR-Mikrofoneingänge. Dies "
+"wird von einigen Mikrofonen (z.B. Kondensatormikrofonen) benötigt, für "
+"andere kann es allerdings schädlich sein (vor allem für ältere "
+"Bändchenmikrofone)."
+
+#: ../tooltips.c:15
+msgid ""
+"Enabling Air will transform your recordings and inspire you while making "
+"music."
+msgstr "Air simuliert den Klang der ISA 110 Mikrofonvorverstärker."
+
+#: ../iface-mixer.c:229
+msgid ""
+"Enabling Pad engages an attenuator in the channel, giving you more headroom "
+"for very hot signals."
+msgstr ""
+"Pad aktiviert eine Dämpfung für den Kanal, um mehr Übersteuerungsreserven "
+"für sehr laute Signale zu haben."
+
+#: ../file.c:50
+#, c-format
+msgid "Error running \"alsactl %s %s -f %s\": %s"
+msgstr "Fehler beim Ausführen von \"alsactl %s %s -f %s\": %s"
+
+#: ../about.c:25
+msgid "GTK4 interface to the ALSA Scarlett Gen 2/3 Mixer controls"
+msgstr "Grafische Oberfläche zur ALSA Scarlett Gen 2/3 Steuerung"
+
+#: ../iface-unknown.c:24
+msgid "Gen 2: 6i6/18i8/18i20"
+msgstr "Generation 2: 6i6/18i8/18i20"
+
+#: ../iface-unknown.c:25
+msgid "Gen 3: Solo/2i2/4i4/8i6/18i8/18i20"
+msgstr "Generation 3: Solo/2i2/4i4/8i6/18i8/18i20"
+
+#: ../about.c:17
+msgid "Geoffrey D. Bennett"
+msgstr "Geoffrey D. Bennett"
+
+#: ../iface-mixer.c:140
+msgid "Global"
+msgstr "Global"
+
+#: ../iface-mixer.c:315 ../iface-mixer.c:328
+msgid "HW"
+msgstr "HW"
+
+#: ../window-routing.c:327
+msgid "Hardware Inputs"
+msgstr "Geräteeingänge"
+
+#: ../window-routing.c:330
+msgid "Hardware Outputs"
+msgstr "Geräteausgänge"
+
+#: ../iface-no-mixer.c:20
+msgid "Input Controls"
+msgstr "Eingangssteuerung"
+
+#: ../iface-mixer.c:210 ../iface-no-mixer.c:73
+msgid "Inst"
+msgstr "Inst"
+
+#: ../driver-strings.txt:7
+msgid "Internal"
+msgstr "Intern"
+
+#: ../window-startup.c:148
+msgid ""
+"It appears that there are no startup controls. You probably need to upgrade "
+"your kernel to see something here."
+msgstr ""
+"Es scheinen keine Programmstart-Einstellungen vorhanden zu sein. "
+"Wahrscheinlich müssen Sie einen neueren Kernel installieren um hier etwas zu "
+"sehen."
+
+#: ../iface-mixer.c:207
+msgid "Level"
+msgstr "Pegel"
+
+#: ../iface-mixer.c:461
+msgid "Levels"
+msgstr "Pegel"
+
+#: ../iface-mixer.c:210 ../iface-no-mixer.c:73
+msgid "Line"
+msgstr "Line"
+
+#: ../file.c:101
+msgid "Load Configuration"
+msgstr "Lade Einstellungen"
+
+#: ../file.c:195
+msgid "Load Configuration File for Interface Simulation"
+msgstr "Lade Einstellungen für Gerätesimulation"
+
+#: ../iface-mixer.c:80
+msgid "Locked"
+msgstr "Synchronisiert"
+
+#: ../window-startup.c:126
+msgid "MSD (Mass Storage Device) Mode"
+msgstr "MSD (Mass Storage Device) Modus"
+
+#: ../iface-mixer.c:97
+msgid "Main"
+msgstr "Haupt"
+
+#: ../tooltips.c:12
+msgid "Mic/Line or Instrument Level (Impedance)"
+msgstr "Mic-/Line- oder Instrumentenpegel (Impedanz)"
+
+#: ../iface-mixer.c:453
+msgid "Mixer"
+msgstr "Mischer"
+
+#: ../window-routing.c:829
+msgid ""
+"Mixer\n"
+"Inputs"
+msgstr ""
+"Mischer-\n"
+"eingänge"
+
+#: ../window-routing.c:881
+msgid ""
+"Mixer\n"
+"Outputs"
+msgstr ""
+"Mischer-\n"
+"ausgänge"
+
+#: ../window-routing.c:881
+msgid "Mixer Outputs"
+msgstr "Mischerausgänge"
+
+#: ../window-routing.c:893
+msgid ""
+"Mixer Outputs with Talkback enabled will have the level of Mixer Input 25 "
+"internally raised and lowered when the Talkback control is turned On and Off."
+msgstr ""
+"Mischerausgänge mit aktiviertem Talkback erhöhen bzw. erniedrigen die "
+"Lautstärke von Eingang 25 wenn Talkback aktiviert bzw. deaktiviert ist."
+
+#: ../iface-no-mixer.c:105
+msgid "Mono sends both inputs to the left and right outputs."
+msgstr "Mono sendet beide Eingänge zum linken und rechten Ausgang."
+
+#: ../iface-mixer.c:309
+msgid "Mute"
+msgstr "Stumm"
+
+#: ../iface-mixer.c:306
+msgid "Mute (only available when under software control)"
+msgstr "Stumm (nur unter SW-Kontrolle verfügbar)"
+
+#: ../iface-mixer.c:342
+msgid "Mute HW controlled outputs"
+msgstr "HW-kontrollierte Ausgänge stummschalten"
+
+#: ../iface-none.c:17
+msgid "No Scarlett Gen 2/3 interface found."
+msgstr "Kein Scarlett Gen 2/3 Gerät gefunden."
+
+#: ../iface-mixer.c:97 ../iface-mixer.c:124 ../iface-mixer.c:218
+#: ../iface-mixer.c:226
+msgid "Off"
+msgstr "Aus"
+
+#: ../iface-mixer.c:97 ../iface-mixer.c:124 ../iface-mixer.c:218
+#: ../iface-mixer.c:226
+msgid "On"
+msgstr "An"
+
+#: ../iface-no-mixer.c:22
+msgid "Output Controls"
+msgstr "Ausgangssteuerung"
+
+#: ../window-routing.c:336
+msgid "PCM Inputs"
+msgstr "PCM-Eingänge"
+
+#: ../window-routing.c:333
+msgid "PCM Outputs"
+msgstr "PCM-Ausgänge"
+
+#: ../iface-mixer.c:223
+msgid "Pad"
+msgstr "Pad"
+
+#: ../window-startup.c:92
+msgid "Phantom Power Persistance"
+msgstr "Phantomspeisung nach Neustart beibehalten"
+
+#: ../window-routing.c:234
+msgid "Preamp"
+msgstr "Vorverstärker"
+
+#: ../window-routing.c:238
+msgid "Presets"
+msgstr "Voreinstellungen"
+
+#: ../iface-mixer.c:445
+msgid "Routing"
+msgstr "Verbindungen"
+
+#: ../driver-strings.txt:8
+msgid "SPDIF"
+msgstr "SPDIF"
+
+#: ../iface-mixer.c:315
+msgid "SW"
+msgstr "SW"
+
+#: ../file.c:152
+msgid "Save Configuration"
+msgstr "Speichere Einstellungen"
+
+#: ../window-hardware.c:24
+msgid "Scarlett 18i20 2nd Gen"
+msgstr "Scarlett 18i20 2. Generation"
+
+#: ../window-hardware.c:38
+msgid "Scarlett 18i20 3rd Gen"
+msgstr "Scarlett 18i20 3. Generation"
+
+#: ../window-hardware.c:23
+msgid "Scarlett 18i8 2nd Gen"
+msgstr "Scarlett 18i8 2. Generation"
+
+#: ../window-hardware.c:37
+msgid "Scarlett 18i8 3rd Gen"
+msgstr "Scarlett 18i8 3. Generation"
+
+#: ../window-hardware.c:30
+msgid "Scarlett 2i2 3rd Gen"
+msgstr "Scarlett 2i2 3. Generation"
+
+#: ../window-hardware.c:35
+msgid "Scarlett 4i4 3rd Gen"
+msgstr "Scarlett 4i4 3. Generation"
+
+#: ../window-hardware.c:22
+msgid "Scarlett 6i6 2nd Gen"
+msgstr "Scarlett 6i6 2. Generation"
+
+#: ../window-hardware.c:36
+msgid "Scarlett 8i6 3rd Gen"
+msgstr "Scarlett 8i6 3. Generation"
+
+#: ../window-hardware.c:29
+msgid "Scarlett Solo 3rd Gen"
+msgstr "Scarlett Solo 3. Generation"
+
+#: ../iface-mixer.c:318
+msgid ""
+"Set software-controlled (SW) or hardware-controlled (HW) volume for this "
+"analogue output."
+msgstr ""
+"Wähle Software-kontrollierte (SW) oder Hardware-kontrollierte (HW) "
+"Lautstärke für diesen analogen Ausgang."
+
+#: ../window-hardware.c:46
+msgid "Small 3rd Gen"
+msgstr "3. Generation (klein)"
+
+#: ../iface-unknown.c:22
+msgid "Sorry, I don’t recognise the controls on this card."
+msgstr "Entschuldigung, die Steuerung für dieses Gerät wird nicht erkannt."
+
+#: ../iface-mixer.c:104
+msgid "Speaker Switching"
+msgstr "Monitorumschaltung"
+
+#: ../iface-mixer.c:101
+msgid ""
+"Speaker Switching lets you swap between two pairs of monitoring speakers "
+"very easily."
+msgstr ""
+"Mit Monitorumschaltung lässt sich sehr einfach zwischen zwei Monitorpaaren "
+"umschalten."
+
+#: ../window-startup.c:57
+msgid "Standalone"
+msgstr "Einzelbetrieb"
+
+#: ../iface-mixer.c:467 ../iface-no-mixer.c:113
+msgid "Startup Configuration"
+msgstr "Programmstart-Einstellungen"
+
+#: ../window-routing.c:235
+msgid "Stereo Out"
+msgstr "Stereo-Ausgang"
+
+#: ../iface-no-mixer.c:106
+msgid "Stereo sends input 1 to the left, and input 2 to the right output."
+msgstr "Stereo sendet Eingang 1 zum linken und Eingang 2 zum rechten Ausgang."
+
+#: ../iface-mixer.c:78
+msgid "Sync Status"
+msgstr "Sync Status"
+
+#: ../iface-mixer.c:63
+msgid ""
+"Sync Status indicates if the interface is locked to a valid digital clock. "
+"If you aren't using S/PDIF or ADAT inputs and the Sync Status is Unlocked, "
+"change the Clock Source to Internal."
+msgstr ""
+"Sync Status zeigt an, ob das Gerät mit einem validen Taktgeber "
+"synchronisiert ist. Wenn Sie weder S/PDIF- noch ADAT-Eingänge benutzen und "
+"Sync Status \"nicht synchronisiert\" anzeigt, wechseln Sie den Taktgeber zu "
+"\"intern\"."
+
+#: ../iface-mixer.c:71
+msgid ""
+"Sync Status indicates if the interface is locked to a valid digital clock. "
+"Since the Clock Source is fixed to internal on this interface, this should "
+"stay locked."
+msgstr ""
+"Sync Status zeigt an, ob das Gerät mit einem validen Taktgeber "
+"synchronisiert ist. Da der Taktgeber auf \"intern\" eingestellt ist, sollte "
+"der Sync Status synchronisiert bleiben."
+
+#: ../iface-mixer.c:132 ../window-routing.c:890
+msgid "Talkback"
+msgstr "Talkback"
+
+#: ../iface-mixer.c:128
+msgid ""
+"Talkback lets you add another channel (usually the talkback mic) to a mix "
+"with a button push, usually to talk to musicians, and without using an "
+"additional mic channel."
+msgstr ""
+"Mit Talkback lässt sich ein weiterer Kanal (üblicherweise ein Talkback-"
+"Mikrofon) zu einem Mix hinzufüge, üblicherweise um mit Musikern zu reden "
+"ohne einen weiteren Mikrofonkanal zu benutzen."
+
+#: ../iface-unknown.c:23
+msgid "These Focusrite Scarlett models should be supported:"
+msgstr "Diese Focusrite Scarlett-Geräte sollten unterstützt werden:"
+
+#: ../iface-mixer.c:331
+msgid ""
+"This control shows the setting of the physical (hardware) volume knob, which "
+"controls the volume of the analogue outputs which have been set to \"HW\"."
+msgstr ""
+"Diese Anzeige zeigt die Stellung des physischen (Hardware) Lautstärkeregler, "
+"welcher die Lautstärke der analogen Ausgänge die auf \"HW\" gesetzt sind "
+"kontrolliert."
+
+#: ../iface-mixer.c:80
+msgid "Unlocked"
+msgstr "Nicht synchronisiert"
+
+#: ../window-startup.c:133
+msgid ""
+"When MSD Mode is enabled (as it is from the factory), the interface has "
+"reduced functionality. You'll want to have this disabled. On the other hand, "
+"when MSD Mode is enabled, the interface presents itself as a Mass Storage "
+"Device (like a USB stick), containing a link to the Focusrite web site "
+"encouraging you to register your product and download the proprietary "
+"drivers which can't be used on Linux."
+msgstr ""
+"Wenn der MSD-Modus aktiviert ist (Werkseinstellung), zeigt das Gerät eine "
+"reduzierte Funktionalität. Sie sollten MSD-Modus deaktivieren. Andererseits "
+"fungiert das Gerät im MSD-Modus als Massenspeicher (wie ein USB-Stick), auf "
+"dem ein Link zur Focusrite-Webseite, auf der das Produkt registrieren und "
+"Treiber (die nicht unter Linux nutzbar sind) heruntergeladen werden können, "
+"gespeichert sind."
+
+#: ../window-startup.c:99
+msgid ""
+"When Phantom Power Persistence is enabled, the interface will restore the "
+"previous Phantom Power/48V setting when the interface is turned on. For the "
+"safety of microphones which can be damaged by phantom power, the interface "
+"defaults to having phantom power disabled when it is turned on."
+msgstr ""
+"Wenn \"Phantomspeisung nach Neustart beibehalten\" aktiviert ist, wird das "
+"Geräte den letzten Zustand der Phantomspeisung/48V wiederherstellen wenn das "
+"Gerät eingeschaltet wird. Zur Sicherheit für Mikrofone, welche durch "
+"Phantomspeisung beschädigt werden können, ist diese Option standardmäßig "
+"deaktiviert."
+
+#: ../window-startup.c:64
+msgid ""
+"When Standalone mode is enabled, the interface will continue to route audio "
+"as per the previous routing and mixer settings after it has been "
+"disconnected from a computer. By configuring the routing between the "
+"hardware and mixer inputs and outputs appropriately, the interface can act "
+"as a standalone preamp or mixer."
+msgstr ""
+"Wenn \"Einzelbetrieb\" aktiviert ist, wird das Gerät die Verbindungen und "
+"Mischpulteinstellungen beibehalten nachdem es von dem Rechner getrennt "
+"wurde. Bei geeigneten Einstellungen kann das Gerät so als eigenständiger "
+"Vorverstärker oder Mischpult betrieben werden."
+
+#: ../iface-unknown.c:31
+msgid ""
+"You may need to create a file /etc/modprobe.d/scarlett.conf\n"
+"with an \"options snd_usb_audio ...\" line and reboot."
+msgstr ""
+"Eventuell wird die Datei /etc/modprobe.d/scarlett.conf mit\n"
+"der Zeile \"options snd_usb_audio ...\" und ein Neustart gebraucht."
+
+#: ../menu.c:137
+msgid "_About"
+msgstr "Üb_er"
+
+#: ../file.c:105 ../file.c:156 ../file.c:199
+msgid "_Cancel"
+msgstr "_Abbrechen"
+
+#: ../menu.c:121
+msgid "_File"
+msgstr "_Datei"
+
+#: ../menu.c:135
+msgid "_Help"
+msgstr "_Hilfe"
+
+#: ../menu.c:124
+msgid "_Interface Simulation"
+msgstr "_Gerätesimulation"
+
+#: ../file.c:104 ../file.c:198
+msgid "_Load"
+msgstr "_Laden"
+
+#: ../menu.c:122
+msgid "_Load Configuration"
+msgstr "_Lade Einstellungen"
+
+#: ../menu.c:130
+msgid "_Mixer"
+msgstr "_Mischer"
+
+#: ../menu.c:129
+msgid "_Routing"
+msgstr "_Verbindungen"
+
+#: ../file.c:155
+msgid "_Save"
+msgstr "_Speichern"
+
+#: ../menu.c:123
+msgid "_Save Configuration"
+msgstr "_Speichere Einstellungen"
+
+#. g_menu_append(view_menu, _("_Levels"),  "win.levels");
+#: ../menu.c:132
+msgid "_Startup"
+msgstr "_Programmstart"
+
+#: ../menu.c:136
+msgid "_Supported Hardware"
+msgstr "_Unterstützte Geräte"
+
+#: ../menu.c:128
+msgid "_View"
+msgstr "_Anzeige"
+
+#: ../file.c:66
+msgid "alsactl state file (.state)"
+msgstr "alsactl Statusdatei (.state)"
+
+#: ../driver-strings.txt:6
+msgid "off"
+msgstr "aus"
+
+#~ msgid "Sources"
+#~ msgstr "Quellen"
