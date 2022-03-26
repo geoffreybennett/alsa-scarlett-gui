@@ -107,8 +107,9 @@ static void get_routing_dsts(struct alsa_card *card) {
   assert(j == count);
 }
 
-static void routing_grid_label(char *s, GtkGrid *g) {
+static void routing_grid_label(char *s, GtkGrid *g, GtkAlign align) {
   GtkWidget *l = gtk_label_new(s);
+  gtk_widget_set_halign(l, align);
   gtk_grid_attach(g, l, 0, 0, 1, 1);
 }
 
@@ -301,16 +302,16 @@ static void create_routing_grid(struct alsa_card *card) {
   gtk_widget_set_hexpand(card->routing_mixer_in_grid, TRUE);
   gtk_widget_set_hexpand(card->routing_mixer_out_grid, TRUE);
   gtk_widget_set_align(
-    card->routing_hw_in_grid, GTK_ALIGN_END, GTK_ALIGN_CENTER
+    card->routing_hw_in_grid, GTK_ALIGN_FILL, GTK_ALIGN_CENTER
   );
   gtk_widget_set_align(
-    card->routing_pcm_in_grid, GTK_ALIGN_END, GTK_ALIGN_CENTER
+    card->routing_pcm_in_grid, GTK_ALIGN_FILL, GTK_ALIGN_CENTER
   );
   gtk_widget_set_align(
-    card->routing_hw_out_grid, GTK_ALIGN_START, GTK_ALIGN_CENTER
+    card->routing_hw_out_grid, GTK_ALIGN_FILL, GTK_ALIGN_CENTER
   );
   gtk_widget_set_align(
-    card->routing_pcm_out_grid, GTK_ALIGN_START, GTK_ALIGN_CENTER
+    card->routing_pcm_out_grid, GTK_ALIGN_FILL, GTK_ALIGN_CENTER
   );
   gtk_widget_set_align(
     card->routing_mixer_in_grid, GTK_ALIGN_CENTER, GTK_ALIGN_END
@@ -319,10 +320,18 @@ static void create_routing_grid(struct alsa_card *card) {
     card->routing_mixer_out_grid, GTK_ALIGN_CENTER, GTK_ALIGN_START
   );
 
-  routing_grid_label("Hardware Inputs", GTK_GRID(card->routing_hw_in_grid));
-  routing_grid_label("Hardware Outputs", GTK_GRID(card->routing_hw_out_grid));
-  routing_grid_label("PCM Outputs", GTK_GRID(card->routing_pcm_in_grid));
-  routing_grid_label("PCM Inputs", GTK_GRID(card->routing_pcm_out_grid));
+  routing_grid_label(
+    "Hardware Inputs", GTK_GRID(card->routing_hw_in_grid), GTK_ALIGN_END
+  );
+  routing_grid_label(
+    "Hardware Outputs", GTK_GRID(card->routing_hw_out_grid), GTK_ALIGN_START
+  );
+  routing_grid_label(
+    "PCM Outputs", GTK_GRID(card->routing_pcm_in_grid), GTK_ALIGN_END
+  );
+  routing_grid_label(
+    "PCM Inputs", GTK_GRID(card->routing_pcm_out_grid), GTK_ALIGN_START
+  );
 
   GtkWidget *src_label = gtk_label_new("↑\nSources →");
   gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
@@ -645,11 +654,17 @@ static void make_src_routing_widget(
     GtkWidget *label = gtk_label_new(name);
     gtk_box_append(GTK_BOX(box), label);
     gtk_widget_add_class(box, "route-label");
+
+    if (orientation == GTK_ORIENTATION_HORIZONTAL) {
+      gtk_widget_set_halign(label, GTK_ALIGN_END);
+      gtk_widget_set_hexpand(label, TRUE);
+    }
   }
 
   if (orientation == GTK_ORIENTATION_HORIZONTAL) {
     gtk_box_append(GTK_BOX(box), socket);
-    gtk_widget_set_halign(box, GTK_ALIGN_END);
+    gtk_widget_set_halign(box, GTK_ALIGN_FILL);
+    gtk_widget_set_hexpand(box, TRUE);
   } else {
     gtk_box_prepend(GTK_BOX(box), socket);
     gtk_widget_set_margin_start(box, 5);
@@ -703,7 +718,10 @@ static void make_dst_routing_widget(
     gtk_widget_set_margin_end(box, 5);
   } else {
     gtk_box_prepend(GTK_BOX(box), socket);
-    gtk_widget_set_halign(box, GTK_ALIGN_START);
+    gtk_widget_set_halign(box, GTK_ALIGN_FILL);
+    gtk_widget_set_hexpand(box, TRUE);
+    gtk_widget_set_hexpand(label, TRUE);
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
   }
 
   // handle clicks on the box

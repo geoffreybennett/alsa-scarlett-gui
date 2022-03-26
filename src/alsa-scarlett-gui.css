@@ -1,9 +1,11 @@
 .route-label {
   font-size: smaller;
+  border-radius: 3px;
 }
 
 .route-label:hover {
   background: @theme_selected_bg_color;
+  outline: 2px solid @theme_selected_bg_color;
 }
 
 .route-label:drop(active) {
