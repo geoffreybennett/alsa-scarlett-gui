@@ -17,37 +17,55 @@ static void choose_line_colour(
   double             *g,
   double             *b
 ) {
-  int odd_in = r_src->lr_num & 1;
-  int odd_out = r_dst->elem->lr_num & 1;
-  int in2 = ((r_src->lr_num - 1) / 2 & 1);
-  int out2 = ((r_dst->elem->lr_num - 1) / 2 & 1);
+  // left channels have odd numbers
+  // right channels have even numbers
+  int odd_src = r_src->lr_num & 1;
+  int odd_dst = r_dst->elem->lr_num & 1;
 
-  if (odd_in && odd_out) {
+  // for colouring, pair channels up
+  // 0 for odd pairs, 1 for even pairs
+  int src2 = ((r_src->lr_num - 1) / 2 & 1);
+  int dst2 = ((r_dst->elem->lr_num - 1) / 2 & 1);
+
+  // left -> left, black
+  if (odd_src && odd_dst) {
     *r = 0;
     *g = 0;
     *b = 0;
-  } else if (!odd_in && !odd_out) {
+
+  // right -> right, red
+  } else if (!odd_src && !odd_dst) {
     *r = 1;
     *g = 0;
     *b = 0;
-  } else if (odd_in) {
+
+  // left -> right, dark green
+  } else if (odd_src) {
     *r = 0;
     *g = 0.25;
     *b = 0;
+
+  // right -> left, dark brown/olive
   } else {
     *r = 0.25;
     *g = 0.25;
     *b = 0;
   }
+
+  // mix <-> non-mix, add blue
   if ((r_src->port_category == PC_MIX) !=
       (r_dst->port_category == PC_MIX)) {
     *b = 0.5;
   }
-  if (in2) {
+
+  // even input pairs, lighten red and green components
+  if (src2) {
     *r = (*r + 1) / 2;
     *g = (*g + 1) / 2;
   }
-  if (out2) {
+
+  // even output pairs, lighten blue component
+  if (dst2) {
     *b = (*b + 1) / 2;
   }
 }
