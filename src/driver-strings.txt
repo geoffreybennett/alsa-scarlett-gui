@@ -1,0 +1,9 @@
+This file contains strings that come directly from the
+driver and thus are defined nowhere in the gui source code.
+This file is not compilable C code, but just defines
+strings surrounded by _(...) to be recognized by xgettext.
+
+_("off")
+_("Internal")
+_("SPDIF")
+_("ADAT")

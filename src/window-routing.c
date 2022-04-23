@@ -10,6 +10,9 @@
 #include "window-mixer.h"
 #include "window-routing.h"
 
+#include <libintl.h>
+#define _(String) gettext (String)
+
 static void get_routing_srcs(struct alsa_card *card) {
   struct alsa_elem *elem = card->sample_capture_elem;
 
@@ -226,13 +229,13 @@ static void routing_preset(
 static GtkWidget *make_preset_menu_button(struct alsa_card *card) {
   GMenu *menu = g_menu_new();
 
-  g_menu_append(menu, "Clear", "routing.preset('clear')");
-  g_menu_append(menu, "Direct", "routing.preset('direct')");
-  g_menu_append(menu, "Preamp", "routing.preset('preamp')");
-  g_menu_append(menu, "Stereo Out", "routing.preset('stereo_out')");
+  g_menu_append(menu, _("Clear"), "routing.preset('clear')");
+  g_menu_append(menu, _("Direct"), "routing.preset('direct')");
+  g_menu_append(menu, _("Preamp"), "routing.preset('preamp')");
+  g_menu_append(menu, _("Stereo Out"), "routing.preset('stereo_out')");
 
   GtkWidget *button = gtk_menu_button_new();
-  gtk_menu_button_set_label(GTK_MENU_BUTTON(button), "Presets");
+  gtk_menu_button_set_label(GTK_MENU_BUTTON(button), _("Presets"));
   gtk_menu_button_set_menu_model(
     GTK_MENU_BUTTON(button),
     G_MENU_MODEL(menu)
@@ -321,23 +324,23 @@ static void create_routing_grid(struct alsa_card *card) {
   );
 
   routing_grid_label(
-    "Hardware Inputs", GTK_GRID(card->routing_hw_in_grid), GTK_ALIGN_END
+    _("Hardware Inputs"), GTK_GRID(card->routing_hw_in_grid), GTK_ALIGN_END
   );
   routing_grid_label(
-    "Hardware Outputs", GTK_GRID(card->routing_hw_out_grid), GTK_ALIGN_START
+    _("Hardware Outputs"), GTK_GRID(card->routing_hw_out_grid), GTK_ALIGN_START
   );
   routing_grid_label(
-    "PCM Outputs", GTK_GRID(card->routing_pcm_in_grid), GTK_ALIGN_END
+    _("PCM Outputs"), GTK_GRID(card->routing_pcm_in_grid), GTK_ALIGN_END
   );
   routing_grid_label(
-    "PCM Inputs", GTK_GRID(card->routing_pcm_out_grid), GTK_ALIGN_START
+    _("PCM Inputs"), GTK_GRID(card->routing_pcm_out_grid), GTK_ALIGN_START
   );
-
+  
   GtkWidget *src_label = gtk_label_new("↑\nSources →");
   gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(GTK_GRID(routing_grid), src_label, 0, 3, 1, 1);
 
-  GtkWidget *dst_label = gtk_label_new("← Destinations\n↓");
+  GtkWidget *dst_label = gtk_label_new(g_strdup_printf("← %s\n↓",_("Destinations")));
   gtk_label_set_justify(GTK_LABEL(dst_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(GTK_GRID(routing_grid), dst_label, 2, 0, 1, 1);
 }
@@ -823,7 +826,7 @@ static void add_routing_widgets(
     return;
   }
 
-  GtkWidget *l_mixer_in = gtk_label_new("Mixer\nInputs");
+  GtkWidget *l_mixer_in = gtk_label_new(_("Mixer\nInputs"));
   gtk_label_set_justify(GTK_LABEL(l_mixer_in), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(
     GTK_GRID(card->routing_mixer_in_grid), l_mixer_in,
@@ -875,7 +878,7 @@ static void add_routing_widgets(
   }
 
   GtkWidget *l_mixer_out = gtk_label_new(
-    card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs"
+    card->has_talkback ? _("Mixer Outputs") : _("Mixer\nOutputs")
   );
   gtk_label_set_justify(GTK_LABEL(l_mixer_out), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(
@@ -884,12 +887,12 @@ static void add_routing_widgets(
   );
 
   if (card->has_talkback) {
-    GtkWidget *l_talkback = gtk_label_new("Talkback");
+    GtkWidget *l_talkback = gtk_label_new(_("Talkback"));
     gtk_widget_set_tooltip_text(
       l_talkback,
-      "Mixer Outputs with Talkback enabled will have the level of "
+      _("Mixer Outputs with Talkback enabled will have the level of "
       "Mixer Input 25 internally raised and lowered when the "
-      "Talkback control is turned On and Off."
+      "Talkback control is turned On and Off.")
     );
     gtk_grid_attach(
       GTK_GRID(card->routing_mixer_out_grid), l_talkback,

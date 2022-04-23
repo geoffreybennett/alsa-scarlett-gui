@@ -8,6 +8,8 @@
 #include "window-hardware.h"
 #include "window-iface.h"
 
+#include <libintl.h>
+
 GtkApplication *app;
 
 // CSS
@@ -63,6 +65,12 @@ static void open_cb(
 }
 
 int main(int argc, char **argv) {
+
+  // set up gettext for i18n
+  setlocale (LC_ALL, "");
+  bindtextdomain ("alsa-scarlett-gui", LOCALEDIR);
+  textdomain ("alsa-scarlett-gui");
+
   app = gtk_application_new("vu.b4.alsa-scarlett-gui", G_APPLICATION_HANDLES_OPEN);
   g_signal_connect(app, "startup", G_CALLBACK(startup), NULL);
   g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);

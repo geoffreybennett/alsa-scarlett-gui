@@ -7,6 +7,9 @@
 #include "file.h"
 #include "stringhelper.h"
 
+#include <libintl.h>
+#define _(String) gettext (String)
+
 static void run_alsactl(
   struct alsa_card *card,
   char             *cmd,
@@ -44,7 +47,7 @@ static void run_alsactl(
       : g_strdup_printf("%s", error->message);
 
   char *msg = g_strdup_printf(
-    "Error running “alsactl %s %s -f %s”: %s",
+    _("Error running \"alsactl %s %s -f %s\": %s"),
     cmd, card->device, fn, error_message
     );
   show_error(w, msg);
@@ -60,7 +63,7 @@ done:
 
 static void add_state_filter(GtkFileChooserNative *native) {
   GtkFileFilter *filter = gtk_file_filter_new();
-  gtk_file_filter_set_name(filter, "alsactl state file (.state)");
+  gtk_file_filter_set_name(filter, _("alsactl state file (.state)"));
   gtk_file_filter_add_pattern(filter, "*.state");
   gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(native), filter);
 }
@@ -95,11 +98,11 @@ void activate_load(
   struct alsa_card *card = data;
 
   GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Load Configuration",
+    _("Load Configuration"),
     GTK_WINDOW(card->window_main),
     GTK_FILE_CHOOSER_ACTION_OPEN,
-    "_Load",
-    "_Cancel"
+    _("_Load"),
+    _("_Cancel")
   );
 
   add_state_filter(native);
@@ -146,11 +149,11 @@ void activate_save(
   struct alsa_card *card = data;
 
   GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Save Configuration",
+    _("Save Configuration"),
     GTK_WINDOW(card->window_main),
     GTK_FILE_CHOOSER_ACTION_SAVE,
-    "_Save",
-    "_Cancel"
+    _("_Save"),
+    _("_Cancel")
   );
 
   add_state_filter(native);
@@ -189,11 +192,11 @@ void activate_sim(
   GtkWidget *w = data;
 
   GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Load Configuration File for Interface Simulation",
+    _("Load Configuration File for Interface Simulation"),
     GTK_WINDOW(w),
     GTK_FILE_CHOOSER_ACTION_OPEN,
-    "_Load",
-    "_Cancel"
+    _("_Load"),
+    _("_Cancel")
   );
 
   add_state_filter(native);

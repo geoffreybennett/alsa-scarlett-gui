@@ -31,3 +31,4 @@ cp demo/* $DOCDIR/demo
 /usr/bin/alsa-scarlett-gui
 /usr/share/applications/vu.b4.alsa-scarlett-gui.desktop
 /usr/share/icons/hicolor/256x256/apps/alsa-scarlett-gui.png
+/usr/share/locale/de/LC_MESSAGES/alsa-scarlett-gui.mo 
