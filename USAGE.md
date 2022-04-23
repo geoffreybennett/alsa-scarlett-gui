@@ -58,6 +58,19 @@ installed:
 sudo dnf -y install alsa-lib-devel gtk4-devel
 ```
 
+On Ubuntu 22.04:
+
+```
+sudo apt -y install git make gcc libgtk-4-dev libasound2-dev
+```
+
+To download from github:
+
+```
+git clone https://github.com/geoffreybennett/alsa-scarlett-gui
+cd alsa-scarlett-gui
+```
+
 To build:
 
 ```
