@@ -97,6 +97,18 @@ And uninstall with:
 sudo make uninstall
 ```
 
+## Converting RPM releases into DEB package
+
+The latest binary can be converted to DEB by using the alien package:
+```
+sudo apt alien {name_of_latest_release}.rpm
+```
+After converting the RPM to a DEB, install as follows:
+```
+sudo dpkg -i {name_of_latest_release_after_converting}.deb
+```
+OR doubleclick the converted DEB package to install it
+
 ## No interface connected
 
 If no interface is detected (usually because there isn’t one
