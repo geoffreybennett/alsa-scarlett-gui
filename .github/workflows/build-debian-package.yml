@@ -19,11 +19,21 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt -y update
+          # Compilation dependencies
           sudo apt -y install git make gcc libgtk-4-dev libasound2-dev
+          # Documentation dependencies
+          sudo apt -y install pandoc
 
       - name: Build from sources
         run: |
           make -C src -j4 PREFIX=/usr
+
+      - name: Generate the documentation
+        run : |
+          sed -i 's/USAGE.md/USAGE.html/g' README.md
+          pandoc -s -o README.html     README.md
+          pandoc -s -o USAGE.html      USAGE.md
+          pandoc -s -o INTERFACES.html INTERFACES.md
 
       - name: Prepare package workspace
         run: |
@@ -34,7 +44,7 @@ jobs:
           cp src/alsa-scarlett-gui               ${{ github.workspace }}/deb-workspace/usr/bin/
           cp src/vu.b4.alsa-scarlett-gui.desktop ${{ github.workspace }}/deb-workspace/usr/share/applications/
           cp src/img/alsa-scarlett-gui.png       ${{ github.workspace }}/usr/share/icons/hicolor/256x256/apps/
-          cp -r *.md img demo                    ${{ github.workspace }}/deb-workspace/usr/share/doc/${{ env.APP_NAME }}-${{ env.APP_VERSION }}/
+          cp -r *.html img demo                  ${{ github.workspace }}/deb-workspace/usr/share/doc/${{ env.APP_NAME }}-${{ env.APP_VERSION }}/
           
       - name: Build debian package
         uses: jiro4989/build-deb-action@v2
