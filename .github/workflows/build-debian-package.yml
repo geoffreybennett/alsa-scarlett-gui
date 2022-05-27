@@ -1,0 +1,56 @@
+name: Build debian package
+
+on:
+  release:
+    branches: '*'
+    types: [published]
+
+env:
+  APP_NAME:    alsa-scarlett-gui
+  APP_VERSION: ${{ github.event.release.tag_name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install build dependencies
+        run: |
+          sudo apt -y update
+          sudo apt -y install git make gcc libgtk-4-dev libasound2-dev
+
+      - name: Build from sources
+        run: |
+          make -C src -j4 PREFIX=/usr
+
+      - name: Prepare package workspace
+        run: |
+          mkdir -p ${{ github.workspace }}/deb-workspace/usr/bin \
+                   ${{ github.workspace }}/deb-workspace/usr/share/applications \
+                   ${{ github.workspace }}/usr/share/icons/hicolor/256x256/apps \
+                   ${{ github.workspace }}/deb-workspace/usr/share/doc/${{ env.APP_NAME }}-${{ env.APP_VERSION }}
+          cp src/alsa-scarlett-gui               ${{ github.workspace }}/deb-workspace/usr/bin/
+          cp src/vu.b4.alsa-scarlett-gui.desktop ${{ github.workspace }}/deb-workspace/usr/share/applications/
+          cp src/img/alsa-scarlett-gui.png       ${{ github.workspace }}/usr/share/icons/hicolor/256x256/apps/
+          cp -r *.md img demo                    ${{ github.workspace }}/deb-workspace/usr/share/doc/${{ env.APP_NAME }}-${{ env.APP_VERSION }}/
+          
+      - name: Build debian package
+        uses: jiro4989/build-deb-action@v2
+        with:
+          package: ${{ env.APP_NAME }}
+          package_root: ${{ github.workspace }}/deb-workspace
+          maintainer: geoffreybennett
+          version: ${{ env.APP_VERSION }}
+          desc: ${{ env.APP_NAME }} is a Gtk4 GUI for the ALSA controls presented by the Linux kernel Focusrite Scarlett Gen 2/3 Mixer Driver.
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ env.APP_NAME }}_${{ env.APP_VERSION }}_amd64.deb
+          asset_name: ${{ env.APP_NAME }}_${{ env.APP_VERSION }}_amd64.deb
+          asset_content_type: application/vnd.debian.binary-package
