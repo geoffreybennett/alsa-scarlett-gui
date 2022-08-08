@@ -125,7 +125,7 @@ GMenu *create_app_menu(GtkApplication *app) {
   g_menu_append_submenu(menu, "_View", G_MENU_MODEL(view_menu));
   g_menu_append(view_menu, "_Routing", "win.routing");
   g_menu_append(view_menu, "_Mixer",   "win.mixer");
-//g_menu_append(view_menu, "_Levels",  "win.levels");
+  g_menu_append(view_menu, "_Levels",  "win.levels");
   g_menu_append(view_menu, "_Startup", "win.startup");
 
   GMenu *help_menu = g_menu_new();

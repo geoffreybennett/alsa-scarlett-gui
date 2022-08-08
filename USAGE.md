@@ -354,8 +354,8 @@ menu option File → Interface Simulation to load.
 - Can’t select (focus) the gain/volume controls or use a keyboard to
   adjust them.
 
-- Level (monitoring) doesn’t work yet and is disabled (needs kernel
-  driver update).
+- Level meters don’t work if you're not running the driver from Linux
+  6.7.
 
 - Load/Save uses `alsactl` which will be confused if the ALSA
   interface name (e.g. `USB`) changes.

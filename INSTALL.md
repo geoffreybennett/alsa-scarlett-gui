@@ -8,6 +8,12 @@ Linux Kernel with the ALSA Scarlett2 Protocol Driver.
   for the Gen 2 support.
 - For Clarett+ 8Pre support, you need 6.1.
 - For the other Clarett USB and Clarett+ models, you need 6.7.
+- For the level meters to work, you need 6.7.
+
+If you don't have 6.7, you can get the driver from here and build it
+for your current kernel:
+
+https://github.com/geoffreybennett/scarlett-gen2/releases/tag/v6.5.11c1
 
 ## Enabling the Driver
 

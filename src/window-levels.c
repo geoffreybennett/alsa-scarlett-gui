@@ -24,7 +24,17 @@ static int update_levels_controls(void *user_data) {
     // go through the ports in that category
     for (int j = 0; j < card->routing_out_count[i]; j++) {
       GtkWidget *meter = card->meters[meter_num];
-      gtk_dial_set_value(GTK_DIAL(meter), values[meter_num]);
+      double value = 20 * log10(values[meter_num] / 4095.0);
+
+      int int_value;
+      if (value < -80)
+        int_value = -80;
+      else if (value > 0)
+        int_value = 0;
+      else
+        int_value = round(value);
+
+      gtk_dial_set_value(GTK_DIAL(meter), int_value);
       meter_num++;
     }
   }
@@ -93,7 +103,7 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
         count_labels[j] = add_count_label(grid, j);
 
       // create the meter widget and attach to the grid
-      GtkWidget *meter = gtk_dial_new_with_range(0, 4096, 1);
+      GtkWidget *meter = gtk_dial_new_with_range(-80, 0, 1);
       card->meters[meter_num++] = meter;
       gtk_grid_attach(GTK_GRID(grid), meter, j + 1, i + 1, 1, 1);
     }
