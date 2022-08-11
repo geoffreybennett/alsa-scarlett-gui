@@ -4,20 +4,22 @@
 
 Linux Kernel with the ALSA Scarlett Gen 2/3 mixer driver. Use at least
 version 5.14 for Scarlett Gen 3 support and bug fixes for the Gen 2
-support.
+support. For Clarett+ 8Pre support, wait for 6.1 or see
+https://github.com/geoffreybennett/scarlett-gen2/commits/scarlett-gen3
+for kernel patches.
 
-As of Linux 5.17, the driver is still disabled by default and needs to
+As of Linux 6.0, the driver is still disabled by default and needs to
 be enabled at module load time with the `device_setup=1` option to
 insmod/modprobe. Create a file /etc/modprobe.d/scarlett.conf
 containing the appropriate line for your device:
 
-Gen 2:
+Scarlett Gen 2:
 
 - 6i6: `options snd_usb_audio vid=0x1235 pid=0x8203 device_setup=1`
 - 18i8: `options snd_usb_audio vid=0x1235 pid=0x8204 device_setup=1`
 - 18i20: `options snd_usb_audio vid=0x1235 pid=0x8201 device_setup=1`
 
-Gen 3:
+Scarlett Gen 3:
 
 - Solo: `options snd_usb_audio vid=0x1235 pid=0x8211 device_setup=1`
 - 2i2: `options snd_usb_audio vid=0x1235 pid=0x8210 device_setup=1`
@@ -25,6 +27,10 @@ Gen 3:
 - 8i6: `options snd_usb_audio vid=0x1235 pid=0x8213 device_setup=1`
 - 18i8: `options snd_usb_audio vid=0x1235 pid=0x8214 device_setup=1`
 - 18i20: `options snd_usb_audio vid=0x1235 pid=0x8215 device_setup=1`
+
+Clarett+:
+
+- 8Pre: `options snd_usb_audio vid=0x1235 pid=0x820c device_setup=1`
 
 Or you can use a sledgehammer:
 ```
@@ -138,7 +144,7 @@ The one control not accessible from the front panel is “Phantom Power
 Persistence” (menu option View → Startup) which controls the Phantom
 Power state when the interface is powered on.
 
-## Gen 2 6i6+ and Gen 3 4i4+ Interfaces
+## Gen 2 6i6+, Gen 3 4i4+, and Clarett+ Interfaces
 
 The Gen 2 6i6+ and Gen 3 4i4+ interfaces have many controls available.
 The controls are split between 4 windows, 3 of which are by default
@@ -236,7 +242,7 @@ level/impedance. When plugging in microphones or line-level equipment
 to the input, set it to “Line”. The “Inst” setting is for instrument
 with pickups such as guitars.
 
-#### Air (Gen 3 only)
+#### Air (Gen 3 and Clarett+ only)
 
 Enabling Air will transform your recordings and inspire you while
 making music.
@@ -342,9 +348,9 @@ configuration:
 
 #### Loopback
 
-Gen 2 interfaces have as many PCM Inputs as Hardware Inputs. Gen 3
-interfaces have two more PCM Inputs which the proprietary driver
-restricts to being “Loopback” inputs.
+Gen 2 and Clarett+ interfaces have as many PCM Inputs as Hardware
+Inputs. Gen 3 interfaces have two more PCM Inputs which the
+proprietary driver restricts to being “Loopback” inputs.
 
 The “Loopback” feature advertised for Gen 3 devices is actually a
 limitation of the propretary Focusrite Control software. Both Gen 2
