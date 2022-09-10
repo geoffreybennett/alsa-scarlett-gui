@@ -7,24 +7,25 @@ the Linux kernel Focusrite Scarlett Gen 2/3 Mixer Driver.
 
 <img src="src/img/alsa-scarlett-gui-logo.png" align="right">
 
-The Focusrite Scarlett interfaces are class compliant USB audio
-interfaces meaning that they work “out of the box” on Linux as audio
-and MIDI interfaces (although on Gen 3 you need to disable MSD mode
-first). However, the Gen 2 6i6+ and Gen 3 4i4+ interfaces have a bunch
-of proprietary functionality that required a kernel driver to be
-written specifically for those devices.
+The Focusrite Scarlett (and Clarett+) interfaces are class compliant
+USB audio interfaces meaning that they work “out of the box” on Linux
+as audio and MIDI interfaces (although on Gen 3 you need to disable
+MSD mode first). However, the Gen 2 6i6+, Gen 3 4i4+, and Clarett+
+interfaces have a bunch of proprietary functionality that required a
+kernel driver to be written specifically for those devices.
 
 Linux kernel support (“ALSA Focusrite Scarlett Gen 2/3 Mixer Driver”)
 for the proprietary functionality of Gen 2 devices was first added in
-5.4 and Gen 3 devices in 5.14.
+5.4, Gen 3 devices in 5.14, and Clarett+ 8Pre is coming in 6.1.
 
-Unfortunately, actually using this functionality was quite awful. The
-existing applications like `alsamixer` and `qasmixer` become
-completely user-hostile with the hundreds of controls presented for
-the Gen 3 18i20. Even the smallest Gen 3 4i4 interface at last count
-had 84 ALSA controls.
+Unfortunately, actually using this functionality used to be quite an
+awful experience. The existing applications like `alsamixer` and
+`qasmixer` become completely user-hostile with the hundreds of
+controls presented for the Gen 3 18i20. Even the smallest Gen 3 4i4
+interface at last count had 84 ALSA controls.
 
-Announcing the ALSA Scarlett Gen 2/3 Control Panel!
+Announcing the ALSA Scarlett Gen 2/3 (and Clarett+ 8Pre!) Control
+Panel!
 
 ![Demonstration](img/demo.gif)
 

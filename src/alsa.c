@@ -505,7 +505,8 @@ void alsa_scan_cards(void) {
     if (err < 0)
       goto next;
 
-    if (strncmp(snd_ctl_card_info_get_name(info), "Scarlett", 8) != 0)
+    if (strncmp(snd_ctl_card_info_get_name(info), "Scarlett", 8) != 0 &&
+        strncmp(snd_ctl_card_info_get_name(info), "Clarett", 7) != 0)
       goto next;
 
     // is there already an entry for this card in alsa_cards?
