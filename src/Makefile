@@ -8,8 +8,19 @@ VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
+
+ifeq ($(PREFIX),)
+  PREFIX := /usr/local
+endif
+
+LOCALEDIR := $(DESTDIR)$(PREFIX)/share/locale
+include po/linguas
+
 CFLAGS := -Wall -Werror -ggdb -fno-omit-frame-pointer -O2 -D_FORTIFY_SOURCE=2
 CFLAGS += -DVERSION=\"$(VERSION)\"
+CFLAGS += -DLOCALEDIR=\"$(LOCALEDIR)\"
+
+
 
 PKG_CONFIG=pkg-config
 
@@ -41,10 +52,11 @@ DESKTOP_FILE := vu.b4.$(TARGET).desktop
 
 GLIB_COMPILE_RESOURCES := $(shell $(PKG_CONFIG) --variable=glib_compile_resources gio-2.0)
 
-all: $(TARGET) $(DESKTOP_FILE)
+all: $(TARGET) $(DESKTOP_FILE) i18n
 
 clean:
 	rm -f $(TARGET) $(DESKTOP_FILE) $(OBJS) $(XML_OBJ)
+	$(MAKE) -C po clean
 
 depclean:
 	rm -rf $(DEPDIR)
@@ -59,10 +71,6 @@ include $(wildcard $(DEPFILES))
 $(TARGET): $(OBJS)
 	cc -o $(TARGET) $(OBJS) ${LDFLAGS} -lm 
 
-ifeq ($(PREFIX),)
-  PREFIX := /usr/local
-endif
-
 BINDIR := $(DESTDIR)$(PREFIX)/bin
 ICONTOP := $(DESTDIR)$(PREFIX)/share/icons/hicolor
 ICONDIR := $(ICONTOP)/256x256/apps
@@ -71,6 +79,9 @@ DESKTOPDIR := $(DESTDIR)$(PREFIX)/share/applications
 $(DESKTOP_FILE): $(DESKTOP_FILE).template
 	sed 's_PREFIX_$(PREFIX)_' < $< > $@
 
+i18n:
+	$(MAKE) -C po update-mo || echo "failed to create translations, continuing without..."
+
 install: all
 	install -d $(BINDIR)
 	install -m 755 $(TARGET) $(BINDIR)
@@ -78,11 +89,19 @@ install: all
 	install -m 644 img/$(TARGET).png $(ICONDIR)
 	install -d $(DESKTOPDIR)
 	install -m 644 $(DESKTOP_FILE) $(DESKTOPDIR)
+	catalogs='$(LINGUAS)'; \
+	for lang in $$catalogs; do \
+		if [ -f po/$$lang.gmo ]; then \
+			install -v -d $(LOCALEDIR)/$$lang/LC_MESSAGES;  \
+			install -v -m 644 po/$$lang.gmo $(LOCALEDIR)/$$lang/LC_MESSAGES/alsa-scarlett-gui.mo; \
+		fi \
+	done
 
 uninstall:
 	rm -f $(BINDIR)/$(TARGET)
 	rm -f $(ICONDIR)/$(TARGET).png
 	rm -f $(DESKTOPDIR)/$(DESKTOP_FILE)
+	rm -f $(LOCALEDIR)/*/LC_MESSAGES/alsa-scarlett-gui.mo
 
 help:
 	@echo "alsa-scarlett-gui"
