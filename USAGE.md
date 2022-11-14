@@ -103,6 +103,24 @@ And uninstall with:
 sudo make uninstall
 ```
 
+With Flatpak, in any distro:
+
+```
+flatpak-builder --user --install --force-clean flatpak-build \
+    vu.b4.alsa-scarlett-gui.yml
+```
+
+Be sure to use `flatpak-build` as the directory where the flatpak is
+built or hence you risk bundling the artifacts when comitting!
+
+If it asks for the SDK, just install it:
+
+```
+flatpak install org.gnome.Sdk
+```
+
+And pick the right version.
+
 ## No interface connected
 
 If no interface is detected (usually because there isn’t one
