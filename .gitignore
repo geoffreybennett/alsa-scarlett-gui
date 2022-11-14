@@ -5,3 +5,5 @@
 alsa-scarlett-gui
 alsa-scarlett-gui-resources.c
 vu.b4.alsa-scarlett-gui.desktop
+.flatpak-builder/
+flatpak-build/

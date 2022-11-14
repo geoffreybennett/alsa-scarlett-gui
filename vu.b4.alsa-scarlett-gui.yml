@@ -1,0 +1,27 @@
+app-id: vu.b4.alsa-scarlett-gui
+runtime: org.gnome.Platform
+runtime-version: "43"
+sdk: org.gnome.Sdk
+command: alsa-scarlett-gui
+# If publishing to Flathub, this option is required for version (tag) 0.2
+rename-icon: alsa-scarlett-gui
+finish-args:
+  # X11 + XShm access
+  - --share=ipc
+  - --socket=fallback-x11
+  # Wayland access
+  - --socket=wayland
+  # Needs access to ALSA device nodes:
+  - --device=all
+modules:
+  - name: alsa-scarlett-gui
+    buildsystem: simple
+    build-commands:
+      - make install PREFIX=$FLATPAK_DEST
+    sources:
+      - type: dir
+        path: ./src
+      # Use the following and remove the above for Flathub publishing
+      # - type: git
+      #   url: https://github.com/geoffreybennett/alsa-scarlett-gui.git
+      #   tag: "0.2"
