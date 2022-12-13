@@ -7,3 +7,4 @@ Name=ALSA Scarlett Gen 2/3 Control Panel
 Icon=alsa-scarlett-gui
 Exec=PREFIX/bin/alsa-scarlett-gui
 Categories=GTK;AudioVideo;Audio;Mixer;
+Keywords=focusrite;
