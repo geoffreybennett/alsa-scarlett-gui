@@ -1,7 +1,8 @@
 # ALSA Scarlett Gen 2/3 Control Panel (`alsa-scarlett-gui`)
 
 `alsa-scarlett-gui` is a Gtk4 GUI for the ALSA controls presented by
-the Linux kernel Focusrite Scarlett Gen 2/3 Mixer Driver.
+the Linux kernel Focusrite Scarlett Gen 2/3/Clarett USB/Clarett+ Mixer
+Driver.
 
 ## About
 
@@ -16,7 +17,8 @@ kernel driver to be written specifically for those devices.
 
 Linux kernel support (“ALSA Focusrite Scarlett Gen 2/3 Mixer Driver”)
 for the proprietary functionality of Gen 2 devices was first added in
-5.4, Gen 3 devices in 5.14, and Clarett+ 8Pre is coming in 6.1.
+5.4, Gen 3 devices in 5.14, Clarett+ 8Pre in 6.1, and Clarett 8Pre USB
+coming soon.
 
 Unfortunately, actually using this functionality used to be quite an
 awful experience. The existing applications like `alsamixer` and
@@ -24,8 +26,8 @@ awful experience. The existing applications like `alsamixer` and
 controls presented for the Gen 3 18i20. Even the smallest Gen 3 4i4
 interface at last count had 84 ALSA controls.
 
-Announcing the ALSA Scarlett Gen 2/3 (and Clarett+ 8Pre!) Control
-Panel!
+Announcing the ALSA Scarlett Gen 2/3 (and Clarett 8Pre USB/Clarett+
+8Pre!) Control Panel!
 
 ![Demonstration](img/demo.gif)
 
@@ -55,7 +57,7 @@ Thank you!
 
 ## License
 
-Copyright 2022 Geoffrey D. Bennett
+Copyright 2022-2023 Geoffrey D. Bennett
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
