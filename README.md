@@ -53,6 +53,13 @@ Any donation is appreciated.
 - https://liberapay.com/gdb
 - https://paypal.me/gdbau
 
+## Scarlett Gen 4 Support
+
+Focusrite recently released 3 new "Generation 4" interfaces: Solo,
+2i2, and 4i4. I have created a fundraiser to specifically request
+assistance purchasing one of each so I can add support for them as
+well: https://gofund.me/ae997781
+
 Thank you!
 
 ## License
