@@ -269,7 +269,7 @@ configuration (menu option View → Startup).
 ### Analogue Output Controls
 
 The analogue output controls let you set the output volume (gain) on
-the analogue line out and headphones outputs. All interfaces support
+the analogue line out and headphone outputs. All interfaces support
 setting the gain and muting individual channels.
 
 Click and drag up/down to change the volume, or use your mouse scroll
@@ -291,7 +291,7 @@ channels are disabled.
 There are “mute” and “dim” (reduce volume) buttons below the “HW” dial
 which affect only the outputs with “HW” control enabled. The Gen 3
 18i8 doesn’t have physical buttons or indicator lights for these
-control, but the 18i20 devices do.
+controls, but the 18i20 devices do.
 
 On the other (smaller) interfaces, the big volume knob on the front of
 the interface controls the volume of the Line 1 and 2 outputs. This is
@@ -353,7 +353,7 @@ Inputs. Gen 3 interfaces have two more PCM Inputs which the
 proprietary driver restricts to being “Loopback” inputs.
 
 The “Loopback” feature advertised for Gen 3 devices is actually a
-limitation of the propretary Focusrite Control software. Both Gen 2
+limitation of the proprietary Focusrite Control software. Both Gen 2
 and Gen 3 devices support full reassignment of the PCM Inputs, so you
 can have any PCM Input as a “Loopback” or assigned to any other
 source.
@@ -370,7 +370,7 @@ to a PCM Input.
 If you use the Routing window to connect Sources to Mixer Inputs and
 Mixer Outputs to Destinations, then you can use the Mixer window to
 set the amount of each Mixer Input that is sent to each Mixer Output
-using a matrix of controls.
+using a matrix of controls:
 
 ![Mixer Window](img/window-mixer.png)
 
