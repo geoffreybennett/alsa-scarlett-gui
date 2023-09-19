@@ -11,14 +11,18 @@ Driver.
 The Focusrite Scarlett (and Clarett+) interfaces are class compliant
 USB audio interfaces meaning that they work “out of the box” on Linux
 as audio and MIDI interfaces (although on Gen 3 you need to disable
-MSD mode first). However, the Gen 2 6i6+, Gen 3 4i4+, and Clarett+
-interfaces have a bunch of proprietary functionality that required a
-kernel driver to be written specifically for those devices.
+MSD mode first). However, the Gen 2 6i6+, Gen 3 4i4+, Clarett USB, and
+Clarett+ interfaces have a bunch of proprietary functionality that
+required a kernel driver to be written specifically for those devices.
 
 Linux kernel support (“ALSA Focusrite Scarlett Gen 2/3 Mixer Driver”)
-for the proprietary functionality of Gen 2 devices was first added in
-5.4, Gen 3 devices in 5.14, Clarett+ 8Pre in 6.1, and Clarett 8Pre USB
-coming soon.
+for the proprietary functionality was first added in:
+- Gen 2: Linux 5.4
+- Gen 3: Linux 5.14
+- Clarett+ 8Pre: Linux 6.1
+- Clarett 8Pre USB and Clarett+ 4Pre: coming soon
+- Clarett 2Pre USB, Clarett+ 2Pre, and Clarett 4Pre USB: contact me
+  you have one of these
 
 Unfortunately, actually using this functionality used to be quite an
 awful experience. The existing applications like `alsamixer` and
@@ -26,8 +30,8 @@ awful experience. The existing applications like `alsamixer` and
 controls presented for the Gen 3 18i20. Even the smallest Gen 3 4i4
 interface at last count had 84 ALSA controls.
 
-Announcing the ALSA Scarlett Gen 2/3 (and Clarett 8Pre USB/Clarett+
-8Pre!) Control Panel!
+Announcing the ALSA Scarlett Gen 2/3 (and Clarett USB/Clarett+!)
+Control Panel!
 
 ![Demonstration](img/demo.gif)
 
@@ -81,7 +85,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ## Disclaimer Third Parties
 
-Focusrite and Scarlett are trademarks or registered trademarks of
-Focusrite Audio Engineering Limited in England, USA, and/or other
-countries. Use of these trademarks does not imply any affiliation or
-endorsement of this software.
+Focusrite, Scarlett, and Clarett are trademarks or registered
+trademarks of Focusrite Audio Engineering Limited in England, USA,
+and/or other countries. Use of these trademarks does not imply any
+affiliation or endorsement of this software.

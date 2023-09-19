@@ -7,7 +7,8 @@ version 5.14 for Scarlett Gen 3 support and bug fixes for the Gen 2
 support. For Clarett+ 8Pre support, you need 6.1, and for Clarett 8Pre
 USB see
 https://github.com/geoffreybennett/scarlett-gen2/commits/scarlett-gen3
-for kernel patches.
+for kernel patches. Clarett+ 4Pre is coming soon. For support for
+other Clarett devices, please contact me.
 
 As of Linux 6.5, the driver is still disabled by default and needs to
 be enabled at module load time with the `device_setup=1` option to
@@ -35,6 +36,7 @@ Clarett USB:
 
 Clarett+:
 
+- 4Pre: `options snd_usb_audio vid=0x1235 pid=0x820b device_setup=1`
 - 8Pre: `options snd_usb_audio vid=0x1235 pid=0x820c device_setup=1`
 
 Or you can use a sledgehammer:
@@ -44,7 +46,7 @@ options snd_usb_audio device_setup=1,1,1,1
 to pass that option to the first 4 USB audio devices.
 
 To see if the driver is present and enabled: `dmesg | grep -i -A 5 -B
-5 scarlett` should display information like:
+5 focusrite` should display information like:
 
 ```
 New USB device found, idVendor=1235, idProduct=8215, bcdDevice= 6.0b
@@ -354,8 +356,8 @@ configuration:
 #### Loopback
 
 Gen 2, Clarett USB, and Clarett+ interfaces have as many PCM Inputs as
-Hardware Inputs. Gen 3 interfaces have two more PCM Inputs which the
-proprietary driver restricts to being “Loopback” inputs.
+Hardware Inputs. Gen 3 interfaces have two more PCM Inputs which
+Focusrite Control uses as “Loopback” inputs.
 
 The “Loopback” feature advertised for Gen 3 devices is actually a
 limitation of the proprietary Focusrite Control software. All devices
