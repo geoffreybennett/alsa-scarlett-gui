@@ -40,8 +40,10 @@ report a bug).
 
 ## Documentation
 
-Refer to [USAGE.md](USAGE.md) for prerequisites, instructions, usage
-information, and known issues.
+Refer to [INSTALL.md](INSTALL.md) for prerequisites, how to build,
+install, and run.
+
+Refer to [USAGE.md](USAGE.md) for usage information and known issues.
 
 ## Donations
 
