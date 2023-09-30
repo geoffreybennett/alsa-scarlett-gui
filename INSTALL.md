@@ -4,11 +4,11 @@
 
 Linux Kernel with the ALSA Scarlett Gen 2/3 mixer driver. Use at least
 version 5.14 for Scarlett Gen 3 support and bug fixes for the Gen 2
-support. For Clarett+ 8Pre support, you need 6.1, and for Clarett 8Pre
-USB see
-https://github.com/geoffreybennett/scarlett-gen2/commits/scarlett-gen3
-for kernel patches. Clarett+ 4Pre is coming soon. For support for
-other Clarett devices, please contact me.
+support. For Clarett+ 8Pre support, you need 6.1.
+
+For the other Clarett USB and Clarett+ models, see
+https://github.com/geoffreybennett/scarlett-gen2/commits/clarett-4pre
+for kernel patches.
 
 As of Linux 6.5, the driver is still disabled by default and needs to
 be enabled at module load time with the `device_setup=1` option to
@@ -30,13 +30,8 @@ Scarlett Gen 3:
 - 18i8: `options snd_usb_audio vid=0x1235 pid=0x8214 device_setup=1`
 - 18i20: `options snd_usb_audio vid=0x1235 pid=0x8215 device_setup=1`
 
-Clarett USB:
-
-- 8Pre: `options snd_usb_audio vid=0x1235 pid=0x8208 device_setup=1`
-
 Clarett+:
 
-- 4Pre: `options snd_usb_audio vid=0x1235 pid=0x820b device_setup=1`
 - 8Pre: `options snd_usb_audio vid=0x1235 pid=0x820c device_setup=1`
 
 Or you can use a sledgehammer:

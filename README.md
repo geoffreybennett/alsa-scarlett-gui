@@ -20,9 +20,7 @@ for the proprietary functionality was first added in:
 - Gen 2: Linux 5.4
 - Gen 3: Linux 5.14
 - Clarett+ 8Pre: Linux 6.1
-- Clarett 8Pre USB and Clarett+ 4Pre: coming soon
-- Clarett 2Pre USB, Clarett+ 2Pre, and Clarett 4Pre USB: contact me
-  you have one of these
+- Clarett 2Pre/4Pre/8Pre USB, Clarett+ 2Pre/4Pre: coming soon
 
 Unfortunately, actually using this functionality used to be quite an
 awful experience. The existing applications like `alsamixer` and
