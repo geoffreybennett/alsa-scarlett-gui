@@ -33,5 +33,5 @@ jobs:
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: ./${{ env.APP_NAME }}.flatpak
-        asset_name: ${{ env.APP_NAME }}_${{ env.APP_VERSION }.flatpak}
+        asset_name: ${{ env.APP_NAME }}_${{ env.APP_VERSION }.flatpak
         asset_content_type: application/octet-stream
