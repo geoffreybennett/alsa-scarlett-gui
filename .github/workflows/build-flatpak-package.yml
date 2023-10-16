@@ -1,0 +1,25 @@
+name: Build flatpak package
+
+on:
+  release:
+    branches: '*'
+    types: [published]
+
+env:
+  APP_NAME:    alsa-scarlett-gui
+  APP_VERSION: ${{ github.event.release.tag_name }}
+
+jobs:
+  flatpak:
+    name: "Flatpak"
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:gnome-44
+      options: --privileged
+    steps:
+    - uses: actions/checkout@v4
+    - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+      with:
+        bundle: ${{ env.APP_NAME }}.flatpak
+        manifest-path: vu.b4.alsa-scarlett-gui.yml
+        cache-key: flatpak-builder-${{ github.sha }}
