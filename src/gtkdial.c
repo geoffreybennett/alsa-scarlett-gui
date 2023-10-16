@@ -141,7 +141,19 @@ static void dial_measure(GtkWidget *widget,
 
 static inline double calc_valp(double val, double mn, double mx)
 {
-    return (val - mn)/(mx-mn);
+    if (val <= mn)
+        return 0.0;
+    if (val >= mx)
+        return 1.0;
+
+    // convert val from mn..mx to 0..1
+    val = (val - mn)/(mx-mn);
+
+    // 10^(val - 1) converts it to 0.1..1 with a nice curve
+    val = pow(10, val - 1);
+
+    // convert to 0..1 again
+    return (val - 0.1) / 0.9;
 }
 
 static inline double calc_val(double valp, double mn, double mx)

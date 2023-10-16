@@ -155,9 +155,8 @@ static void create_input_controls(
 ) {
   GArray *elems = card->elems;
 
-  // there's consistently a pad capture for each analogue input that
-  // has a control
-  int input_count = get_max_elem_by_name(elems, "Line", "Pad Capture Switch");
+  // find how many inputs have switches
+  int input_count = get_max_elem_by_name(elems, "Line", "Capture Switch");
 
   // Only the 18i20 Gen 2 has no input controls
   if (!input_count)
