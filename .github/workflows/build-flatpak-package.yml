@@ -18,8 +18,20 @@ jobs:
       options: --privileged
     steps:
     - uses: actions/checkout@v4
+
+    - name: Build flatpak package
     - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
       with:
         bundle: ${{ env.APP_NAME }}.flatpak
         manifest-path: vu.b4.alsa-scarlett-gui.yml
         cache-key: flatpak-builder-${{ github.sha }}
+
+    - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ env.APP_NAME }}.flatpak
+          asset_name: ${{ env.APP_NAME }}_${{ env.APP_VERSION }.flatpak}
+          asset_content_type: application/octet-stream
