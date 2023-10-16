@@ -1,22 +1,26 @@
 # ALSA Scarlett Gen 2/3 Control Panel (`alsa-scarlett-gui`)
 
 `alsa-scarlett-gui` is a Gtk4 GUI for the ALSA controls presented by
-the Linux kernel Focusrite Scarlett Gen 2/3 Mixer Driver.
+the Linux kernel Focusrite Scarlett Gen 2/3/Clarett USB/Clarett+ Mixer
+Driver.
 
 ## About
 
 <img src="src/img/alsa-scarlett-gui-logo.png" align="right">
 
-The Focusrite Scarlett (and Clarett+) interfaces are class compliant
-USB audio interfaces meaning that they work “out of the box” on Linux
-as audio and MIDI interfaces (although on Gen 3 you need to disable
-MSD mode first). However, the Gen 2 6i6+, Gen 3 4i4+, and Clarett+
-interfaces have a bunch of proprietary functionality that required a
-kernel driver to be written specifically for those devices.
+The Focusrite USB audio interfaces are class compliant meaning that
+they work “out of the box” on Linux as audio and MIDI interfaces
+(although on Gen 3 you need to disable MSD mode first for full
+functionality). However, except for some of the smallest models, they
+have a bunch of proprietary functionality that required a kernel
+driver to be written specifically for those devices.
 
 Linux kernel support (“ALSA Focusrite Scarlett Gen 2/3 Mixer Driver”)
-for the proprietary functionality of Gen 2 devices was first added in
-5.4, Gen 3 devices in 5.14, and Clarett+ 8Pre is coming in 6.1.
+for the proprietary functionality was first added in:
+- Scarlett Gen 2: Linux 5.4 (bugs fixed in Linux 5.14)
+- Scarlett Gen 3: Linux 5.14
+- Clarett+ 8Pre: Linux 6.1
+- Clarett 2Pre/4Pre/8Pre USB, Clarett+ 2Pre/4Pre: coming soon
 
 Unfortunately, actually using this functionality used to be quite an
 awful experience. The existing applications like `alsamixer` and
@@ -24,8 +28,8 @@ awful experience. The existing applications like `alsamixer` and
 controls presented for the Gen 3 18i20. Even the smallest Gen 3 4i4
 interface at last count had 84 ALSA controls.
 
-Announcing the ALSA Scarlett Gen 2/3 (and Clarett+ 8Pre!) Control
-Panel!
+Announcing the ALSA Scarlett Gen 2/3 (and Clarett USB/Clarett+!)
+Control Panel!
 
 ![Demonstration](img/demo.gif)
 
@@ -34,8 +38,10 @@ report a bug).
 
 ## Documentation
 
-Refer to [USAGE.md](USAGE.md) for prerequisites, instructions, usage
-information, and known issues.
+Refer to [INSTALL.md](INSTALL.md) for prerequisites, how to build,
+install, and run.
+
+Refer to [USAGE.md](USAGE.md) for usage information and known issues.
 
 ## Donations
 
@@ -44,18 +50,29 @@ over hundreds of hours. Focusrite did not support the development of
 the driver or this control panel in any way. Thanks to Laurent
 Debricon who got me started on the Gen 3 drivers by donating a 4i4.
 
-If you like it, please consider a donation to say thank you as it was
-expensive to purchase one of each model for development and testing!
-Any donation is appreciated.
+If you like this software, please consider a donation to say thank you
+as it was expensive to purchase one of each model for development and
+testing! Any donation is appreciated.
 
 - https://liberapay.com/gdb
 - https://paypal.me/gdbau
 
-Thank you!
+## Scarlett Gen 4 Support
+
+Focusrite recently released 3 new "Generation 4" interfaces: Solo,
+2i2, and 4i4. Thanks to all the Linux Musicians who donated so I could
+purchase one of each Gen 4 interface: https://gofund.me/ae997781,
+support for these is coming soon.
+
+## Vocaster Support
+
+I will be getting a Vocaster One and a Vocaster Two soon. Once the
+Scarlett Gen 4 support is complete, I'll start working on support for
+those.
 
 ## License
 
-Copyright 2022 Geoffrey D. Bennett
+Copyright 2022-2023 Geoffrey D. Bennett
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -72,7 +89,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ## Disclaimer Third Parties
 
-Focusrite and Scarlett are trademarks or registered trademarks of
-Focusrite Audio Engineering Limited in England, USA, and/or other
-countries. Use of these trademarks does not imply any affiliation or
-endorsement of this software.
+Focusrite, Scarlett, Clarett, and Vocaster are trademarks or
+registered trademarks of Focusrite Audio Engineering Limited in
+England, USA, and/or other countries. Use of these trademarks does not
+imply any affiliation or endorsement of this software.

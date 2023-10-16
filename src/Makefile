@@ -10,6 +10,7 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 CFLAGS := -Wall -Werror -ggdb -fno-omit-frame-pointer -O2 -D_FORTIFY_SOURCE=2
 CFLAGS += -DVERSION=\"$(VERSION)\"
+CFLAGS += -Wno-error=deprecated-declarations
 
 PKG_CONFIG=pkg-config
 
