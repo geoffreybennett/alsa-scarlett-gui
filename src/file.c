@@ -15,7 +15,7 @@ static void run_alsactl(
   GtkWindow *w = GTK_WINDOW(card->window_main);
 
   gchar *argv[] = {
-    "alsactl", cmd, card->device, "-f", fn, NULL
+    "/usr/sbin/alsactl", cmd, card->device, "-f", fn, NULL
   };
   gchar  *stdout;
   gchar  *stderr;
