@@ -3,8 +3,6 @@ runtime: org.gnome.Platform
 runtime-version: "43"
 sdk: org.gnome.Sdk
 command: alsa-scarlett-gui
-# If publishing to Flathub, this option is required for version (tag) 0.2
-# rename-icon: alsa-scarlett-gui
 finish-args:
   # X11 + XShm access
   - --share=ipc
