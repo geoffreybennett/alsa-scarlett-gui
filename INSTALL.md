@@ -120,10 +120,29 @@ flatpak-builder --user --install --force-clean flatpak-build \
 Be sure to use `flatpak-build` as the directory where the flatpak is
 built or hence you risk bundling the artifacts when comitting!
 
-If it asks for the SDK, just install it:
+If you get messages like these:
+
+```
+Failed to init: Unable to find sdk org.gnome.Sdk version 45
+Failed to init: Unable to find runtime org.gnome.Platform version 45
+```
+
+Then install them:
 
 ```
 flatpak install org.gnome.Sdk
+flatpak install org.gnome.Platform
 ```
 
-And pick the right version.
+If you get:
+
+```
+Looking for matches…
+error: No remote refs found for ‘org.gnome.Sdk’
+```
+
+Then:
+
+```
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+```
