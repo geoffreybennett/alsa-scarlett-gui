@@ -28,7 +28,7 @@ And pick the right version.
 If no interface is detected (usually because there isn’t one
 connected!) you’ll see this window:
 
-![MSD Mode](img/iface-none.png)
+![No Interface Connected](img/iface-none.png)
 
 Plug in an interface or select the menu option File → Interface
 Simulation and load a demo file to make more interesting things
