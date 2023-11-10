@@ -2,16 +2,20 @@
 
 ## Prerequisites
 
-Linux Kernel with the ALSA Scarlett Gen 2/3 mixer driver. Use at least
-version 5.14 for Scarlett Gen 3 support and bug fixes for the Gen 2
-support. For Clarett+ 8Pre support, you need 6.1.
+Linux Kernel with the ALSA Scarlett2 Protocol Driver.
 
-For the other Clarett USB and Clarett+ models, see
-https://github.com/geoffreybennett/scarlett-gen2/commits/clarett-4pre
-for kernel patches.
+- Use at least version 5.14 for Scarlett Gen 3 support and bug fixes
+  for the Gen 2 support.
+- For Clarett+ 8Pre support, you need 6.1.
+- For the other Clarett USB and Clarett+ models, you need 6.7.
 
-As of Linux 6.5, the driver is still disabled by default and needs to
-be enabled at module load time with the `device_setup=1` option to
+## Enabling the Driver
+
+As of Linux 6.7 the driver is enabled by default and you can skip this
+section.
+
+If you're running a kernel before 6.7, the driver needs to be enabled
+at module load time with the `device_setup=1` option to
 insmod/modprobe. Create a file /etc/modprobe.d/scarlett.conf
 containing the appropriate line for your device:
 

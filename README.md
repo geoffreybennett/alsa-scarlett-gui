@@ -10,7 +10,7 @@ Driver.
 
 The Focusrite USB audio interfaces are class compliant meaning that
 they work “out of the box” on Linux as audio and MIDI interfaces
-(although on Gen 3 you need to disable MSD mode first for full
+(although on Gen 3/4 you need to disable MSD mode first for full
 functionality). However, except for some of the smallest models, they
 have a bunch of proprietary functionality that required a kernel
 driver to be written specifically for those devices.
@@ -20,7 +20,7 @@ for the proprietary functionality was first added in:
 - Scarlett Gen 2: Linux 5.4 (bugs fixed in Linux 5.14)
 - Scarlett Gen 3: Linux 5.14
 - Clarett+ 8Pre: Linux 6.1
-- Clarett 2Pre/4Pre/8Pre USB, Clarett+ 2Pre/4Pre: coming soon
+- Clarett 2Pre/4Pre/8Pre USB, Clarett+ 2Pre/4Pre: Linux 6.7
 
 Unfortunately, actually using this functionality used to be quite an
 awful experience. The existing applications like `alsamixer` and
@@ -46,9 +46,7 @@ Refer to [USAGE.md](USAGE.md) for usage information and known issues.
 ## Donations
 
 This program is Free Software, developed using my personal resources,
-over hundreds of hours. Focusrite did not support the development of
-the driver or this control panel in any way. Thanks to Laurent
-Debricon who got me started on the Gen 3 drivers by donating a 4i4.
+over hundreds of hours.
 
 If you like this software, please consider a donation to say thank you
 as it was expensive to purchase one of each model for development and
@@ -64,11 +62,15 @@ Focusrite recently released 3 new "Generation 4" interfaces: Solo,
 purchase one of each Gen 4 interface: https://gofund.me/ae997781,
 support for these is coming soon.
 
+The overwhelming response to the GoFundMe also got the attention of
+Focusrite. They offered to send me any devices that I didn't already
+have, and also said that for any future product releases, they will do
+their utmost to send me devices in advance.
+
 ## Vocaster Support
 
-I will be getting a Vocaster One and a Vocaster Two soon. Once the
-Scarlett Gen 4 support is complete, I'll start working on support for
-those.
+Vocaster One and Two support will be coming once I've completed the
+Scarlett 4th Gen support.
 
 ## License
 
