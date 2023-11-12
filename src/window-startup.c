@@ -86,7 +86,7 @@ static void add_phantom_persistence_control(
 
   GtkWidget *w;
 
-  w = small_label("Phantom Power Persistance");
+  w = small_label("Phantom Power Persistence");
   gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
 
   w = make_boolean_alsa_elem(phantom, "Disabled", "Enabled");
