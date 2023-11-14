@@ -33,7 +33,7 @@ jobs:
                    ${{ github.workspace }}/deb-workspace/usr/share/doc/${{ env.APP_NAME }}-${{ env.APP_VERSION }}
           cp src/alsa-scarlett-gui               ${{ github.workspace }}/deb-workspace/usr/bin/
           cp src/vu.b4.alsa-scarlett-gui.desktop ${{ github.workspace }}/deb-workspace/usr/share/applications/
-          cp src/img/alsa-scarlett-gui.png       ${{ github.workspace }}/deb-workspace/usr/share/icons/hicolor/256x256/apps/
+          cp src/img/vu.b4.alsa-scarlett-gui.png ${{ github.workspace }}/deb-workspace/usr/share/icons/hicolor/256x256/apps/
           cp -r *.md img demo                    ${{ github.workspace }}/deb-workspace/usr/share/doc/${{ env.APP_NAME }}-${{ env.APP_VERSION }}/
 
       - name: Build debian package
