@@ -4,7 +4,11 @@
 # Credit to Tom Tromey and Paul D. Smith:
 # http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
 
-VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
+VERSION := $(shell \
+  git describe --abbrev=4 --dirty --always --tags 2>/dev/null || \
+  echo $${APP_VERSION:-Unknown} \
+)
+
 DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
