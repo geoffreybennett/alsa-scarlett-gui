@@ -13,13 +13,10 @@ static void activate_hardware(
 ) {
   GVariant *state = g_action_get_state(G_ACTION(action));
 
-  int new_state = !g_variant_get_boolean(state);
+  gboolean new_state = !g_variant_get_boolean(state);
   g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
 
-  if (new_state)
-    gtk_widget_show(window_hardware);
-  else
-    gtk_widget_hide(window_hardware);
+  gtk_widget_set_visible(window_hardware, new_state);
 }
 
 static void activate_quit(
@@ -39,13 +36,10 @@ static void activate_routing(
 
   GVariant *state = g_action_get_state(G_ACTION(action));
 
-  int new_state = !g_variant_get_boolean(state);
+  gboolean new_state = !g_variant_get_boolean(state);
   g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
 
-  if (new_state)
-    gtk_widget_show(card->window_routing);
-  else
-    gtk_widget_hide(card->window_routing);
+  gtk_widget_set_visible(card->window_routing, new_state);
 }
 
 static void activate_mixer(
@@ -57,13 +51,10 @@ static void activate_mixer(
 
   GVariant *state = g_action_get_state(G_ACTION(action));
 
-  int new_state = !g_variant_get_boolean(state);
+  gboolean new_state = !g_variant_get_boolean(state);
   g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
 
-  if (new_state)
-    gtk_widget_show(card->window_mixer);
-  else
-    gtk_widget_hide(card->window_mixer);
+  gtk_widget_set_visible(card->window_mixer, new_state);
 }
 
 static void activate_levels(
@@ -75,13 +66,10 @@ static void activate_levels(
 
   GVariant *state = g_action_get_state(G_ACTION(action));
 
-  int new_state = !g_variant_get_boolean(state);
+  gboolean new_state = !g_variant_get_boolean(state);
   g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
 
-  if (new_state)
-    gtk_widget_show(card->window_levels);
-  else
-    gtk_widget_hide(card->window_levels);
+  gtk_widget_set_visible(card->window_levels, new_state);
 }
 
 static void activate_startup(
@@ -93,13 +81,10 @@ static void activate_startup(
 
   GVariant *state = g_action_get_state(G_ACTION(action));
 
-  int new_state = !g_variant_get_boolean(state);
+  gboolean new_state = !g_variant_get_boolean(state);
   g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
 
-  if (new_state)
-    gtk_widget_show(card->window_startup);
-  else
-    gtk_widget_hide(card->window_startup);
+  gtk_widget_set_visible(card->window_startup, new_state);
 }
 
 static const GActionEntry app_entries[] = {

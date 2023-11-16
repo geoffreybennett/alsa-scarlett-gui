@@ -24,7 +24,7 @@ GtkWidget *create_window_iface_none(GtkApplication *app) {
     GTK_APPLICATION_WINDOW(w), TRUE
   );
   add_window_action_map(GTK_WINDOW(w));
-  gtk_widget_show(w);
+  gtk_widget_set_visible(w, TRUE);
 
   return w;
 }

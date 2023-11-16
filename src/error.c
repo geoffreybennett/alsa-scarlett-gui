@@ -17,7 +17,7 @@ void show_error(GtkWindow *w, char *s) {
     "%s",
     s
   );
-  gtk_widget_show(dialog);
+  gtk_widget_set_visible(dialog, TRUE);
 
   g_signal_connect(dialog, "response", G_CALLBACK(gtk_window_destroy), NULL);
 }

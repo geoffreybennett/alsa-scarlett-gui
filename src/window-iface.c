@@ -67,7 +67,7 @@ void create_card_window(struct alsa_card *card) {
     GTK_WINDOW(card->window_main),
     card->window_main_contents
   );
-  gtk_widget_show(card->window_main);
+  gtk_widget_set_visible(card->window_main, TRUE);
 }
 
 void create_no_card_window(void) {
