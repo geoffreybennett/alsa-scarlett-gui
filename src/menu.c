@@ -6,17 +6,25 @@
 #include "menu.h"
 #include "window-hardware.h"
 
+// helper for common code of activate_*() functions
+static void update_visibility(
+  GSimpleAction *action,
+  GtkWidget     *widget
+) {
+  GVariant *state = g_action_get_state(G_ACTION(action));
+  gboolean new_state = !g_variant_get_boolean(state);
+
+  g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
+  gtk_widget_set_visible(widget, new_state);
+}
+
 static void activate_hardware(
   GSimpleAction *action,
   GVariant      *parameter,
   gpointer       data
 ) {
-  GVariant *state = g_action_get_state(G_ACTION(action));
-
-  gboolean new_state = !g_variant_get_boolean(state);
-  g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
-
-  gtk_widget_set_visible(window_hardware, new_state);
+  (void) data;
+  update_visibility(action, window_hardware);
 }
 
 static void activate_quit(
@@ -34,12 +42,7 @@ static void activate_routing(
 ) {
   struct alsa_card *card = data;
 
-  GVariant *state = g_action_get_state(G_ACTION(action));
-
-  gboolean new_state = !g_variant_get_boolean(state);
-  g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
-
-  gtk_widget_set_visible(card->window_routing, new_state);
+  update_visibility(action, card->window_routing);
 }
 
 static void activate_mixer(
@@ -49,12 +52,7 @@ static void activate_mixer(
 ) {
   struct alsa_card *card = data;
 
-  GVariant *state = g_action_get_state(G_ACTION(action));
-
-  gboolean new_state = !g_variant_get_boolean(state);
-  g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
-
-  gtk_widget_set_visible(card->window_mixer, new_state);
+  update_visibility(action, card->window_mixer);
 }
 
 static void activate_levels(
@@ -64,12 +62,7 @@ static void activate_levels(
 ) {
   struct alsa_card *card = data;
 
-  GVariant *state = g_action_get_state(G_ACTION(action));
-
-  gboolean new_state = !g_variant_get_boolean(state);
-  g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
-
-  gtk_widget_set_visible(card->window_levels, new_state);
+  update_visibility(action, card->window_levels);
 }
 
 static void activate_startup(
@@ -79,12 +72,7 @@ static void activate_startup(
 ) {
   struct alsa_card *card = data;
 
-  GVariant *state = g_action_get_state(G_ACTION(action));
-
-  gboolean new_state = !g_variant_get_boolean(state);
-  g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
-
-  gtk_widget_set_visible(card->window_startup, new_state);
+  update_visibility(action, card->window_startup);
 }
 
 static const GActionEntry app_entries[] = {
