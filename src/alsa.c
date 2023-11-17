@@ -94,13 +94,13 @@ int get_max_elem_by_name(GArray *elems, char *prefix, char *needle) {
   return max;
 }
 
-// return true if the element is an routing destination enum, e.g.:
+// return true if the element is an routing sink enum, e.g.:
 // PCM xx Capture Enum
 // Mixer Input xx Capture Enum
 // Analogue Output xx Playback Enum
 // S/PDIF Output xx Playback Enum
 // ADAT Output xx Playback Enum
-int is_elem_routing_dst(struct alsa_elem *elem) {
+int is_elem_routing_snk(struct alsa_elem *elem) {
   if (strstr(elem->name, "Capture Enum") &&
       !strstr(elem->name, "Level"))
     return 1;

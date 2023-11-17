@@ -19,7 +19,7 @@ struct alsa_card;
 // notifies of a change
 typedef void (AlsaElemCallback)(struct alsa_elem *);
 
-// port categories for routing_src and routing_dst entries
+// port categories for routing_src and routing_snk entries
 // must match the level meter ordering from the driver
 enum {
   // Hardware inputs/outputs
@@ -39,11 +39,11 @@ enum {
 extern const char *port_category_names[PC_COUNT];
 
 // is a drag active, and whether dragging from a routing source or a
-// routing destination
+// routing sink
 enum {
   DRAG_TYPE_NONE = 0,
   DRAG_TYPE_SRC  = 1,
-  DRAG_TYPE_DST  = 2,
+  DRAG_TYPE_SNK  = 2,
 };
 
 // entry in alsa_card routing_srcs (routing sources) array
@@ -76,12 +76,12 @@ struct routing_src {
   GtkWidget *widget2;
 };
 
-// entry in alsa_card routing_dsts (routing destinations) array
-// for alsa elements that are routing destinations like Analogue
-// Output 01 Playback Enum
+// entry in alsa_card routing_snks (routing sinks) array for alsa
+// elements that are routing sinks like Analogue Output 01 Playback
+// Enum
 // port_category is set to PC_MIX, PC_PCM, PC_HW
 // port_num is a count (0-based) within that category
-struct routing_dst {
+struct routing_snk {
 
   // location within the array
   int idx;
@@ -95,7 +95,7 @@ struct routing_dst {
   // 0-based count within port_category
   int port_num;
 
-  // the mixer label widgets for this destination
+  // the mixer label widgets for this sink
   GtkWidget *mixer_label_top;
   GtkWidget *mixer_label_bottom;
 };
@@ -113,7 +113,7 @@ struct alsa_elem {
   int         count;
 
   // for the number (or translated letter; A = 1) in the item name
-  // TODO: move this to struct routing_dst?
+  // TODO: move this to struct routing_snk?
   int lr_num;
 
   // the primary GTK widget and callback function for this ALSA
@@ -149,7 +149,7 @@ struct alsa_card {
   struct alsa_elem   *sample_capture_elem;
   struct alsa_elem   *level_meter_elem;
   GArray             *routing_srcs;
-  GArray             *routing_dsts;
+  GArray             *routing_snks;
   GIOChannel         *io_channel;
   guint               event_source_id;
   GtkWidget          *window_main;
@@ -176,7 +176,7 @@ struct alsa_card {
   GtkWidget          *drag_line;
   int                 drag_type;
   struct routing_src *src_drag;
-  struct routing_dst *dst_drag;
+  struct routing_snk *snk_drag;
   double              drag_x, drag_y;
 };
 
@@ -190,7 +190,7 @@ void fatal_alsa_error(const char *msg, int err);
 struct alsa_elem *get_elem_by_name(GArray *elems, char *name);
 struct alsa_elem *get_elem_by_prefix(GArray *elems, char *prefix);
 int get_max_elem_by_name(GArray *elems, char *prefix, char *needle);
-int is_elem_routing_dst(struct alsa_elem *elem);
+int is_elem_routing_snk(struct alsa_elem *elem);
 
 // alsa snd_ctl_elem_*() functions
 int alsa_get_elem_type(struct alsa_elem *elem);

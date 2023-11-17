@@ -217,17 +217,15 @@ inputs/outputs.
 
 To manage the routing connections:
 
-- Click and drag from a source to a destination or a destination to a
-  source to connect them. Audio from the source will then be sent to
-  that destination.
+- Click and drag from a source to a sink or a sink to a source to
+  connect them. Audio from the source will then be sent to that sink.
 
-- Click on a source or a destination to clear the links connected to
-  that source/destination.
+- Click on a source or a sink to clear the links connected to that
+  source/sink.
 
-Note that a destination can only be connected to one source, but one
-source can be connected to many destinations. If you want a
-destination to receive input from more than one source, use the mixer
-inputs and outputs.
+Note that a sink can only be connected to one source, but one source
+can be connected to many sinks. If you want a sink to receive input
+from more than one source, use the mixer inputs and outputs.
 
 The Presets menu can be used to clear all connections, or to set up
 common configurations:
@@ -270,9 +268,9 @@ to a PCM Input.
 ### Mixer
 
 If you use the Routing window to connect Sources to Mixer Inputs and
-Mixer Outputs to Destinations, then you can use the Mixer window to
-set the amount of each Mixer Input that is sent to each Mixer Output
-using a matrix of controls:
+Mixer Outputs to Sinks, then you can use the Mixer window to set the
+amount of each Mixer Input that is sent to each Mixer Output using a
+matrix of controls:
 
 ![Mixer Window](img/window-mixer.png)
 

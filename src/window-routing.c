@@ -47,19 +47,19 @@ static void get_routing_srcs(struct alsa_card *card) {
   assert(card->routing_in_count[PC_MIX] <= MAX_MIX_OUT);
 }
 
-static void get_routing_dsts(struct alsa_card *card) {
+static void get_routing_snks(struct alsa_card *card) {
   GArray *elems = card->elems;
 
   int count = 0;
 
-  // count and label routing dsts
+  // count and label routing snks
   for (int i = 0; i < elems->len; i++) {
     struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
 
     if (!elem->card)
       continue;
 
-    if (!is_elem_routing_dst(elem))
+    if (!is_elem_routing_snk(elem))
       continue;
 
     int i = get_num_from_string(elem->name);
@@ -70,13 +70,13 @@ static void get_routing_dsts(struct alsa_card *card) {
     count++;
   }
 
-  // create an array of routing dsts pointing to those elements
-  card->routing_dsts = g_array_new(
-    FALSE, TRUE, sizeof(struct routing_dst)
+  // create an array of routing snks pointing to those elements
+  card->routing_snks = g_array_new(
+    FALSE, TRUE, sizeof(struct routing_snk)
   );
-  g_array_set_size(card->routing_dsts, count);
+  g_array_set_size(card->routing_snks, count);
 
-  // count through card->rounting_dsts
+  // count through card->rounting_snks
   int j = 0;
 
   for (int i = 0; i < elems->len; i++) {
@@ -85,8 +85,8 @@ static void get_routing_dsts(struct alsa_card *card) {
     if (!elem->lr_num)
       continue;
 
-    struct routing_dst *r = &g_array_index(
-      card->routing_dsts, struct routing_dst, j
+    struct routing_snk *r = &g_array_index(
+      card->routing_snks, struct routing_snk, j
     );
     r->idx = j;
     j++;
@@ -113,14 +113,14 @@ static void routing_grid_label(char *s, GtkGrid *g, GtkAlign align) {
   gtk_grid_attach(g, l, 0, 0, 1, 1);
 }
 
-// clear all the routing destinations
+// clear all the routing sinks
 static void routing_preset_clear(struct alsa_card *card) {
-  for (int i = 0; i < card->routing_dsts->len; i++) {
-    struct routing_dst *r_dst = &g_array_index(
-      card->routing_dsts, struct routing_dst, i
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
     );
 
-    alsa_set_elem_value(r_dst->elem, 0);
+    alsa_set_elem_value(r_snk->elem, 0);
   }
 }
 
@@ -128,7 +128,7 @@ static void routing_preset_link(
   struct alsa_card *card,
   int               src_port_category,
   int               src_mod,
-  int               dst_port_category
+  int               snk_port_category
 ) {
 
   // find the first src port with the selected port category
@@ -144,16 +144,16 @@ static void routing_preset_link(
       break;
   }
 
-  // find the first dst port with the selected port category
-  int dst_idx;
-  for (dst_idx = 0;
-       dst_idx < card->routing_dsts->len;
-       dst_idx++) {
-    struct routing_dst *r_dst = &g_array_index(
-      card->routing_dsts, struct routing_dst, dst_idx
+  // find the first snk port with the selected port category
+  int snk_idx;
+  for (snk_idx = 0;
+       snk_idx < card->routing_snks->len;
+       snk_idx++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, snk_idx
     );
 
-    if (r_dst->port_category == dst_port_category)
+    if (r_snk->port_category == snk_port_category)
       break;
   }
 
@@ -161,7 +161,7 @@ static void routing_preset_link(
   int src_idx = start_src_idx;
   int src_count = 0;
   while (src_idx < card->routing_srcs->len &&
-         dst_idx < card->routing_dsts->len) {
+         snk_idx < card->routing_snks->len) {
 
     // stop if no more of the selected src port category
     struct routing_src *r_src = &g_array_index(
@@ -170,20 +170,20 @@ static void routing_preset_link(
     if (r_src->port_category != src_port_category)
       break;
 
-    // stop if no more of the selected dst port category
-    struct routing_dst *r_dst = &g_array_index(
-      card->routing_dsts, struct routing_dst, dst_idx
+    // stop if no more of the selected snk port category
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, snk_idx
     );
-    if (r_dst->port_category != dst_port_category)
+    if (r_snk->port_category != snk_port_category)
       break;
 
     // do the assignment
-    alsa_set_elem_value(r_dst->elem, r_src->id);
+    alsa_set_elem_value(r_snk->elem, r_src->id);
 
     // get the next index
     src_idx++;
     src_count++;
-    dst_idx++;
+    snk_idx++;
 
     if (src_count == src_mod) {
       src_idx = start_src_idx;
@@ -337,9 +337,9 @@ static void create_routing_grid(struct alsa_card *card) {
   gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(GTK_GRID(routing_grid), src_label, 0, 3, 1, 1);
 
-  GtkWidget *dst_label = gtk_label_new("← Destinations\n↓");
-  gtk_label_set_justify(GTK_LABEL(dst_label), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(GTK_GRID(routing_grid), dst_label, 2, 0, 1, 1);
+  GtkWidget *snk_label = gtk_label_new("← Sinks\n↓");
+  gtk_label_set_justify(GTK_LABEL(snk_label), GTK_JUSTIFY_CENTER);
+  gtk_grid_attach(GTK_GRID(routing_grid), snk_label, 2, 0, 1, 1);
 }
 
 static GtkWidget *make_socket_widget(void) {
@@ -359,30 +359,30 @@ static gboolean dropped_on_src(
   gpointer       data
 ) {
   struct routing_src *src = data;
-  int dst_id = g_value_get_int(value);
+  int snk_id = g_value_get_int(value);
 
   // don't accept src -> src drops
-  if (!(dst_id & 0x8000))
+  if (!(snk_id & 0x8000))
     return FALSE;
 
-  // convert the int to a r_dst_idx
-  int r_dst_idx = dst_id & ~0x8000;
+  // convert the int to a r_snk_idx
+  int r_snk_idx = snk_id & ~0x8000;
 
   // check the index is in bounds
-  GArray *r_dsts = src->card->routing_dsts;
-  if (r_dst_idx < 0 || r_dst_idx >= r_dsts->len)
+  GArray *r_snks = src->card->routing_snks;
+  if (r_snk_idx < 0 || r_snk_idx >= r_snks->len)
     return FALSE;
 
-  struct routing_dst *r_dst = &g_array_index(
-    r_dsts, struct routing_dst, r_dst_idx
+  struct routing_snk *r_snk = &g_array_index(
+    r_snks, struct routing_snk, r_snk_idx
   );
-  alsa_set_elem_value(r_dst->elem, src->id);
+  alsa_set_elem_value(r_snk->elem, src->id);
 
   return TRUE;
 }
 
-// something was dropped on a routing destination
-static gboolean dropped_on_dst(
+// something was dropped on a routing sink
+static gboolean dropped_on_snk(
   GtkDropTarget *dest,
   const GValue  *value,
   double         x,
@@ -392,7 +392,7 @@ static gboolean dropped_on_dst(
   struct alsa_elem *elem = data;
   int src_id = g_value_get_int(value);
 
-  // don't accept dst -> dst drops
+  // don't accept snk -> snk drops
   if (src_id & 0x8000)
     return FALSE;
 
@@ -409,20 +409,20 @@ static void src_routing_clicked(
 ) {
   struct alsa_card *card = r_src->card;
 
-  // go through all the routing destinations
-  for (int i = 0; i < card->routing_dsts->len; i++) {
-    struct routing_dst *r_dst = &g_array_index(
-      card->routing_dsts, struct routing_dst, i
+  // go through all the routing sinks
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
     );
 
-    int r_src_idx = alsa_get_elem_value(r_dst->elem);
+    int r_src_idx = alsa_get_elem_value(r_snk->elem);
 
     if (r_src_idx == r_src->id)
-      alsa_set_elem_value(r_dst->elem, 0);
+      alsa_set_elem_value(r_snk->elem, 0);
   }
 }
 
-static void dst_routing_clicked(
+static void snk_routing_clicked(
   GtkWidget        *widget,
   int               n_press,
   double            x,
@@ -444,16 +444,16 @@ static void src_drag_begin(
   card->src_drag = r_src;
 }
 
-static void dst_drag_begin(
+static void snk_drag_begin(
   GtkDragSource *source,
   GdkDrag       *drag,
   gpointer       user_data
 ) {
-  struct routing_dst *r_dst = user_data;
-  struct alsa_card *card = r_dst->elem->card;
+  struct routing_snk *r_snk = user_data;
+  struct alsa_card *card = r_snk->elem->card;
 
-  card->drag_type = DRAG_TYPE_DST;
-  card->dst_drag = r_dst;
+  card->drag_type = DRAG_TYPE_SNK;
+  card->snk_drag = r_snk;
 }
 
 static void src_drag_end(
@@ -471,17 +471,17 @@ static void src_drag_end(
   gtk_widget_queue_draw(card->routing_lines);
 }
 
-static void dst_drag_end(
+static void snk_drag_end(
   GtkDragSource *source,
   GdkDrag       *drag,
   gboolean       delete_data,
   gpointer       user_data
 ) {
-  struct routing_dst *r_dst = user_data;
-  struct alsa_card *card = r_dst->elem->card;
+  struct routing_snk *r_snk = user_data;
+  struct alsa_card *card = r_snk->elem->card;
 
   card->drag_type = DRAG_TYPE_NONE;
-  card->dst_drag = NULL;
+  card->snk_drag = NULL;
   gtk_widget_queue_draw(card->drag_line);
   gtk_widget_queue_draw(card->routing_lines);
 }
@@ -494,16 +494,16 @@ static gboolean src_drop_accept(
   struct routing_src *r_src = user_data;
   struct alsa_card *card = r_src->card;
 
-  return card->drag_type == DRAG_TYPE_DST;
+  return card->drag_type == DRAG_TYPE_SNK;
 }
 
-static gboolean dst_drop_accept(
+static gboolean snk_drop_accept(
   GtkDropTarget *source,
   GdkDrop       *drop,
   gpointer       user_data
 ) {
-  struct routing_dst *r_dst = user_data;
-  struct alsa_card *card = r_dst->elem->card;
+  struct routing_snk *r_snk = user_data;
+  struct alsa_card *card = r_snk->elem->card;
 
   return card->drag_type == DRAG_TYPE_SRC;
 }
@@ -517,7 +517,7 @@ static GdkDragAction src_drop_enter(
   struct routing_src *r_src = user_data;
   struct alsa_card *card = r_src->card;
 
-  if (card->drag_type != DRAG_TYPE_DST)
+  if (card->drag_type != DRAG_TYPE_SNK)
     return 0;
 
   card->src_drag = r_src;
@@ -525,19 +525,19 @@ static GdkDragAction src_drop_enter(
   return GDK_ACTION_COPY;
 }
 
-static GdkDragAction dst_drop_enter(
+static GdkDragAction snk_drop_enter(
   GtkDropTarget *dest,
   gdouble        x,
   gdouble        y,
   gpointer       user_data
 ) {
-  struct routing_dst *r_dst = user_data;
-  struct alsa_card *card = r_dst->elem->card;
+  struct routing_snk *r_snk = user_data;
+  struct alsa_card *card = r_snk->elem->card;
 
   if (card->drag_type != DRAG_TYPE_SRC)
     return 0;
 
-  card->dst_drag = r_dst;
+  card->snk_drag = r_snk;
 
   return GDK_ACTION_COPY;
 }
@@ -549,23 +549,23 @@ static void src_drop_leave(
   struct routing_src *r_src = user_data;
   struct alsa_card *card = r_src->card;
 
-  if (card->drag_type != DRAG_TYPE_DST)
+  if (card->drag_type != DRAG_TYPE_SNK)
     return;
 
   card->src_drag = NULL;
 }
 
-static void dst_drop_leave(
+static void snk_drop_leave(
   GtkDropTarget *dest,
   gpointer       user_data
 ) {
-  struct routing_dst *r_dst = user_data;
-  struct alsa_card *card = r_dst->elem->card;
+  struct routing_snk *r_snk = user_data;
+  struct alsa_card *card = r_snk->elem->card;
 
   if (card->drag_type != DRAG_TYPE_SRC)
     return;
 
-  card->dst_drag = NULL;
+  card->snk_drag = NULL;
 }
 
 static void setup_src_drag(struct routing_src *r_src) {
@@ -601,14 +601,14 @@ static void setup_src_drag(struct routing_src *r_src) {
   g_signal_connect(dest, "leave", G_CALLBACK(src_drop_leave), r_src);
 }
 
-static void setup_dst_drag(struct routing_dst *r_dst) {
-  struct alsa_elem *elem = r_dst->elem;
+static void setup_snk_drag(struct routing_snk *r_snk) {
+  struct alsa_elem *elem = r_snk->elem;
   GtkWidget *box = elem->widget;
 
   // handle drags on the box
   GtkDragSource *source = gtk_drag_source_new();
-  g_signal_connect(source, "drag-begin", G_CALLBACK(dst_drag_begin), r_dst);
-  g_signal_connect(source, "drag-end", G_CALLBACK(dst_drag_end), r_dst);
+  g_signal_connect(source, "drag-begin", G_CALLBACK(snk_drag_begin), r_snk);
+  g_signal_connect(source, "drag-end", G_CALLBACK(snk_drag_end), r_snk);
 
   // set the box as a drag source
   gtk_drag_source_set_actions(source, GDK_ACTION_COPY);
@@ -617,7 +617,7 @@ static void setup_dst_drag(struct routing_dst *r_dst) {
   // set the content
   // 0x8000 flag indicates alsa_elem numid value
   GdkContentProvider *content = gdk_content_provider_new_typed(
-    G_TYPE_INT, 0x8000 | r_dst->idx
+    G_TYPE_INT, 0x8000 | r_snk->idx
   );
   gtk_drag_source_set_content(source, content);
   g_object_unref(content);
@@ -630,10 +630,10 @@ static void setup_dst_drag(struct routing_dst *r_dst) {
   // set the box as a drop target
   GtkDropTarget *dest = gtk_drop_target_new(G_TYPE_INT, GDK_ACTION_COPY);
   gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(dest));
-  g_signal_connect(dest, "drop", G_CALLBACK(dropped_on_dst), elem);
-  g_signal_connect(dest, "accept", G_CALLBACK(dst_drop_accept), r_dst);
-  g_signal_connect(dest, "enter", G_CALLBACK(dst_drop_enter), r_dst);
-  g_signal_connect(dest, "leave", G_CALLBACK(dst_drop_leave), r_dst);
+  g_signal_connect(dest, "drop", G_CALLBACK(dropped_on_snk), elem);
+  g_signal_connect(dest, "accept", G_CALLBACK(snk_drop_accept), r_snk);
+  g_signal_connect(dest, "enter", G_CALLBACK(snk_drop_enter), r_snk);
+  g_signal_connect(dest, "leave", G_CALLBACK(snk_drop_leave), r_snk);
 }
 
 static void make_src_routing_widget(
@@ -698,13 +698,13 @@ static GtkWidget *make_talkback_mix_widget(
   return make_boolean_alsa_elem(talkback_elem, name, name);
 }
 
-static void make_dst_routing_widget(
-  struct routing_dst *r_dst,
+static void make_snk_routing_widget(
+  struct routing_snk *r_snk,
   char               *name,
   GtkOrientation      orientation
 ) {
 
-  struct alsa_elem *elem = r_dst->elem;
+  struct alsa_elem *elem = r_snk->elem;
 
   // create a box, a "socket", and a label
   GtkWidget *box = elem->widget = gtk_box_new(orientation, 5);
@@ -727,14 +727,14 @@ static void make_dst_routing_widget(
   // handle clicks on the box
   GtkGesture *gesture = gtk_gesture_click_new();
   g_signal_connect(
-    gesture, "released", G_CALLBACK(dst_routing_clicked), elem
+    gesture, "released", G_CALLBACK(snk_routing_clicked), elem
   );
   gtk_widget_add_controller(
     GTK_WIDGET(box), GTK_EVENT_CONTROLLER(gesture)
   );
 
   // handle dragging to or from the box
-  setup_dst_drag(r_dst);
+  setup_snk_drag(r_snk);
 }
 
 static void routing_updated(struct alsa_elem *elem) {
@@ -744,26 +744,26 @@ static void routing_updated(struct alsa_elem *elem) {
   gtk_widget_queue_draw(card->routing_lines);
 }
 
-static void make_routing_alsa_elem(struct routing_dst *r_dst) {
-  struct alsa_elem *elem = r_dst->elem;
+static void make_routing_alsa_elem(struct routing_snk *r_snk) {
+  struct alsa_elem *elem = r_snk->elem;
   struct alsa_card *card = elem->card;
 
   // "Mixer Input X Capture Enum" controls (Mixer Inputs) go along
   // the top, in card->routing_mixer_in_grid
-  if (r_dst->port_category == PC_MIX) {
+  if (r_snk->port_category == PC_MIX) {
 
     char name[10];
 
     snprintf(name, 10, "%d", elem->lr_num);
-    make_dst_routing_widget(r_dst, name, GTK_ORIENTATION_VERTICAL);
+    make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
     gtk_grid_attach(
       GTK_GRID(card->routing_mixer_in_grid), elem->widget,
-      r_dst->port_num + 1, 0, 1, 1
+      r_snk->port_num + 1, 0, 1, 1
     );
 
   // "PCM X Capture Enum" controls (PCM Inputs) go along the right,
   // in card->routing_pcm_out_grid
-  } else if (r_dst->port_category == PC_PCM) {
+  } else if (r_snk->port_category == PC_PCM) {
     char *name = strdup(elem->name);
     char *name_end = strchr(name, ' ');
 
@@ -771,17 +771,17 @@ static void make_routing_alsa_elem(struct routing_dst *r_dst) {
     if (name_end)
       snprintf(name_end, strlen(name_end) + 1, " %d", elem->lr_num);
 
-    make_dst_routing_widget(r_dst, name, GTK_ORIENTATION_HORIZONTAL);
+    make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_HORIZONTAL);
     free(name);
 
     gtk_grid_attach(
       GTK_GRID(card->routing_pcm_out_grid), elem->widget,
-      0, r_dst->port_num + 1, 1, 1
+      0, r_snk->port_num + 1, 1, 1
     );
 
   // "* Output X Playback Enum" controls go along the right, in
   // card->routing_hw_out_grid
-  } else if (r_dst->port_category == PC_HW) {
+  } else if (r_snk->port_category == PC_HW) {
 
     // Convert "Analogue 01 Output Playback Enum" to "Analogue 1"
     char *name = strdup(elem->name);
@@ -791,15 +791,15 @@ static void make_routing_alsa_elem(struct routing_dst *r_dst) {
     if (name_end)
       snprintf(name_end, strlen(name_end) + 1, " %d", elem->lr_num);
 
-    make_dst_routing_widget(r_dst, name, GTK_ORIENTATION_HORIZONTAL);
+    make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_HORIZONTAL);
     free(name);
 
     gtk_grid_attach(
       GTK_GRID(card->routing_hw_out_grid), elem->widget,
-      0, r_dst->port_num + 1, 1, 1
+      0, r_snk->port_num + 1, 1, 1
     );
   } else {
-    printf("invalid port category %d\n", r_dst->port_category);
+    printf("invalid port category %d\n", r_snk->port_category);
   }
 
   elem->widget_callback = routing_updated;
@@ -809,13 +809,13 @@ static void add_routing_widgets(
   struct alsa_card *card,
   GtkWidget        *routing_overlay
 ) {
-  GArray *r_dsts = card->routing_dsts;
+  GArray *r_snks = card->routing_snks;
 
-  // go through each routing destination and create its control
-  for (int i = 0; i < r_dsts->len; i++) {
-    struct routing_dst *r_dst = &g_array_index(r_dsts, struct routing_dst, i);
+  // go through each routing sink and create its control
+  for (int i = 0; i < r_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(r_snks, struct routing_snk, i);
 
-    make_routing_alsa_elem(r_dst);
+    make_routing_alsa_elem(r_snk);
   }
 
   if (!card->routing_out_count[PC_MIX]) {
@@ -920,7 +920,7 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
   }
 
   get_routing_srcs(card);
-  get_routing_dsts(card);
+  get_routing_snks(card);
 
   create_routing_grid(card);
 

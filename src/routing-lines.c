@@ -4,7 +4,7 @@
 #include "alsa.h"
 #include "routing-lines.h"
 
-// dotted dash when a destination is going to be removed by a drag
+// dotted dash when a sink is going to be removed by a drag
 static const double dash_dotted[] = { 1, 10 };
 
 // dash when dragging and not connected
@@ -12,7 +12,7 @@ static const double dash[] = { 4 };
 
 static void choose_line_colour(
   struct routing_src *r_src,
-  struct routing_dst *r_dst,
+  struct routing_snk *r_snk,
   double             *r,
   double             *g,
   double             *b
@@ -20,21 +20,21 @@ static void choose_line_colour(
   // left channels have odd numbers
   // right channels have even numbers
   int odd_src = r_src->lr_num & 1;
-  int odd_dst = r_dst->elem->lr_num & 1;
+  int odd_snk = r_snk->elem->lr_num & 1;
 
   // for colouring, pair channels up
   // 0 for odd pairs, 1 for even pairs
   int src2 = ((r_src->lr_num - 1) / 2 & 1);
-  int dst2 = ((r_dst->elem->lr_num - 1) / 2 & 1);
+  int snk2 = ((r_snk->elem->lr_num - 1) / 2 & 1);
 
   // left -> left, black
-  if (odd_src && odd_dst) {
+  if (odd_src && odd_snk) {
     *r = 0;
     *g = 0;
     *b = 0;
 
   // right -> right, red
-  } else if (!odd_src && !odd_dst) {
+  } else if (!odd_src && !odd_snk) {
     *r = 1;
     *g = 0;
     *b = 0;
@@ -54,7 +54,7 @@ static void choose_line_colour(
 
   // mix <-> non-mix, add blue
   if ((r_src->port_category == PC_MIX) !=
-      (r_dst->port_category == PC_MIX)) {
+      (r_snk->port_category == PC_MIX)) {
     *b = 0.5;
   }
 
@@ -65,7 +65,7 @@ static void choose_line_colour(
   }
 
   // even output pairs, lighten blue component
-  if (dst2) {
+  if (snk2) {
     *b = (*b + 1) / 2;
   }
 }
@@ -160,8 +160,8 @@ static void arrow(
   cairo_close_path(cr);
 }
 
-// draw a nice curved line connecting a source at (x1, y1) and a
-// destination at (x2, y2)
+// draw a nice curved line connecting a source at (x1, y1) and a sink
+// at (x2, y2)
 static void draw_connection(
   cairo_t *cr,
   double   x1,
@@ -169,7 +169,7 @@ static void draw_connection(
   int      src_is_mixer,
   double   x2,
   double   y2,
-  int      dst_is_mixer,
+  int      snk_is_mixer,
   double   r,
   double   g,
   double   b,
@@ -178,7 +178,7 @@ static void draw_connection(
   double x3 = x1, y3 = y1, x4 = x2, y4 = y2;
 
   // vertical/horizontal?
-  if (src_is_mixer == dst_is_mixer) {
+  if (src_is_mixer == snk_is_mixer) {
     double f1 = 0.3;
     double f2 = 1 - f1;
 
@@ -222,7 +222,7 @@ static void draw_connection(
 
 // locate the center of a widget in the parent coordinates
 // used for drawing lines to/from the "socket" widget of routing
-// sources and destinations
+// sources and sinks
 static void get_widget_center(
   GtkWidget *w,
   GtkWidget *parent,
@@ -245,19 +245,18 @@ static void get_src_center(
     (*y)++;
 }
 
-static void get_dst_center(
-  struct routing_dst *r_dst,
+static void get_snk_center(
+  struct routing_snk *r_snk,
   GtkWidget          *parent,
   double             *x,
   double             *y
 ) {
-  get_widget_center(r_dst->elem->widget2, parent, x, y);
-  if (r_dst->port_category == PC_MIX)
+  get_widget_center(r_snk->elem->widget2, parent, x, y);
+  if (r_snk->port_category == PC_MIX)
     (*y)++;
 }
 
-// redraw the overlay lines between the routing sources and
-// destinations
+// redraw the overlay lines between the routing sources and sinks
 void draw_routing_lines(
   GtkDrawingArea *drawing_area,
   cairo_t        *cr,
@@ -272,22 +271,22 @@ void draw_routing_lines(
 
   int dragging = card->drag_type != DRAG_TYPE_NONE;
 
-  // go through all the routing destinations
-  for (int i = 0; i < card->routing_dsts->len; i++) {
-    struct routing_dst *r_dst = &g_array_index(
-      card->routing_dsts, struct routing_dst, i
+  // go through all the routing sinks
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
     );
 
-    // if dragging and a routing destination is being reconnected then
-    // draw it with dots
-    int dragging_this = dragging && card->dst_drag == r_dst;
+    // if dragging and a routing sink is being reconnected then draw
+    // it with dots
+    int dragging_this = dragging && card->snk_drag == r_snk;
     if (dragging_this)
       cairo_set_dash(cr, dash_dotted, 2, 0);
     else
       cairo_set_dash(cr, NULL, 0, 0);
 
-    // get the destination and skip if it's "Off"
-    int r_src_idx = alsa_get_elem_value(r_dst->elem);
+    // get the sink and skip if it's "Off"
+    int r_src_idx = alsa_get_elem_value(r_snk->elem);
     if (!r_src_idx)
       continue;
 
@@ -296,14 +295,14 @@ void draw_routing_lines(
       card->routing_srcs, struct routing_src, r_src_idx
     );
 
-    // locate the source and destination coordinates
+    // locate the source and sink coordinates
     double x1, y1, x2, y2;
     get_src_center(r_src, parent, &x1, &y1);
-    get_dst_center(r_dst, parent, &x2, &y2);
+    get_snk_center(r_snk, parent, &x2, &y2);
 
     // pick a colour
     double r, g, b;
-    choose_line_colour(r_src, r_dst, &r, &g, &b);
+    choose_line_colour(r_src, r_snk, &r, &g, &b);
 
     // make the colour lighter if it's being shown dotted
     if (dragging_this) {
@@ -316,7 +315,7 @@ void draw_routing_lines(
     draw_connection(
       cr,
       x1, y1, r_src->port_category == PC_MIX,
-      x2, y2, r_dst->port_category == PC_MIX,
+      x2, y2, r_snk->port_category == PC_MIX,
       r, g, b, 2
     );
   }
@@ -333,19 +332,19 @@ void draw_drag_line(
   struct alsa_card *card = user_data;
   GtkWidget *parent = card->drag_line;
 
-  // if not dragging or routing src & dst not specified or drag out of
+  // if not dragging or routing src & snk not specified or drag out of
   // bounds then do nothing
   if (card->drag_type == DRAG_TYPE_NONE ||
-      (!card->src_drag && !card->dst_drag) ||
+      (!card->src_drag && !card->snk_drag) ||
       card->drag_x < 0 ||
       card->drag_y < 0)
     return;
 
   // the drag mouse position is relative to card->routing_grid
   // translate it to the overlay card->drag_line
-  // (don't need to do this if both src_drag and dst_drag are set)
+  // (don't need to do this if both src_drag and snk_drag are set)
   double drag_x, drag_y;
-  if (!card->src_drag || !card->dst_drag)
+  if (!card->src_drag || !card->snk_drag)
     gtk_widget_translate_coordinates(
       card->routing_grid, parent,
       card->drag_x, card->drag_y,
@@ -362,23 +361,23 @@ void draw_drag_line(
     y1 = drag_y;
   }
 
-  // get the line end position; either a routing destination socket
-  // widget or the drag mouse position
+  // get the line end position; either a routing sink socket widget or
+  // the drag mouse position
   double x2, y2;
-  if (card->dst_drag) {
-    get_dst_center(card->dst_drag, parent, &x2, &y2);
+  if (card->snk_drag) {
+    get_snk_center(card->snk_drag, parent, &x2, &y2);
   } else {
     x2 = drag_x;
     y2 = drag_y;
   }
 
-  // if routing src & dst both specified then draw a curved line as if
+  // if routing src & snk both specified then draw a curved line as if
   // it was connected (except black)
-  if (card->src_drag && card->dst_drag) {
+  if (card->src_drag && card->snk_drag) {
     draw_connection(
       cr,
       x1, y1, card->src_drag->port_category == PC_MIX,
-      x2, y2, card->dst_drag->port_category == PC_MIX,
+      x2, y2, card->snk_drag->port_category == PC_MIX,
       0, 0, 0, 2
     );
 

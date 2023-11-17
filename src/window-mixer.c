@@ -8,18 +8,18 @@
 #include "widget-gain.h"
 #include "window-mixer.h"
 
-static struct routing_dst *get_mixer_r_dst(
+static struct routing_snk *get_mixer_r_snk(
   struct alsa_card *card,
   int               input_num
 ) {
-  for (int i = 0; i < card->routing_dsts->len; i++) {
-    struct routing_dst *r_dst = &g_array_index(
-      card->routing_dsts, struct routing_dst, i
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
     );
-    if (r_dst->port_category != PC_MIX)
+    if (r_snk->port_category != PC_MIX)
       continue;
-    if (r_dst->elem->lr_num == input_num)
-      return r_dst;
+    if (r_snk->elem->lr_num == input_num)
+      return r_snk;
   }
   return NULL;
 }
@@ -76,21 +76,21 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     GtkWidget *w = make_gain_alsa_elem(elem);
     gtk_grid_attach(GTK_GRID(mixer_top), w, input_num + 1, mix_num + 2, 1, 1);
 
-    // look up the r_dst entry for the mixer input number
-    struct routing_dst *r_dst = get_mixer_r_dst(card, input_num + 1);
-    if (!r_dst) {
+    // look up the r_snk entry for the mixer input number
+    struct routing_snk *r_snk = get_mixer_r_snk(card, input_num + 1);
+    if (!r_snk) {
       printf("missing mixer input %d\n", input_num);
       continue;
     }
 
     // lookup the top label for the mixer input
-    GtkWidget *l_top = r_dst->mixer_label_top;
+    GtkWidget *l_top = r_snk->mixer_label_top;
 
     // if the top label doesn't already exist the bottom doesn't
     // either; create them both and attach to the grid
     if (!l_top) {
-      l_top = r_dst->mixer_label_top = gtk_label_new("");
-      GtkWidget *l_bottom = r_dst->mixer_label_bottom = gtk_label_new("");
+      l_top = r_snk->mixer_label_top = gtk_label_new("");
+      GtkWidget *l_bottom = r_snk->mixer_label_bottom = gtk_label_new("");
 
       gtk_grid_attach(
         GTK_GRID(mixer_top), l_top,
@@ -109,15 +109,15 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 }
 
 void update_mixer_labels(struct alsa_card *card) {
-  for (int i = 0; i < card->routing_dsts->len; i++) {
-    struct routing_dst *r_dst = &g_array_index(
-      card->routing_dsts, struct routing_dst, i
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
     );
 
-    if (r_dst->port_category != PC_MIX)
+    if (r_snk->port_category != PC_MIX)
       continue;
 
-    struct alsa_elem *elem = r_dst->elem;
+    struct alsa_elem *elem = r_snk->elem;
 
     int routing_src_idx = alsa_get_elem_value(elem);
 
@@ -125,9 +125,9 @@ void update_mixer_labels(struct alsa_card *card) {
       card->routing_srcs, struct routing_src, routing_src_idx
     );
 
-    if (r_dst->mixer_label_top) {
-      gtk_label_set_text(GTK_LABEL(r_dst->mixer_label_top), r_src->name);
-      gtk_label_set_text(GTK_LABEL(r_dst->mixer_label_bottom), r_src->name);
+    if (r_snk->mixer_label_top) {
+      gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_top), r_src->name);
+      gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_bottom), r_src->name);
     }
   }
 }
