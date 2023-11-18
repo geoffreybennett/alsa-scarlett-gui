@@ -3,6 +3,9 @@ runtime: org.gnome.Platform
 runtime-version: "45"
 sdk: org.gnome.Sdk
 command: alsa-scarlett-gui
+build-options:
+  secret-env:
+    - APP_VERSION
 finish-args:
   # X11 + XShm access
   - --share=ipc
