@@ -470,6 +470,14 @@ static void alsa_add_card_callback(struct alsa_card *card) {
   );
 }
 
+static void alsa_get_firmware_version(struct alsa_card *card) {
+  struct alsa_elem *elem = get_elem_by_name(card->elems, "Firmware Version");
+
+  if (!elem)
+    return;
+  card->firmware_version = alsa_get_elem_value(elem);
+}
+
 static void alsa_subscribe(struct alsa_card *card) {
   int count = snd_ctl_poll_descriptors_count(card->handle);
 
@@ -524,6 +532,7 @@ void alsa_scan_cards(void) {
     card->handle = ctl;
 
     alsa_get_elem_list(card);
+    alsa_get_firmware_version(card);
     alsa_subscribe(card);
 
     create_card_window(card);

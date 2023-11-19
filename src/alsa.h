@@ -145,6 +145,7 @@ struct alsa_card {
   char               *name;
   snd_ctl_t          *handle;
   struct pollfd       pfd;
+  int                 firmware_version;
   GArray             *elems;
   struct alsa_elem   *sample_capture_elem;
   struct alsa_elem   *level_meter_elem;

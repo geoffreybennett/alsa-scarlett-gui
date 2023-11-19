@@ -149,7 +149,10 @@ void add_startup_action_map(struct alsa_card *card) {
 
 static const GActionEntry mixer_entries[] = {
   {"routing", activate_routing, NULL, "false"},
-  {"mixer",   activate_mixer,   NULL, "false"},
+  {"mixer",   activate_mixer,   NULL, "false"}
+};
+
+static const GActionEntry levels_entries[] = {
   {"levels",  activate_levels,  NULL, "false"}
 };
 
@@ -160,4 +163,13 @@ void add_mixer_action_map(struct alsa_card *card) {
     G_N_ELEMENTS(mixer_entries),
     card
   );
+
+  if (card->firmware_version) {
+    g_action_map_add_action_entries(
+      G_ACTION_MAP(card->window_main),
+      levels_entries,
+      G_N_ELEMENTS(levels_entries),
+      card
+    );
+  }
 }
