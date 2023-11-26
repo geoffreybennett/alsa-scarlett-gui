@@ -347,6 +347,7 @@ static GtkWidget *make_socket_widget(void) {
     "/vu/b4/alsa-scarlett-gui/icons/socket.svg"
   );
   gtk_widget_set_align(w, GTK_ALIGN_CENTER, GTK_ALIGN_CENTER);
+  gtk_picture_set_can_shrink(GTK_PICTURE(w), FALSE);
   return w;
 }
 
