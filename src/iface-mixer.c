@@ -429,6 +429,24 @@ static gboolean window_levels_close_request(GtkWindow *w, gpointer data) {
   return true;
 }
 
+// wrap a scrolled window around the controls
+static void create_scrollable_window(GtkWidget *window, GtkWidget *controls) {
+  GtkWidget *scrolled_window = gtk_scrolled_window_new();
+
+  gtk_scrolled_window_set_policy(
+    GTK_SCROLLED_WINDOW(scrolled_window),
+    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC
+  );
+  gtk_scrolled_window_set_child(
+    GTK_SCROLLED_WINDOW(scrolled_window), controls
+  );
+  gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scrolled_window), TRUE);
+  gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(scrolled_window), TRUE);
+
+  gtk_window_set_child(GTK_WINDOW(window), scrolled_window);
+  gtk_window_set_resizable(GTK_WINDOW(window), TRUE);
+}
+
 GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   card->has_speaker_switching =
     !!get_elem_by_name(card->elems, "Speaker Switching Playback Enum");
@@ -445,7 +463,7 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
     card, "Routing", G_CALLBACK(window_routing_close_request)
   );
 
-  gtk_window_set_child(GTK_WINDOW(card->window_routing), routing_top);
+  create_scrollable_window(card->window_routing, routing_top);
 
   GtkWidget *mixer_top = create_mixer_controls(card);
 

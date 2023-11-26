@@ -256,6 +256,9 @@ static GtkWidget *make_preset_menu_button(struct alsa_card *card) {
 static void create_routing_grid(struct alsa_card *card) {
   GtkWidget *routing_grid = card->routing_grid = gtk_grid_new();
 
+  gtk_widget_set_halign(routing_grid, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(routing_grid, GTK_ALIGN_CENTER);
+
   GtkWidget *preset_menu_button = make_preset_menu_button(card);
   gtk_grid_attach(
     GTK_GRID(routing_grid), preset_menu_button, 0, 0, 1, 1
