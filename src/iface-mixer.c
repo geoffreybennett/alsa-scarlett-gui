@@ -383,9 +383,13 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   gtk_widget_set_margin(top, 10);
   gtk_grid_set_spacing(GTK_GRID(top), 10);
 
+  int input_count = get_max_elem_by_name(card->elems, "Line", "Capture Switch");
+  int output_count = get_max_elem_by_name(card->elems, "Line", "Playback Volume");
+
   create_global_controls(card, top, &x);
   create_input_controls(card, top, &x);
-  if (card->has_speaker_switching) {
+
+  if (input_count + output_count >= 12) {
     x = 0;
     GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_grid_attach(GTK_GRID(top), sep, 0, 3, 3, 1);
