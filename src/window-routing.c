@@ -107,10 +107,20 @@ static void get_routing_snks(struct alsa_card *card) {
   assert(j == count);
 }
 
-static void routing_grid_label(char *s, GtkGrid *g, GtkAlign align) {
+static void routing_grid_label(
+  char           *s,
+  GtkGrid        *g,
+  GtkOrientation  orientation,
+  GtkAlign        align
+) {
   GtkWidget *l = gtk_label_new(s);
-  gtk_widget_set_halign(l, align);
   gtk_grid_attach(g, l, 0, 0, 1, 1);
+  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
+    gtk_widget_set_valign(l, align);
+    gtk_label_set_justify(GTK_LABEL(l), GTK_JUSTIFY_CENTER);
+  } else {
+    gtk_widget_set_halign(l, align);
+  }
 }
 
 // clear all the routing sinks
@@ -329,16 +339,29 @@ static void create_routing_grid(struct alsa_card *card) {
   gtk_grid_set_spacing(routing_grid, 10);
 
   routing_grid_label(
-    "Hardware Inputs", GTK_GRID(card->routing_hw_in_grid), GTK_ALIGN_END
+    "Hardware Inputs", GTK_GRID(card->routing_hw_in_grid),
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
   );
   routing_grid_label(
-    "Hardware Outputs", GTK_GRID(card->routing_hw_out_grid), GTK_ALIGN_START
+    "Hardware Outputs", GTK_GRID(card->routing_hw_out_grid),
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
   );
   routing_grid_label(
-    "PCM Outputs", GTK_GRID(card->routing_pcm_in_grid), GTK_ALIGN_END
+    "PCM Outputs", GTK_GRID(card->routing_pcm_in_grid),
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
   );
   routing_grid_label(
-    "PCM Inputs", GTK_GRID(card->routing_pcm_out_grid), GTK_ALIGN_START
+    "PCM Inputs", GTK_GRID(card->routing_pcm_out_grid),
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
+  );
+  routing_grid_label(
+    "Mixer\nInputs", GTK_GRID(card->routing_mixer_in_grid),
+    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+  );
+  routing_grid_label(
+    card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
+    GTK_GRID(card->routing_mixer_out_grid),
+    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
   );
 
   GtkWidget *src_label = gtk_label_new("↑\nSources →");
@@ -832,13 +855,6 @@ static void add_routing_widgets(
     return;
   }
 
-  GtkWidget *l_mixer_in = gtk_label_new("Mixer\nInputs");
-  gtk_label_set_justify(GTK_LABEL(l_mixer_in), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(
-    GTK_GRID(card->routing_mixer_in_grid), l_mixer_in,
-    0, 0, 1, 1
-  );
-
   // start at 1 to skip the "Off" input
   for (int i = 1; i < card->routing_srcs->len; i++) {
     struct routing_src *r_src = &g_array_index(
@@ -882,15 +898,6 @@ static void add_routing_widgets(
       printf("invalid port category %d\n", r_src->port_category);
     }
   }
-
-  GtkWidget *l_mixer_out = gtk_label_new(
-    card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs"
-  );
-  gtk_label_set_justify(GTK_LABEL(l_mixer_out), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(
-    GTK_GRID(card->routing_mixer_out_grid), l_mixer_out,
-    0, 0, 1, 1
-  );
 
   if (card->has_talkback) {
     GtkWidget *l_talkback = gtk_label_new("Talkback");
