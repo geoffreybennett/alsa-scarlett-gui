@@ -101,8 +101,11 @@ int get_max_elem_by_name(GArray *elems, char *prefix, char *needle) {
 // S/PDIF Output xx Playback Enum
 // ADAT Output xx Playback Enum
 int is_elem_routing_snk(struct alsa_elem *elem) {
-  if (strstr(elem->name, "Capture Enum") &&
-      !strstr(elem->name, "Level"))
+  if (strstr(elem->name, "Capture Enum") && (
+       strncmp(elem->name, "PCM ", 4) == 0 ||
+       strncmp(elem->name, "Mixer Input ", 12) == 0 ||
+       strncmp(elem->name, "DSP Input ", 10) == 0
+     ))
     return 1;
   if (strstr(elem->name, "Output") &&
       strstr(elem->name, "Playback Enum"))
