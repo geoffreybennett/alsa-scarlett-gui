@@ -253,6 +253,30 @@ static GtkWidget *make_preset_menu_button(struct alsa_card *card) {
   return button;
 }
 
+static GtkWidget *create_routing_group_grid(
+  struct alsa_card *card,
+  char             *name,
+  GtkOrientation    orientation
+) {
+  GtkWidget *grid = gtk_grid_new();
+  gtk_widget_set_name(grid, name);
+  gtk_widget_add_css_class(grid, "routing-group");
+
+  gtk_grid_set_spacing(GTK_GRID(grid), 2);
+
+  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
+    gtk_widget_set_halign(grid, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(grid, GTK_ALIGN_FILL);
+    gtk_widget_set_hexpand(grid, TRUE);
+  } else {
+    gtk_widget_set_halign(grid, GTK_ALIGN_FILL);
+    gtk_widget_set_valign(grid, GTK_ALIGN_CENTER);
+    gtk_widget_set_vexpand(grid, TRUE);
+  }
+
+  return grid;
+}
+
 static void create_routing_grid(struct alsa_card *card) {
   GtkGrid *routing_grid = GTK_GRID(card->routing_grid = gtk_grid_new());
 
@@ -264,12 +288,25 @@ static void create_routing_grid(struct alsa_card *card) {
     routing_grid, preset_menu_button, 0, 0, 1, 1
   );
 
-  card->routing_hw_in_grid = gtk_grid_new();
-  card->routing_pcm_in_grid = gtk_grid_new();
-  card->routing_pcm_out_grid = gtk_grid_new();
-  card->routing_hw_out_grid = gtk_grid_new();
-  card->routing_mixer_in_grid = gtk_grid_new();
-  card->routing_mixer_out_grid = gtk_grid_new();
+  card->routing_hw_in_grid = create_routing_group_grid(
+    card, "routing_hw_in_grid", GTK_ORIENTATION_VERTICAL
+  );
+  card->routing_pcm_in_grid = create_routing_group_grid(
+    card, "routing_pcm_in_grid", GTK_ORIENTATION_VERTICAL
+  );
+  card->routing_pcm_out_grid = create_routing_group_grid(
+    card, "routing_pcm_out_grid", GTK_ORIENTATION_VERTICAL
+  );
+  card->routing_hw_out_grid = create_routing_group_grid(
+    card, "routing_hw_out_grid", GTK_ORIENTATION_VERTICAL
+  );
+  card->routing_mixer_in_grid = create_routing_group_grid(
+    card, "routing_mixer_in_grid", GTK_ORIENTATION_HORIZONTAL
+  );
+  card->routing_mixer_out_grid = create_routing_group_grid(
+    card, "routing_mixer_out_grid", GTK_ORIENTATION_HORIZONTAL
+  );
+
   gtk_grid_attach(
     routing_grid, card->routing_hw_in_grid, 0, 1, 1, 1
   );
@@ -290,38 +327,6 @@ static void create_routing_grid(struct alsa_card *card) {
   );
   gtk_widget_set_margin(card->routing_grid, 10);
   gtk_grid_set_spacing(routing_grid, 10);
-  gtk_grid_set_spacing(GTK_GRID(card->routing_hw_in_grid), 2);
-  gtk_grid_set_spacing(GTK_GRID(card->routing_pcm_in_grid), 2);
-  gtk_grid_set_spacing(GTK_GRID(card->routing_pcm_out_grid), 2);
-  gtk_grid_set_spacing(GTK_GRID(card->routing_hw_out_grid), 2);
-  gtk_grid_set_spacing(GTK_GRID(card->routing_mixer_in_grid), 2);
-  gtk_grid_set_spacing(GTK_GRID(card->routing_mixer_out_grid), 10);
-  gtk_grid_set_row_spacing(GTK_GRID(card->routing_mixer_out_grid), 2);
-  gtk_grid_set_column_spacing(GTK_GRID(card->routing_mixer_out_grid), 10);
-  gtk_widget_set_vexpand(card->routing_hw_in_grid, TRUE);
-  gtk_widget_set_vexpand(card->routing_pcm_in_grid, TRUE);
-  gtk_widget_set_vexpand(card->routing_pcm_out_grid, TRUE);
-  gtk_widget_set_vexpand(card->routing_hw_out_grid, TRUE);
-  gtk_widget_set_hexpand(card->routing_mixer_in_grid, TRUE);
-  gtk_widget_set_hexpand(card->routing_mixer_out_grid, TRUE);
-  gtk_widget_set_align(
-    card->routing_hw_in_grid, GTK_ALIGN_FILL, GTK_ALIGN_CENTER
-  );
-  gtk_widget_set_align(
-    card->routing_pcm_in_grid, GTK_ALIGN_FILL, GTK_ALIGN_CENTER
-  );
-  gtk_widget_set_align(
-    card->routing_hw_out_grid, GTK_ALIGN_FILL, GTK_ALIGN_CENTER
-  );
-  gtk_widget_set_align(
-    card->routing_pcm_out_grid, GTK_ALIGN_FILL, GTK_ALIGN_CENTER
-  );
-  gtk_widget_set_align(
-    card->routing_mixer_in_grid, GTK_ALIGN_CENTER, GTK_ALIGN_END
-  );
-  gtk_widget_set_align(
-    card->routing_mixer_out_grid, GTK_ALIGN_CENTER, GTK_ALIGN_START
-  );
 
   routing_grid_label(
     "Hardware Inputs", GTK_GRID(card->routing_hw_in_grid), GTK_ALIGN_END

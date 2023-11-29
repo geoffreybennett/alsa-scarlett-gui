@@ -1,3 +1,10 @@
+.routing-group {
+  background: #EEE;
+  padding: 5px;
+  border: 1px solid #DDD;
+  border-radius: 5px;
+}
+
 .route-label {
   font-size: smaller;
   border-radius: 3px;
