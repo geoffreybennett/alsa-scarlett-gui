@@ -254,14 +254,14 @@ static GtkWidget *make_preset_menu_button(struct alsa_card *card) {
 }
 
 static void create_routing_grid(struct alsa_card *card) {
-  GtkWidget *routing_grid = card->routing_grid = gtk_grid_new();
+  GtkGrid *routing_grid = GTK_GRID(card->routing_grid = gtk_grid_new());
 
-  gtk_widget_set_halign(routing_grid, GTK_ALIGN_CENTER);
-  gtk_widget_set_valign(routing_grid, GTK_ALIGN_CENTER);
+  gtk_widget_set_halign(card->routing_grid, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(card->routing_grid, GTK_ALIGN_CENTER);
 
   GtkWidget *preset_menu_button = make_preset_menu_button(card);
   gtk_grid_attach(
-    GTK_GRID(routing_grid), preset_menu_button, 0, 0, 1, 1
+    routing_grid, preset_menu_button, 0, 0, 1, 1
   );
 
   card->routing_hw_in_grid = gtk_grid_new();
@@ -271,25 +271,25 @@ static void create_routing_grid(struct alsa_card *card) {
   card->routing_mixer_in_grid = gtk_grid_new();
   card->routing_mixer_out_grid = gtk_grid_new();
   gtk_grid_attach(
-    GTK_GRID(routing_grid), card->routing_hw_in_grid, 0, 1, 1, 1
+    routing_grid, card->routing_hw_in_grid, 0, 1, 1, 1
   );
   gtk_grid_attach(
-    GTK_GRID(routing_grid), card->routing_pcm_in_grid, 0, 2, 1, 1
+    routing_grid, card->routing_pcm_in_grid, 0, 2, 1, 1
   );
   gtk_grid_attach(
-    GTK_GRID(routing_grid), card->routing_pcm_out_grid, 2, 1, 1, 1
+    routing_grid, card->routing_pcm_out_grid, 2, 1, 1, 1
   );
   gtk_grid_attach(
-    GTK_GRID(routing_grid), card->routing_hw_out_grid, 2, 2, 1, 1
+    routing_grid, card->routing_hw_out_grid, 2, 2, 1, 1
   );
   gtk_grid_attach(
-    GTK_GRID(routing_grid), card->routing_mixer_in_grid, 1, 0, 1, 1
+    routing_grid, card->routing_mixer_in_grid, 1, 0, 1, 1
   );
   gtk_grid_attach(
-    GTK_GRID(routing_grid), card->routing_mixer_out_grid, 1, 3, 1, 1
+    routing_grid, card->routing_mixer_out_grid, 1, 3, 1, 1
   );
-  gtk_widget_set_margin(routing_grid, 10);
-  gtk_grid_set_spacing(GTK_GRID(routing_grid), 10);
+  gtk_widget_set_margin(card->routing_grid, 10);
+  gtk_grid_set_spacing(routing_grid, 10);
   gtk_grid_set_spacing(GTK_GRID(card->routing_hw_in_grid), 2);
   gtk_grid_set_spacing(GTK_GRID(card->routing_pcm_in_grid), 2);
   gtk_grid_set_spacing(GTK_GRID(card->routing_pcm_out_grid), 2);
@@ -338,11 +338,11 @@ static void create_routing_grid(struct alsa_card *card) {
 
   GtkWidget *src_label = gtk_label_new("↑\nSources →");
   gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(GTK_GRID(routing_grid), src_label, 0, 3, 1, 1);
+  gtk_grid_attach(routing_grid, src_label, 0, 3, 1, 1);
 
   GtkWidget *snk_label = gtk_label_new("← Sinks\n↓");
   gtk_label_set_justify(GTK_LABEL(snk_label), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(GTK_GRID(routing_grid), snk_label, 2, 0, 1, 1);
+  gtk_grid_attach(routing_grid, snk_label, 2, 0, 1, 1);
 }
 
 static GtkWidget *make_socket_widget(void) {
