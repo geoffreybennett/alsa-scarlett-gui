@@ -226,6 +226,8 @@ static GtkWidget *make_preset_menu_button(struct alsa_card *card) {
   g_menu_append(menu, "Stereo Out", "routing.preset('stereo_out')");
 
   GtkWidget *button = gtk_menu_button_new();
+  gtk_widget_set_halign(button, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(button, GTK_ALIGN_CENTER);
   gtk_menu_button_set_label(GTK_MENU_BUTTON(button), "Presets");
   gtk_menu_button_set_menu_model(
     GTK_MENU_BUTTON(button),
