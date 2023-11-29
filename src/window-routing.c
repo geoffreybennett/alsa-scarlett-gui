@@ -76,7 +76,7 @@ static void get_routing_snks(struct alsa_card *card) {
   );
   g_array_set_size(card->routing_snks, count);
 
-  // count through card->rounting_snks
+  // count through card->routing_snks
   int j = 0;
 
   for (int i = 0; i < elems->len; i++) {
