@@ -357,6 +357,7 @@ static GtkWidget *make_socket_widget(void) {
   );
   gtk_widget_set_align(w, GTK_ALIGN_CENTER, GTK_ALIGN_CENTER);
   gtk_picture_set_can_shrink(GTK_PICTURE(w), FALSE);
+  gtk_widget_set_margin(w, 2);
   return w;
 }
 
