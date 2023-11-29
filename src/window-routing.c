@@ -107,22 +107,6 @@ static void get_routing_snks(struct alsa_card *card) {
   assert(j == count);
 }
 
-static void routing_grid_label(
-  char           *s,
-  GtkGrid        *g,
-  GtkOrientation  orientation,
-  GtkAlign        align
-) {
-  GtkWidget *l = gtk_label_new(s);
-  gtk_grid_attach(g, l, 0, 0, 1, 1);
-  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
-    gtk_widget_set_valign(l, align);
-    gtk_label_set_justify(GTK_LABEL(l), GTK_JUSTIFY_CENTER);
-  } else {
-    gtk_widget_set_halign(l, align);
-  }
-}
-
 // clear all the routing sinks
 static void routing_preset_clear(struct alsa_card *card) {
   for (int i = 0; i < card->routing_snks->len; i++) {
@@ -266,7 +250,9 @@ static GtkWidget *make_preset_menu_button(struct alsa_card *card) {
 static GtkWidget *create_routing_group_grid(
   struct alsa_card *card,
   char             *name,
-  GtkOrientation    orientation
+  char             *descr,
+  GtkOrientation    orientation,
+  GtkAlign          align
 ) {
   GtkWidget *grid = gtk_grid_new();
   gtk_widget_set_name(grid, name);
@@ -284,6 +270,15 @@ static GtkWidget *create_routing_group_grid(
     gtk_widget_set_vexpand(grid, TRUE);
   }
 
+  GtkWidget *label = gtk_label_new(descr);
+  gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
+  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
+    gtk_widget_set_valign(label, align);
+    gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
+  } else {
+    gtk_widget_set_halign(label, align);
+  }
+
   return grid;
 }
 
@@ -299,22 +294,29 @@ static void create_routing_grid(struct alsa_card *card) {
   );
 
   card->routing_hw_in_grid = create_routing_group_grid(
-    card, "routing_hw_in_grid", GTK_ORIENTATION_VERTICAL
+    card, "routing_hw_in_grid", "Hardware Inputs",
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
   );
   card->routing_pcm_in_grid = create_routing_group_grid(
-    card, "routing_pcm_in_grid", GTK_ORIENTATION_VERTICAL
+    card, "routing_pcm_in_grid", "PCM Outputs",
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
   );
   card->routing_pcm_out_grid = create_routing_group_grid(
-    card, "routing_pcm_out_grid", GTK_ORIENTATION_VERTICAL
+    card, "routing_pcm_out_grid", "PCM Inputs",
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
   );
   card->routing_hw_out_grid = create_routing_group_grid(
-    card, "routing_hw_out_grid", GTK_ORIENTATION_VERTICAL
+    card, "routing_hw_out_grid", "Hardware Outputs",
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
   );
   card->routing_mixer_in_grid = create_routing_group_grid(
-    card, "routing_mixer_in_grid", GTK_ORIENTATION_HORIZONTAL
+    card, "routing_mixer_in_grid", "Mixer\nInputs",
+    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
   );
   card->routing_mixer_out_grid = create_routing_group_grid(
-    card, "routing_mixer_out_grid", GTK_ORIENTATION_HORIZONTAL
+    card, "routing_mixer_out_grid",
+    card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
+    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
   );
 
   gtk_grid_attach(
@@ -337,32 +339,6 @@ static void create_routing_grid(struct alsa_card *card) {
   );
   gtk_widget_set_margin(card->routing_grid, 10);
   gtk_grid_set_spacing(routing_grid, 10);
-
-  routing_grid_label(
-    "Hardware Inputs", GTK_GRID(card->routing_hw_in_grid),
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
-  );
-  routing_grid_label(
-    "Hardware Outputs", GTK_GRID(card->routing_hw_out_grid),
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
-  );
-  routing_grid_label(
-    "PCM Outputs", GTK_GRID(card->routing_pcm_in_grid),
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
-  );
-  routing_grid_label(
-    "PCM Inputs", GTK_GRID(card->routing_pcm_out_grid),
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
-  );
-  routing_grid_label(
-    "Mixer\nInputs", GTK_GRID(card->routing_mixer_in_grid),
-    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
-  );
-  routing_grid_label(
-    card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
-    GTK_GRID(card->routing_mixer_out_grid),
-    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
-  );
 
   GtkWidget *src_label = gtk_label_new("↑\nSources →");
   gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
