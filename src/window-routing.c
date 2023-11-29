@@ -30,6 +30,8 @@ static void get_routing_srcs(struct alsa_card *card) {
 
     if (strncmp(name, "Mix", 3) == 0)
       r->port_category = PC_MIX;
+    else if (strncmp(name, "DSP", 3) == 0)
+      r->port_category = PC_DSP;
     else if (strncmp(name, "PCM", 3) == 0)
       r->port_category = PC_PCM;
     else
@@ -93,6 +95,8 @@ static void get_routing_snks(struct alsa_card *card) {
     r->elem = elem;
     if (strncmp(elem->name, "Mixer Input", 11) == 0) {
       r->port_category = PC_MIX;
+    } else if (strncmp(elem->name, "DSP Input", 9) == 0) {
+      r->port_category = PC_DSP;
     } else if (strncmp(elem->name, "PCM", 3) == 0) {
       r->port_category = PC_PCM;
     } else if (strstr(elem->name, "Playback Enum")) {
@@ -287,6 +291,8 @@ static GtkWidget *create_routing_group_grid(
 static void create_routing_grid(struct alsa_card *card) {
   GtkGrid *routing_grid = GTK_GRID(card->routing_grid = gtk_grid_new());
 
+  int has_dsp = !!card->routing_in_count[PC_DSP];
+
   gtk_widget_set_halign(card->routing_grid, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(card->routing_grid, GTK_ALIGN_CENTER);
 
@@ -311,6 +317,16 @@ static void create_routing_grid(struct alsa_card *card) {
     card, "routing_hw_out_grid", "Hardware Outputs",
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
   );
+  if (has_dsp) {
+    card->routing_dsp_in_grid = create_routing_group_grid(
+      card, "routing_dsp_in_grid", "DSP\nInputs",
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+    );
+    card->routing_dsp_out_grid = create_routing_group_grid(
+      card, "routing_dsp_out_grid", "DSP\nOutputs",
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+    );
+  }
   card->routing_mixer_in_grid = create_routing_group_grid(
     card, "routing_mixer_in_grid", "Mixer\nInputs",
     GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
@@ -321,34 +337,47 @@ static void create_routing_grid(struct alsa_card *card) {
     GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
   );
 
+  int left_col_num = 0;
+  int dsp_col_num = has_dsp ? 1 : 0;
+  int mix_col_num = dsp_col_num + 1;
+  int right_col_num = mix_col_num + 1;
+
   gtk_grid_attach(
-    routing_grid, card->routing_hw_in_grid, 0, 1, 1, 1
+    routing_grid, card->routing_hw_in_grid, left_col_num, 1, 1, 1
   );
   gtk_grid_attach(
-    routing_grid, card->routing_pcm_in_grid, 0, 2, 1, 1
+    routing_grid, card->routing_pcm_in_grid, left_col_num, 2, 1, 1
   );
   gtk_grid_attach(
-    routing_grid, card->routing_pcm_out_grid, 2, 1, 1, 1
+    routing_grid, card->routing_pcm_out_grid, right_col_num, 1, 1, 1
   );
   gtk_grid_attach(
-    routing_grid, card->routing_hw_out_grid, 2, 2, 1, 1
+    routing_grid, card->routing_hw_out_grid, right_col_num, 2, 1, 1
+  );
+  if (has_dsp) {
+    gtk_grid_attach(
+      routing_grid, card->routing_dsp_in_grid, dsp_col_num, 0, 1, 1
+    );
+    gtk_grid_attach(
+      routing_grid, card->routing_dsp_out_grid, dsp_col_num, 3, 1, 1
+    );
+  }
+  gtk_grid_attach(
+    routing_grid, card->routing_mixer_in_grid, mix_col_num, 0, 1, 1
   );
   gtk_grid_attach(
-    routing_grid, card->routing_mixer_in_grid, 1, 0, 1, 1
-  );
-  gtk_grid_attach(
-    routing_grid, card->routing_mixer_out_grid, 1, 3, 1, 1
+    routing_grid, card->routing_mixer_out_grid, mix_col_num, 3, 1, 1
   );
   gtk_widget_set_margin(card->routing_grid, 10);
   gtk_grid_set_spacing(routing_grid, 10);
 
   GtkWidget *src_label = gtk_label_new("↑\nSources →");
   gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(routing_grid, src_label, 0, 3, 1, 1);
+  gtk_grid_attach(routing_grid, src_label, left_col_num, 3, 1, 1);
 
   GtkWidget *snk_label = gtk_label_new("← Sinks\n↓");
   gtk_label_set_justify(GTK_LABEL(snk_label), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(routing_grid, snk_label, 2, 0, 1, 1);
+  gtk_grid_attach(routing_grid, snk_label, right_col_num, 0, 1, 1);
 }
 
 static GtkWidget *make_socket_widget(void) {
@@ -759,9 +788,22 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
   struct alsa_elem *elem = r_snk->elem;
   struct alsa_card *card = elem->card;
 
-  // "Mixer Input X Capture Enum" controls (Mixer Inputs) go along
+  // "DSP Input X Capture Enum" controls (DSP Inputs) go along
   // the top, in card->routing_mixer_in_grid
-  if (r_snk->port_category == PC_MIX) {
+  if (r_snk->port_category == PC_DSP) {
+
+    char name[10];
+
+    snprintf(name, 10, "%d", elem->lr_num);
+    make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
+    gtk_grid_attach(
+      GTK_GRID(card->routing_dsp_in_grid), elem->widget,
+      r_snk->port_num + 1, 0, 1, 1
+    );
+
+  // "Mixer Input X Capture Enum" controls (Mixer Inputs) go along
+  // the top, in card->routing_mixer_in_grid after the DSP Inputs
+  } else if (r_snk->port_category == PC_MIX) {
 
     char name[10];
 
@@ -840,7 +882,20 @@ static void add_routing_widgets(
       card->routing_srcs, struct routing_src, i
     );
 
-    if (r_src->port_category == PC_MIX) {
+    if (r_src->port_category == PC_DSP) {
+      // r_src->name is "DSP X"
+      // +4 to skip "DSP "
+      make_src_routing_widget(
+        card, r_src, r_src->name + 4, GTK_ORIENTATION_VERTICAL
+      );
+      gtk_grid_attach(
+        GTK_GRID(card->routing_dsp_out_grid), r_src->widget,
+        r_src->port_num + 1, 0, 1, 1
+      );
+
+    } else if (r_src->port_category == PC_MIX) {
+      // r_src->name is "Mix X"
+      // +4 to skip "Mix "
       make_src_routing_widget(
         card, r_src, r_src->name + 4, GTK_ORIENTATION_VERTICAL
       );

@@ -11,6 +11,7 @@
 const char *port_category_names[PC_COUNT] = {
   "Hardware Outputs",
   "Mixer Inputs",
+  "DSP Inputs",
   "PCM Inputs"
 };
 

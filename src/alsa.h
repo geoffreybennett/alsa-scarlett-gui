@@ -28,11 +28,14 @@ enum {
   // Mixer inputs/outputs
   PC_MIX   = 1,
 
+  // DSP inputs/outputs
+  PC_DSP   = 2,
+
   // PCM inputs/outputs
-  PC_PCM   = 2,
+  PC_PCM   = 3,
 
   // number of port categories
-  PC_COUNT = 3
+  PC_COUNT = 4
 };
 
 // names for the port categories
@@ -56,7 +59,7 @@ struct routing_src {
   // the enum id of the alsa item
   int id;
 
-  // PC_MIX, PC_PCM, or PC_HW
+  // PC_DSP, PC_MIX, PC_PCM, or PC_HW
   int port_category;
 
   // 0-based count within port_category
@@ -79,7 +82,7 @@ struct routing_src {
 // entry in alsa_card routing_snks (routing sinks) array for alsa
 // elements that are routing sinks like Analogue Output 01 Playback
 // Enum
-// port_category is set to PC_MIX, PC_PCM, PC_HW
+// port_category is set to PC_DSP, PC_MIX, PC_PCM, PC_HW
 // port_num is a count (0-based) within that category
 struct routing_snk {
 
@@ -89,7 +92,7 @@ struct routing_snk {
   // pointer back to the element this entry is associated with
   struct alsa_elem *elem;
 
-  // PC_MIX, PC_PCM, or PC_HW
+  // PC_DSP, PC_MIX, PC_PCM, or PC_HW
   int port_category;
 
   // 0-based count within port_category
@@ -164,6 +167,8 @@ struct alsa_card {
   GtkWidget          *routing_hw_out_grid;
   GtkWidget          *routing_pcm_in_grid;
   GtkWidget          *routing_pcm_out_grid;
+  GtkWidget          *routing_dsp_in_grid;
+  GtkWidget          *routing_dsp_out_grid;
   GtkWidget          *routing_mixer_in_grid;
   GtkWidget          *routing_mixer_out_grid;
   GtkWidget          *meters[MAX_METERS];

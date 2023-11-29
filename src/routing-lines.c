@@ -10,6 +10,10 @@ static const double dash_dotted[] = { 1, 10 };
 // dash when dragging and not connected
 static const double dash[] = { 4 };
 
+// is a port category a mixer or DSP port, therefore at the
+// top/bottom?
+#define IS_MIXER(x) ((x) == PC_MIX || (x) == PC_DSP)
+
 static void choose_line_colour(
   struct routing_src *r_src,
   struct routing_snk *r_snk,
@@ -53,8 +57,8 @@ static void choose_line_colour(
   }
 
   // mix <-> non-mix, add blue
-  if ((r_src->port_category == PC_MIX) !=
-      (r_snk->port_category == PC_MIX)) {
+  if (IS_MIXER(r_src->port_category) !=
+      IS_MIXER(r_snk->port_category)) {
     *b = 0.5;
   }
 
@@ -166,16 +170,19 @@ static void draw_connection(
   cairo_t *cr,
   double   x1,
   double   y1,
-  int      src_is_mixer,
+  int      src_port_category,
   double   x2,
   double   y2,
-  int      snk_is_mixer,
+  int      snk_port_category,
   double   r,
   double   g,
   double   b,
   double   w
 ) {
   double x3 = x1, y3 = y1, x4 = x2, y4 = y2;
+
+  int src_is_mixer = IS_MIXER(src_port_category);
+  int snk_is_mixer = IS_MIXER(snk_port_category);
 
   // vertical/horizontal?
   if (src_is_mixer == snk_is_mixer) {
@@ -241,7 +248,7 @@ static void get_src_center(
   double             *y
 ) {
   get_widget_center(r_src->widget2, parent, x, y);
-  if (r_src->port_category == PC_MIX)
+  if (IS_MIXER(r_src->port_category))
     (*y)++;
 }
 
@@ -252,7 +259,7 @@ static void get_snk_center(
   double             *y
 ) {
   get_widget_center(r_snk->elem->widget2, parent, x, y);
-  if (r_snk->port_category == PC_MIX)
+  if (IS_MIXER(r_snk->port_category))
     (*y)++;
 }
 
@@ -314,8 +321,8 @@ void draw_routing_lines(
     // draw the connection
     draw_connection(
       cr,
-      x1, y1, r_src->port_category == PC_MIX,
-      x2, y2, r_snk->port_category == PC_MIX,
+      x1, y1, r_src->port_category,
+      x2, y2, r_snk->port_category,
       r, g, b, 2
     );
   }
@@ -376,8 +383,8 @@ void draw_drag_line(
   if (card->src_drag && card->snk_drag) {
     draw_connection(
       cr,
-      x1, y1, card->src_drag->port_category == PC_MIX,
-      x2, y2, card->snk_drag->port_category == PC_MIX,
+      x1, y1, card->src_drag->port_category,
+      x2, y2, card->snk_drag->port_category,
       0, 0, 0, 2
     );
 
