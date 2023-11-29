@@ -229,6 +229,8 @@ static void create_input_controls(
     } else if (strstr(elem->name, "Phantom Power Capture Switch")) {
       int from, to;
       get_two_num_from_string(elem->name, &from, &to);
+      if (to == -1)
+        to = from;
       w = make_boolean_alsa_elem(elem, "48V Off", "48V On");
       gtk_widget_set_tooltip_text(w, phantom_descr);
       gtk_grid_attach(GTK_GRID(input_grid), w, from, 4, to - from + 1, 1);
