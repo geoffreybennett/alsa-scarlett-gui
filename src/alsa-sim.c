@@ -249,12 +249,13 @@ static int alsa_config_to_new_elem(
     }
   }
 
-  // check iface value; only interested in MIXER and PCM
+  // check iface value; only interested in CARD, MIXER, and PCM
   if (!iface) {
     printf("missing iface node in control id %d\n", id);
     goto fail;
   }
-  if (strcmp(iface, "MIXER") != 0 &&
+  if (strcmp(iface, "CARD") != 0 &&
+      strcmp(iface, "MIXER") != 0 &&
       strcmp(iface, "PCM") != 0)
     goto fail;
 

@@ -210,7 +210,10 @@ void add_mixer_action_map(struct alsa_card *card) {
     card
   );
 
-  if (card->firmware_version) {
+  // Hide the levels menu item if there is no "Firmware Version"
+  // control (working kernel support for level meters was added in the
+  // same version as the "Firmware Version" control)
+  if (get_elem_by_name(card->elems, "Firmware Version")) {
     g_action_map_add_action_entries(
       G_ACTION_MAP(card->window_main),
       levels_entries,
