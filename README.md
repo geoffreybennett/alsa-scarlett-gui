@@ -1,8 +1,14 @@
-# ALSA Scarlett Gen 2/3 Control Panel (`alsa-scarlett-gui`)
+# ALSA Scarlett2 Control Panel (`alsa-scarlett-gui`)
 
 `alsa-scarlett-gui` is a Gtk4 GUI for the ALSA controls presented by
-the Linux kernel Focusrite Scarlett Gen 2/3/Clarett USB/Clarett+ Mixer
-Driver.
+the Linux kernel Focusrite Scarlett2 USB Protocol Mixer Driver.
+
+Supported interfaces:
+- Scarlett 2nd Gen 6i6, 18i8, 18i20 (the smaller interfaces are
+  controlled with physical buttons only)
+- Scarlett 3rd Gen Solo, 2i2, 4i4, 8i6, 18i8, 18i20
+- Clarett 2Pre, 4Pre, 8Pre USB
+- Clarett+ 2Pre, 4Pre, 8Pre
 
 ## About
 
@@ -15,8 +21,8 @@ functionality). However, except for some of the smallest models, they
 have a bunch of proprietary functionality that required a kernel
 driver to be written specifically for those devices.
 
-Linux kernel support (“ALSA Focusrite Scarlett Gen 2/3 Mixer Driver”)
-for the proprietary functionality was first added in:
+Linux kernel support (the “ALSA Focusrite Scarlett2 USB Protocol Mixer
+Driver”) for the proprietary functionality was first added in:
 - Scarlett Gen 2: Linux 5.4 (bugs fixed in Linux 5.14)
 - Scarlett Gen 3: Linux 5.14
 - Clarett+ 8Pre: Linux 6.1
@@ -57,15 +63,11 @@ testing! Any donation is appreciated.
 
 ## Scarlett Gen 4 Support
 
-Focusrite recently released 3 new "Generation 4" interfaces: Solo,
-2i2, and 4i4. Thanks to all the Linux Musicians who donated so I could
-purchase one of each Gen 4 interface: https://gofund.me/ae997781,
-support for these is coming soon.
+Focusrite recently released 3 new “Generation 4” interfaces: Solo,
+2i2, and 4i4. The first draft of kernel support is available here:
+https://github.com/geoffreybennett/scarlett-gen2/releases/tag/v6.5.11-g4.1
 
-The overwhelming response to the GoFundMe also got the attention of
-Focusrite. They offered to send me any devices that I didn't already
-have, and also said that for any future product releases, they will do
-their utmost to send me devices in advance.
+Please contact me by email if you would like to help test.
 
 ## Vocaster Support
 
