@@ -7,6 +7,8 @@
 #include "stringhelper.h"
 #include "window-iface.h"
 
+#define MAX_TLV_RANGE_SIZE 256
+
 // names for the port categories
 const char *port_category_names[PC_COUNT] = {
   "Hardware Outputs",
@@ -339,6 +341,54 @@ static void alsa_get_elem_list(struct alsa_card *card) {
       continue;
     if (strstr(alsa_elem.name, "Channel Map"))
       continue;
+
+    // get TLV info if it's a volume control
+    if (alsa_elem.type == SND_CTL_ELEM_TYPE_INTEGER) {
+      snd_ctl_elem_info_t *elem_info;
+
+      snd_ctl_elem_info_alloca(&elem_info);
+      snd_ctl_elem_info_set_numid(elem_info, alsa_elem.numid);
+      snd_ctl_elem_info(card->handle, elem_info);
+
+      if (snd_ctl_elem_info_is_tlv_readable(elem_info)) {
+        snd_ctl_elem_id_t *elem_id;
+        unsigned int tlv[MAX_TLV_RANGE_SIZE];
+        unsigned int *dbrec;
+        int ret;
+        long min_dB, max_dB;
+
+        snd_ctl_elem_id_alloca(&elem_id);
+        snd_ctl_elem_id_set_numid(elem_id, alsa_elem.numid);
+
+        ret = snd_ctl_elem_tlv_read(
+          card->handle, elem_id, tlv, sizeof(tlv)
+        );
+        if (ret < 0) {
+          fprintf(stderr, "TLV read error %d\n", ret);
+          continue;
+        }
+
+        ret = snd_tlv_parse_dB_info(tlv, sizeof(tlv), &dbrec);
+        if (ret <= 0) {
+          fprintf(stderr, "TLV parse error %d\n", ret);
+          continue;
+        }
+
+        int min_val = snd_ctl_elem_info_get_min(elem_info);
+        int max_val = snd_ctl_elem_info_get_max(elem_info);
+
+        ret = snd_tlv_get_dB_range(tlv, min_val, max_val, &min_dB, &max_dB);
+        if (ret != 0) {
+          fprintf(stderr, "TLV range error %d\n", ret);
+          continue;
+        }
+
+        alsa_elem.min_val = min_val;
+        alsa_elem.max_val = max_val;
+        alsa_elem.min_dB = min_dB / 100;
+        alsa_elem.max_dB = max_dB / 100;
+      }
+    }
 
     if (card->elems->len <= alsa_elem.numid)
       g_array_set_size(card->elems, alsa_elem.numid + 1);

@@ -4,11 +4,6 @@
 #include "gtkdial.h"
 #include "widget-volume.h"
 
-// volume controls -127dB - 0dB
-#define DIAL_MIN_VALUE 0
-#define DIAL_MAX_VALUE 127
-#define DIAL_ZERO_DB_VALUE 127
-
 static void volume_changed(GtkWidget *widget, struct alsa_elem *elem) {
   int value = gtk_dial_get_value(GTK_DIAL(widget));
 
@@ -23,7 +18,10 @@ static void volume_updated(struct alsa_elem *elem) {
   gtk_dial_set_value(GTK_DIAL(elem->widget), value);
 
   char s[20];
-  snprintf(s, 20, "%ddB", value - 127);
+  float scale = (float)(elem->max_dB - elem->min_dB) /
+                       (elem->max_val - elem->min_val);
+
+  snprintf(s, 20, "%ddB", (int)(value * scale + elem->min_dB));
   gtk_label_set_text(GTK_LABEL(elem->widget2), s);
 }
 
@@ -32,9 +30,15 @@ GtkWidget *make_volume_alsa_elem(struct alsa_elem *elem) {
   gtk_widget_set_hexpand(vbox, TRUE);
 
   GtkWidget *dial = gtk_dial_new_with_range(
-    DIAL_MIN_VALUE, DIAL_MAX_VALUE, 1
+    elem->min_val, elem->max_val, 1
   );
-  gtk_dial_set_zero_db(GTK_DIAL(dial), DIAL_ZERO_DB_VALUE);
+
+  // calculate 0dB value from min/max dB and min/max value
+  float scale = (float)(elem->max_dB - elem->min_dB) /
+                       (elem->max_val - elem->min_val);
+  int zero_db_value = (int)((0 - elem->min_dB) / scale + elem->min_val);
+
+  gtk_dial_set_zero_db(GTK_DIAL(dial), zero_db_value);
 
   gtk_widget_set_vexpand(dial, TRUE);
 

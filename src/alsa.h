@@ -115,6 +115,12 @@ struct alsa_elem {
   int         type;
   int         count;
 
+  // for gain/volume elements, the dB range and step
+  int min_val;
+  int max_val;
+  int min_dB;
+  int max_dB;
+
   // for the number (or translated letter; A = 1) in the item name
   // TODO: move this to struct routing_snk?
   int lr_num;
