@@ -73,7 +73,7 @@ If the driver is disabled you’ll see a message like:
 ```
 Focusrite Scarlett Gen 2/3 Mixer Driver disabled; use options
 snd_usb_audio vid=0x1235 pid=0x8215 device_setup=1 to enable and
-report any issues to g@b4.vu",
+report any issues to g@b4.vu
 ```
 
 ## Building and Running
