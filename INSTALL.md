@@ -2,8 +2,11 @@
 
 ## Prerequisites
 
-Linux Kernel with the ALSA Scarlett2 Protocol Driver. Use `uname -r`
-to check what kernel version you are running.
+### Linux Kernel
+
+You need to be running a Linux Kernel that has the ALSA Scarlett2
+Protocol Driver. Use `uname -r` to check what kernel version you are
+running.
 
 - Use at least version 5.14 for Scarlett Gen 3 support and bug fixes
   for the Gen 2 support.
@@ -15,6 +18,11 @@ If you don't have 6.7, you can get the driver from here and build it
 for your current kernel:
 
 https://github.com/geoffreybennett/scarlett-gen2/releases/tag/v6.5.11c1
+
+### Gtk4
+
+You need a Linux distribution with Gtk4 development libraries. If it
+doesn't have them natively, try the Flatpak instructions below.
 
 ## Enabling the Driver
 
