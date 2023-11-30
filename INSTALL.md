@@ -1,4 +1,4 @@
-# ALSA Scarlett Gen 2/3 Control Panel Installation
+# ALSA Scarlett2 Control Panel Installation
 
 ## Prerequisites
 

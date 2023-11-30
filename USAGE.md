@@ -1,4 +1,4 @@
-# ALSA Scarlett Gen 2/3 Control Panel Usage
+# ALSA Scarlett2 Control Panel Usage
 
 Refer to [INSTALL.md](INSTALL.md) for prerequisites, how to build,
 install, and run.
