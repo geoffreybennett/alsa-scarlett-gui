@@ -14,14 +14,20 @@ static void gain_updated(struct alsa_elem *elem) {
   int is_writable = alsa_get_elem_writable(elem);
   gtk_widget_set_sensitive(elem->widget, is_writable);
 
-  int value = alsa_get_elem_value(elem);
-  gtk_dial_set_value(GTK_DIAL(elem->widget), value);
+  int alsa_value = alsa_get_elem_value(elem);
+  gtk_dial_set_value(GTK_DIAL(elem->widget), alsa_value);
 
   char s[20];
   float scale = (float)(elem->max_dB - elem->min_dB) /
                        (elem->max_val - elem->min_val);
 
-  snprintf(s, 20, "%.1f", value * scale + elem->min_dB);
+  float value = (float)alsa_value * scale + elem->min_dB;
+
+  if (scale < 1)
+    snprintf(s, 20, "%.1f", value);
+  else
+    snprintf(s, 20, "%.0fdB", value);
+
   gtk_label_set_text(GTK_LABEL(elem->widget2), s);
 }
 

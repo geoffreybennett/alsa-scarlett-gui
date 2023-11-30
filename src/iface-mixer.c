@@ -8,7 +8,7 @@
 #include "widget-boolean.h"
 #include "widget-combo.h"
 #include "widget-dual.h"
-#include "widget-volume.h"
+#include "widget-gain.h"
 #include "window-helper.h"
 #include "window-levels.h"
 #include "window-mixer.h"
@@ -290,7 +290,7 @@ static void create_output_controls(
     // output controls
     if (strncmp(elem->name, "Line", 4) == 0) {
       if (strstr(elem->name, "Playback Volume")) {
-        w = make_volume_alsa_elem(elem);
+        w = make_gain_alsa_elem(elem);
         gtk_grid_attach(
           GTK_GRID(output_grid), w, line_num - 1 + line_1_col, 1, 1, 1
         );
@@ -331,7 +331,7 @@ static void create_output_controls(
         "outputs which have been set to “HW”."
       );
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
-      w = make_volume_alsa_elem(elem);
+      w = make_gain_alsa_elem(elem);
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
     } else if (strcmp(elem->name, "Mute Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
