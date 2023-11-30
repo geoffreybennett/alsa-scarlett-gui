@@ -1,10 +1,10 @@
-# Focusrite Scarlett Interface Features by Model
+# Focusrite Scarlett and Clarett Interface Features by Model
 
 The information here was compiled carefully and is believed accurate
 but there might still be mistakes. Please independently confirm before
 relying on anything here.
 
-## 6i6 Gen 2
+## Scarlett 6i6 Gen 2
 
 - 6× Hardware Inputs
   - Analogue In 1–2: Mic/Line/Inst In 1–2 (Pad)
@@ -47,7 +47,7 @@ relying on anything here.
 
 - Clock Source: Internal or S/PDIF
 
-## 18i8 Gen 2
+## Scarlett 18i8 Gen 2
 
 - 18× Hardware Inputs
   - Analogue 1–2: Mic/Line/Inst In 1–2 (Pad)
@@ -96,7 +96,7 @@ relying on anything here.
 
 - Clock Source: Internal, S/PDIF, or ADAT
 
-## 18i20 Gen 2
+## Scarlett 18i20 Gen 2
 
 - 18× Hardware Inputs
   - Analogue 1–2: Mic/Line/Inst In 1–2 (Pad)
@@ -151,7 +151,7 @@ relying on anything here.
 
 - Clock Source: Internal, S/PDIF, or ADAT
 
-## Solo Gen 3
+## Scarlett Solo Gen 3
 
 - 2× Hardware Inputs
   - Analogue In 1: Mic In (Air, Phantom Power)
@@ -177,7 +177,7 @@ relying on anything here.
 - Direct Monitor:
   - On: mixes Analogue 1+2 Inputs into both Analogue 1+2 Outputs
 
-## 2i2 Gen 3
+## Scarlett 2i2 Gen 3
 
 - 2× Hardware Inputs
   - Analogue In 1–2: Mic/Line/Inst In 1–2 (Air)
@@ -207,7 +207,7 @@ relying on anything here.
   - Stereo: mixes Analogue 1+2 Inputs into Analogue 1+2 Outputs
     respectively
 
-## 4i4 Gen 3
+## Scarlett 4i4 Gen 3
 
 - 4× Hardware Inputs
   - Analogue In 1–2: Mic/Line/Inst In 1–2 (Air, Pad)
@@ -246,7 +246,7 @@ relying on anything here.
 
 - Sync Status
 
-## 8i6 Gen 3
+## Scarlett 8i6 Gen 3
 
 - 8× Hardware Inputs
   - Analogue 1–2: Mic/Line/Inst In 1–2 (Air, Pad)
@@ -290,7 +290,7 @@ relying on anything here.
 
 - Clock Source: Internal or S/PDIF
 
-## 18i8 Gen 3
+## Scarlett 18i8 Gen 3
 
 - 18× Hardware Inputs
   - Analogue 1–2: Mic/Line/Inst In 1–2 (Air, Pad)
@@ -351,7 +351,7 @@ driver hides this from you.
 
 - Clock Source: Internal, S/PDIF, or ADAT
 
-## 18i20 Gen 3
+## Scarlett 18i20 Gen 3
 
 - 19× Hardware Inputs
   - Analogue 1–2: Mic/Line/Inst In 1–2 (Air, Pad)
@@ -407,6 +407,157 @@ driver hides this from you.
 - Speaker Switching
 
 - Talkback Mic
+
+- Sync Status
+
+- Clock Source: Internal, S/PDIF, or ADAT
+
+## Clarett 2Pre USB and Clarett+ 2Pre
+
+- 12× Hardware Inputs
+  - Analogue 1–2: Mic/Line/Inst In 1–2 (Air)
+  - S/PDIF 1–2
+  - ADAT 1–8
+
+- Hardware Input Controls
+  - 2× Input Gain knobs for Analogue In 1–2
+  - Phantom Power for Analogue 1–2 separate
+
+- 4× Hardware Outputs
+  - Analogue 1: Line 1 Out (Monitor L)
+  - Analogue 2: Line 2 Out (Monitor R)
+  - Analogue 3: Line 3 Out + Headphone Left
+  - Analogue 4: Line 4 Out + Headphone Right
+
+- Hardware Output Controls
+  - For Analogue 1–4 Outputs:
+    - 4× SW/HW Volume Control Switch
+    - 4× SW Line Out Gain controls −127dB to 0dB
+    - 4× SW Mute
+  - Monitor volume knob controlling volume of Analogue 1–4 (selected
+    by SW/HW Volume Control Switches)
+  - Global Mute and Dim controlling Analogue 1–4 (enabled per-channel
+    if SW/HW Volume Control Switch set to HW)
+  - Headphone volume knob controlling Headphone volume (applied in
+    addition to the SW/HW Volume Control)
+
+- Mixer: 18 input (1–18), 10 output (A–J)
+  - 18×10 gain controls −80dB to +6dB
+  - Each input assignable to any of the assignable outputs
+
+- 12× PCM Inputs (USB device to host)
+
+- 4× PCM Outputs (USB host to device)
+
+- Assignable outputs to the hardware outputs, mixer, and PCM Inputs:
+  - Off, Analogue Inputs 1–2, S/PDIF 1–2, ADAT 1–8, Mix A–J, PCM
+    Outputs 1–4
+
+- Sync Status
+
+- Clock Source: Internal, S/PDIF, or ADAT
+
+## Clarett 4Pre USB and Clarett+ 4Pre
+
+- 12× Hardware Inputs
+  - Analogue 1–2: Mic/Line/Inst In 1–2 (Air)
+  - Analogue 3–4: Mic/Line In 3–4 (Air)
+  - Analogue 4–8: Mic/Line In 4–8
+  - S/PDIF 1–2
+  - ADAT 1–8
+
+- Hardware Input Controls
+  - 4× Input Gain knobs for Analogue In 1–4
+  - Phantom Power for Analogue 1–2 linked
+  - Phantom Power for Analogue 3–4 linked
+
+- 8× Hardware Outputs
+  - Analogue 1: Line 1 Out (Monitor L)
+  - Analogue 2: Line 2 Out (Monitor R)
+  - Analogue 3: Line 3 Out + Headphone 1 Left
+  - Analogue 4: Line 4 Out + Headphone 1 Right
+  - Analogue 5: Line 5 Out + Headphone 2 Left
+  - Analogue 6: Line 6 Out + Headphone 2 Right
+  - S/PDIF 1–2
+
+- Hardware Output Controls
+  - For Analogue 1–6 Outputs:
+    - 6× SW/HW Volume Control Switch
+    - 6× SW Line Out Gain controls −127dB to 0dB
+    - 6× SW Mute
+  - Monitor volume knob controlling volume of Analogue 1–6 (selected
+    by SW/HW Volume Control Switches)
+  - Global Mute and Dim controlling Analogue 1–6 (enabled per-channel
+    if SW/HW Volume Control Switch set to HW)
+  - 2× Headphone volume knob controlling Headphone volume (applied in
+    addition to the SW/HW Volume Control)
+
+- Mixer: 18 input (1–18), 10 output (A–J)
+  - 18×10 gain controls −80dB to +6dB
+  - Each input assignable to any of the assignable outputs
+
+- 18× PCM Inputs (USB device to host)
+
+- 8× PCM Outputs (USB host to device)
+
+- Assignable outputs to the hardware outputs, mixer, and PCM Inputs:
+  - Off, Analogue Inputs 1–8, S/PDIF 1–2, ADAT 1–8, Mix A–J, PCM
+    Outputs 1–8
+
+- Sync Status
+
+- Clock Source: Internal, S/PDIF, or ADAT
+
+## Clarett 8Pre USB and Clarett+ 8Pre
+
+- 18× Hardware Inputs
+  - Analogue 1–2: Mic/Line/Inst In 1–2 (Air)
+  - Analogue 3–8: Mic/Line In 3–8 (Air)
+  - S/PDIF 1–2
+  - ADAT 1–8
+
+- Hardware Input Controls
+  - 8× Input Gain knobs for Analogue In 1–8
+  - Phantom Power for Analogue 1–4 linked
+  - Phantom Power for Analogue 5–8 linked
+
+- 20× Hardware Outputs
+  - Analogue  1: Line  1 Out (Monitor L)
+  - Analogue  2: Line  2 Out (Monitor R)
+  - Analogue  3: Line  3 Out
+  - Analogue  4: Line  4 Out
+  - Analogue  5: Line  5 Out
+  - Analogue  6: Line  6 Out
+  - Analogue  7: Line  7 Out + Headphone 1 Left
+  - Analogue  8: Line  8 Out + Headphone 1 Right
+  - Analogue  9: Line  9 Out + Headphone 2 Left
+  - Analogue 10: Line 10 Out + Headphone 2 Right
+  - S/PDIF 1–2
+  - ADAT 1–8
+
+- Hardware Output Controls
+  - For Analogue 1–10 Outputs:
+    - 6× SW/HW Volume Control Switch
+    - 6× SW Line Out Gain controls −127dB to 0dB
+    - 6× SW Mute
+  - Monitor volume knob controlling volume of Analogue 1–10 (selected
+    by SW/HW Volume Control Switches)
+  - Global Mute and Dim controlling Analogue 1–10 (enabled per-channel
+    if SW/HW Volume Control Switch set to HW)
+  - 2× Headphone volume knob controlling Headphone volume (applied in
+    addition to the SW/HW Volume Control)
+
+- Mixer: 18 input (1–18), 10 output (A–J)
+  - 18×10 gain controls −80dB to +6dB
+  - Each input assignable to any of the assignable outputs
+
+- 18× PCM Inputs (USB device to host)
+
+- 20× PCM Outputs (USB host to device)
+
+- Assignable outputs to the hardware outputs, mixer, and PCM Inputs:
+  - Off, Analogue Inputs 1–8, S/PDIF 1–2, ADAT 1–8, Mix A–J, PCM
+    Outputs 1–20
 
 - Sync Status
 
