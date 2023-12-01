@@ -471,7 +471,7 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
     card, "Mixer", G_CALLBACK(window_mixer_close_request)
   );
 
-  gtk_window_set_child(GTK_WINDOW(card->window_mixer), mixer_top);
+  create_scrollable_window(card->window_mixer, mixer_top);
 
   GtkWidget *levels_top = create_levels_controls(card);
 

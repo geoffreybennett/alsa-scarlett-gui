@@ -28,6 +28,9 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   GtkWidget *mixer_top = gtk_grid_new();
   GArray *elems = card->elems;
 
+  gtk_widget_set_halign(mixer_top, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(mixer_top, GTK_ALIGN_CENTER);
+
   gtk_widget_set_margin(mixer_top, 5);
   gtk_grid_set_column_homogeneous(GTK_GRID(mixer_top), TRUE);
 
