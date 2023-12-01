@@ -18,21 +18,35 @@ controls.
 
 In order to get audio working? No. Focusrite USB interfaces are
 “plug-and-play” — they are USB Audio Class Compliant, meaning they
-work out-of-the-box with the standard ALSA USB audio driver[^1].
+work out-of-the-box with the standard ALSA USB audio driver (to get
+full functionality on Scarlett 3rd/4th Gen interfaces, first
+deactivate MSD mode by holding down the 48V button while powering it
+on).
 
-[^1]: To get full functionality on Scarlett 3rd/4th Gen interfaces,
-first deactivate MSD mode for by holding down the 48V button while
-powering it on (MSD is the virtual disk on the Scarlett that has a
-link to the Focusrite product registration page; until you turn that
-off not all features will be available).
+## MSD Mode?
 
-## What is the purpose of the driver then?
+“MSD Mode” is the “Mass Storage Device Mode” that the Scarlett 3rd and
+4th Gen interfaces ship in.
+
+If MSD Mode is enabled, you need to disable it and restart your
+interface to get access to its full functionality.
+
+When you plug the interface in, there'll be a tiny read-only virtual
+disk that has a link to the Focusrite product registration page; until
+you turn off MSD Mode not all features of the interface will be
+available.
+
+You can turn off MSD Mode by holding down the 48V button while
+powering on the interface, or by clicking the button in
+`alsa-scarlett-gui`.
+
+## What is the purpose of the driver if it's not needed for audio?
 
 This driver is for users who want more control over their interface.
 It allows for detailed manipulation of internal audio routing and
-settings specific to Scarlett devices, beyond the basic audio I/O
-functionality. Also, being able to monitor the audio levels seen by
-interface is really useful.
+settings specific to Scarlett and Clarett devices, beyond the basic
+audio I/O functionality. Also, being able to monitor the audio levels
+seen by the interface is really useful.
 
 ## What interfaces are supported?
 
