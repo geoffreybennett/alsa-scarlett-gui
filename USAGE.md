@@ -207,6 +207,9 @@ for those channels. When using headphones, the volumes for those
 channels would usually be set to 0dB and the actual volume controlled
 with the physical headphone volume control(s).
 
+See [INTERFACES.md](INTERFACES.md) for detailed information about the
+analogue inputs and outputs.
+
 ### Routing
 
 The routing window allows complete control of signal routing between
