@@ -4,6 +4,21 @@ The information here was compiled carefully and is believed accurate
 but there might still be mistakes. Please independently confirm before
 relying on anything here.
 
+# Table of Contents
+
+- [Scarlett 6i6 Gen 2](#scarlett-6i6-gen-2)
+- [Scarlett 18i8 Gen 2](#scarlett-18i8-gen-2)
+- [Scarlett 18i20 Gen 2](#scarlett-18i20-gen-2)
+- [Scarlett Solo Gen 3](#scarlett-solo-gen-3)
+- [Scarlett 2i2 Gen 3](#scarlett-2i2-gen-3)
+- [Scarlett 4i4 Gen 3](#scarlett-4i4-gen-3)
+- [Scarlett 8i6 Gen 3](#scarlett-8i6-gen-3)
+- [Scarlett 18i8 Gen 3](#scarlett-18i8-gen-3)
+- [Scarlett 18i20 Gen 3](#scarlett-18i20-gen-3)
+- [Clarett 2Pre USB and Clarett+ 2Pre](#clarett-2pre-usb-and-clarett-2pre)
+- [Clarett 4Pre USB and Clarett+ 4Pre](#clarett-4pre-usb-and-clarett-4pre)
+- [Clarett 8Pre USB and Clarett+ 8Pre](#clarett-8pre-usb-and-clarett-8pre)
+
 ## Scarlett 6i6 Gen 2
 
 - 6× Hardware Inputs
