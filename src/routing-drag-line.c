@@ -57,8 +57,12 @@ static void drag_motion(
              gtk_adjustment_get_page_size(vadj);
 
   // Determine the relative size of the scrollable area
-  double rel_w = gtk_adjustment_get_upper(hadj) - gtk_widget_get_allocated_width(GTK_WIDGET(sw)) + gtk_widget_get_allocated_width(child);
-  double rel_h = gtk_adjustment_get_upper(vadj) - gtk_widget_get_allocated_height(GTK_WIDGET(sw)) + gtk_widget_get_allocated_height(child);
+  double rel_w = gtk_adjustment_get_upper(hadj) -
+                 gtk_widget_get_allocated_width(GTK_WIDGET(sw)) +
+                 gtk_widget_get_allocated_width(child);
+  double rel_h = gtk_adjustment_get_upper(vadj) -
+                 gtk_widget_get_allocated_height(GTK_WIDGET(sw)) +
+                 gtk_widget_get_allocated_height(child);
 
   // Add margin
   rel_w -= 100;

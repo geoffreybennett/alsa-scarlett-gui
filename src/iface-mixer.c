@@ -383,8 +383,12 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   gtk_widget_set_margin(top, 10);
   gtk_grid_set_spacing(GTK_GRID(top), 10);
 
-  int input_count = get_max_elem_by_name(card->elems, "Line", "Capture Switch");
-  int output_count = get_max_elem_by_name(card->elems, "Line", "Playback Volume");
+  int input_count = get_max_elem_by_name(
+    card->elems, "Line", "Capture Switch"
+  );
+  int output_count = get_max_elem_by_name(
+    card->elems, "Line", "Playback Volume"
+  );
 
   create_global_controls(card, top, &x);
   create_input_controls(card, top, &x);
@@ -440,8 +444,12 @@ static void create_scrollable_window(GtkWidget *window, GtkWidget *controls) {
   gtk_scrolled_window_set_child(
     GTK_SCROLLED_WINDOW(scrolled_window), controls
   );
-  gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scrolled_window), TRUE);
-  gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(scrolled_window), TRUE);
+  gtk_scrolled_window_set_propagate_natural_height(
+    GTK_SCROLLED_WINDOW(scrolled_window), TRUE
+  );
+  gtk_scrolled_window_set_propagate_natural_width(
+    GTK_SCROLLED_WINDOW(scrolled_window), TRUE
+  );
 
   gtk_window_set_child(GTK_WINDOW(window), scrolled_window);
   gtk_window_set_resizable(GTK_WINDOW(window), TRUE);

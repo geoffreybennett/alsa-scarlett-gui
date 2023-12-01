@@ -63,7 +63,9 @@ static void open_cb(
 }
 
 int main(int argc, char **argv) {
-  app = gtk_application_new("vu.b4.alsa-scarlett-gui", G_APPLICATION_HANDLES_OPEN);
+  app = gtk_application_new(
+    "vu.b4.alsa-scarlett-gui", G_APPLICATION_HANDLES_OPEN
+  );
   g_signal_connect(app, "startup", G_CALLBACK(startup), NULL);
   g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
   g_signal_connect(app, "open", G_CALLBACK(open_cb), NULL);
