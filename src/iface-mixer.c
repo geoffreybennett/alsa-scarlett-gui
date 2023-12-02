@@ -9,6 +9,7 @@
 #include "widget-combo.h"
 #include "widget-dual.h"
 #include "widget-gain.h"
+#include "widget-label.h"
 #include "window-helper.h"
 #include "window-levels.h"
 #include "window-mixer.h"
@@ -146,6 +147,77 @@ static GtkWidget *create_global_box(GtkWidget *grid, int *x, int orient) {
   (*x)++;
 
   return controls;
+}
+
+static void create_input_link_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               line_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Off", "On");
+
+  int from, to;
+  get_two_num_from_string(elem->name, &from, &to);
+  if (to == -1)
+    to = from;
+
+  gtk_grid_attach(GTK_GRID(grid), w, from, current_row, to - from + 1, 1);
+}
+
+static void create_input_gain_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               line_num
+) {
+  GtkWidget *w = make_gain_alsa_elem(elem);
+
+  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+}
+
+static void create_input_autogain_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               line_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Off", "On");
+  gtk_widget_set_tooltip_text(
+    w,
+    "Autogain will listen to the input signal for 10 seconds and "
+    "automatically set the gain of the input channel to get the "
+    "best signal level."
+  );
+
+  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+}
+
+static void create_input_autogain_status_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               line_num
+) {
+  GtkWidget *w = make_label_alsa_elem(elem);
+
+  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+}
+
+static void create_input_safe_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               line_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Off", "On");
+  gtk_widget_set_tooltip_text(
+    w,
+    "Enabling Safe Mode prevents the input from clipping by "
+    "automatically reducing the gain if the signal is too hot."
+  );
+
+  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
 }
 
 static void create_input_level_control(
@@ -287,6 +359,27 @@ static void create_input_controls(
   }
 
   int current_row = 1;
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Link", "Link Capture Switch", create_input_link_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Gain", "Gain Capture Volume", create_input_gain_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Autogain", "Autogain Capture Switch", create_input_autogain_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Autogain Status", "Autogain Status Capture Enum",
+    create_input_autogain_status_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Safe", "Safe Capture Switch", create_input_safe_control
+  );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "Level", "Level Capture Enum", create_input_level_control
