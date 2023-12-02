@@ -85,6 +85,12 @@ installed:
 sudo dnf -y install alsa-lib-devel gtk4-devel
 ```
 
+On OpenSUSE:
+
+```
+sudo zypper in git alsa-devel gtk4-devel
+```
+
 On Ubuntu 22.04:
 
 ```
