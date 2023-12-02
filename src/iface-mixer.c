@@ -92,18 +92,19 @@ static void add_speaker_switching_controls(
   if (!speaker_switching)
     return;
 
-  make_dual_boolean_alsa_elems(speaker_switching, "Off", "On", "Main", "Alt");
-  GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  GtkWidget *w = make_dual_boolean_alsa_elems(
+    speaker_switching,
+    "Speaker Switching",
+    "Off", "On", "Main", "Alt"
+  );
+
   gtk_widget_set_tooltip_text(
-    b,
+    w,
     "Speaker Switching lets you swap between two pairs of "
     "monitoring speakers very easily."
   );
-  GtkWidget *l = gtk_label_new("Speaker Switching");
-  gtk_box_append(GTK_BOX(global_controls), b);
-  gtk_box_append(GTK_BOX(b), l);
-  gtk_box_append(GTK_BOX(b), speaker_switching->widget);
-  gtk_box_append(GTK_BOX(b), speaker_switching->widget2);
+
+  gtk_box_append(GTK_BOX(global_controls), w);
 }
 
 static void add_talkback_controls(
@@ -119,19 +120,20 @@ static void add_talkback_controls(
   if (!talkback)
     return;
 
-  make_dual_boolean_alsa_elems(talkback, "Disabled", "Enabled", "Off", "On");
-  GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  GtkWidget *w = make_dual_boolean_alsa_elems(
+    talkback,
+    "Talkback",
+    "Disabled", "Enabled", "Off", "On"
+  );
+
   gtk_widget_set_tooltip_text(
-    b,
+    w,
     "Talkback lets you add another channel (usually the talkback "
     "mic) to a mix with a button push, usually to talk to "
     "musicians, and without using an additional mic channel."
   );
-  GtkWidget *l = gtk_label_new("Talkback");
-  gtk_box_append(GTK_BOX(global_controls), b);
-  gtk_box_append(GTK_BOX(b), l);
-  gtk_box_append(GTK_BOX(b), talkback->widget);
-  gtk_box_append(GTK_BOX(b), talkback->widget2);
+
+  gtk_box_append(GTK_BOX(global_controls), w);
 }
 
 static GtkWidget *create_global_box(GtkWidget *grid, int *x, int orient) {
@@ -502,7 +504,7 @@ static void create_output_controls(
         elem, "*audio-volume-high", "*audio-volume-muted"
       );
       gtk_widget_set_tooltip_text(w, "Mute HW controlled outputs");
-      gtk_grid_attach(GTK_GRID(output_grid), elem->widget, 0, 2, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 2, 1, 1);
     } else if (strcmp(elem->name, "Dim Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
         elem, "*audio-volume-medium", "*audio-volume-low"

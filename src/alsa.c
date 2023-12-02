@@ -116,6 +116,20 @@ int is_elem_routing_snk(struct alsa_elem *elem) {
   return 0;
 }
 
+// add a callback to the list of callbacks for this element
+void alsa_elem_add_callback(
+  struct alsa_elem *elem,
+  AlsaElemCallback *callback,
+  void             *data
+) {
+  struct alsa_elem_callback *cb = calloc(1, sizeof(struct alsa_elem_callback));
+
+  cb->callback = callback;
+  cb->data = data;
+
+  elem->callbacks = g_list_append(elem->callbacks, cb);
+}
+
 //
 // alsa snd_ctl_elem_*() mediation functions
 // for simulated elements, fake the ALSA element
@@ -401,11 +415,17 @@ static void alsa_get_elem_list(struct alsa_card *card) {
 }
 
 static void alsa_elem_change(struct alsa_elem *elem) {
-  if (!elem->widget)
+  if (!elem || !elem->callbacks)
     return;
-  if (!elem->widget_callback)
-    return;
-  elem->widget_callback(elem);
+
+  for (GList *l = elem->callbacks; l; l = l->next) {
+    struct alsa_elem_callback *cb = (struct alsa_elem_callback *)l->data;
+
+    if (!cb || !cb->callback)
+      continue;
+
+    cb->callback(elem, cb->data);
+  }
 }
 
 static gboolean alsa_card_callback(

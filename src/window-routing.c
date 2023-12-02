@@ -642,8 +642,7 @@ static void setup_src_drag(struct routing_src *r_src) {
 }
 
 static void setup_snk_drag(struct routing_snk *r_snk) {
-  struct alsa_elem *elem = r_snk->elem;
-  GtkWidget *box = elem->widget;
+  GtkWidget *box = r_snk->box_widget;
 
   // handle drags on the box
   GtkDragSource *source = gtk_drag_source_new();
@@ -670,7 +669,7 @@ static void setup_snk_drag(struct routing_snk *r_snk) {
   // set the box as a drop target
   GtkDropTarget *dest = gtk_drop_target_new(G_TYPE_INT, GDK_ACTION_COPY);
   gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(dest));
-  g_signal_connect(dest, "drop", G_CALLBACK(dropped_on_snk), elem);
+  g_signal_connect(dest, "drop", G_CALLBACK(dropped_on_snk), r_snk->elem);
   g_signal_connect(dest, "accept", G_CALLBACK(snk_drop_accept), r_snk);
   g_signal_connect(dest, "enter", G_CALLBACK(snk_drop_enter), r_snk);
   g_signal_connect(dest, "leave", G_CALLBACK(snk_drop_leave), r_snk);
@@ -747,11 +746,11 @@ static void make_snk_routing_widget(
   struct alsa_elem *elem = r_snk->elem;
 
   // create a box, a "socket", and a label
-  GtkWidget *box = elem->widget = gtk_box_new(orientation, 5);
+  GtkWidget *box = r_snk->box_widget = gtk_box_new(orientation, 5);
   gtk_widget_add_css_class(box, "route-label");
   GtkWidget *label = gtk_label_new(name);
   gtk_box_append(GTK_BOX(box), label);
-  GtkWidget *socket = elem->widget2 = make_socket_widget();
+  GtkWidget *socket = r_snk->socket_widget = make_socket_widget();
   if (orientation == GTK_ORIENTATION_VERTICAL) {
     gtk_box_append(GTK_BOX(box), socket);
     gtk_widget_set_margin_start(box, 5);
@@ -777,7 +776,7 @@ static void make_snk_routing_widget(
   setup_snk_drag(r_snk);
 }
 
-static void routing_updated(struct alsa_elem *elem) {
+static void routing_updated(struct alsa_elem *elem, void *data) {
   struct alsa_card *card = elem->card;
 
   update_mixer_labels(card);
@@ -797,7 +796,7 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
     snprintf(name, 10, "%d", elem->lr_num);
     make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
     gtk_grid_attach(
-      GTK_GRID(card->routing_dsp_in_grid), elem->widget,
+      GTK_GRID(card->routing_dsp_in_grid), r_snk->box_widget,
       r_snk->port_num + 1, 0, 1, 1
     );
 
@@ -810,7 +809,7 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
     snprintf(name, 10, "%d", elem->lr_num);
     make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
     gtk_grid_attach(
-      GTK_GRID(card->routing_mixer_in_grid), elem->widget,
+      GTK_GRID(card->routing_mixer_in_grid), r_snk->box_widget,
       r_snk->port_num + 1, 0, 1, 1
     );
 
@@ -828,7 +827,7 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
     free(name);
 
     gtk_grid_attach(
-      GTK_GRID(card->routing_pcm_out_grid), elem->widget,
+      GTK_GRID(card->routing_pcm_out_grid), r_snk->box_widget,
       0, r_snk->port_num + 1, 1, 1
     );
 
@@ -848,14 +847,14 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
     free(name);
 
     gtk_grid_attach(
-      GTK_GRID(card->routing_hw_out_grid), elem->widget,
+      GTK_GRID(card->routing_hw_out_grid), r_snk->box_widget,
       0, r_snk->port_num + 1, 1, 1
     );
   } else {
     printf("invalid port category %d\n", r_snk->port_category);
   }
 
-  elem->widget_callback = routing_updated;
+  alsa_elem_add_callback(elem, routing_updated, NULL);
 }
 
 static void add_routing_widgets(

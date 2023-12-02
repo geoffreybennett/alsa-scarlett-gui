@@ -258,7 +258,7 @@ static void get_snk_center(
   double             *x,
   double             *y
 ) {
-  get_widget_center(r_snk->elem->widget2, parent, x, y);
+  get_widget_center(r_snk->socket_widget, parent, x, y);
   if (IS_MIXER(r_snk->port_category))
     (*y)++;
 }

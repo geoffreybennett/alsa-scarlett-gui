@@ -3,15 +3,25 @@
 
 #include "widget-combo.h"
 
-static void combo_box_changed(GtkWidget *widget, struct alsa_elem *elem) {
-  int value = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+struct combo {
+  struct alsa_elem *elem;
+  GtkWidget        *combo_box;
+};
 
-  alsa_set_elem_value(elem, value);
+static void combo_box_changed(GtkWidget *widget, struct combo *data) {
+  int value = gtk_combo_box_get_active(GTK_COMBO_BOX(data->combo_box));
+
+  alsa_set_elem_value(data->elem, value);
 }
 
-static void combo_box_updated(struct alsa_elem *elem) {
+static void combo_box_updated(
+  struct alsa_elem *elem,
+  void             *private
+) {
+  struct combo *data = private;
+
   int value = alsa_get_elem_value(elem);
-  gtk_combo_box_set_active(GTK_COMBO_BOX(elem->widget), value);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(data->combo_box), value);
 }
 
 // Center-align text in the combo box
@@ -29,23 +39,26 @@ static void combo_box_center_text(GtkComboBoxText *widget) {
 }
 
 GtkWidget *make_combo_box_alsa_elem(struct alsa_elem *elem) {
-  GtkWidget *combo_box = gtk_combo_box_text_new();
-  combo_box_center_text(GTK_COMBO_BOX_TEXT(combo_box));
+  struct combo *data = g_malloc(sizeof(struct combo));
+  data->elem = elem;
+  data->combo_box = gtk_combo_box_text_new();
+
+  combo_box_center_text(GTK_COMBO_BOX_TEXT(data->combo_box));
 
   int count = alsa_get_item_count(elem);
 
   for (int i = 0; i < count; i++) {
     const char *text = alsa_get_item_name(elem, i);
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_box), NULL, text);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(data->combo_box), NULL, text);
   }
 
   g_signal_connect(
-    combo_box, "changed", G_CALLBACK(combo_box_changed), elem
+    data->combo_box, "changed", G_CALLBACK(combo_box_changed), data
   );
-  elem->widget = combo_box;
-  elem->widget_callback = combo_box_updated;
 
-  combo_box_updated(elem);
+  alsa_elem_add_callback(elem, combo_box_updated, data);
 
-  return combo_box;
+  combo_box_updated(elem, data);
+
+  return data->combo_box;
 }

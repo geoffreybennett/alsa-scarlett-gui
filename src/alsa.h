@@ -17,7 +17,7 @@ struct alsa_card;
 
 // typedef for callbacks to update widgets when the alsa element
 // notifies of a change
-typedef void (AlsaElemCallback)(struct alsa_elem *);
+typedef void (AlsaElemCallback)(struct alsa_elem *, void *);
 
 // port categories for routing_src and routing_snk entries
 // must match the level meter ordering from the driver
@@ -92,6 +92,12 @@ struct routing_snk {
   // pointer back to the element this entry is associated with
   struct alsa_elem *elem;
 
+  // box widget on the routing page
+  GtkWidget *box_widget;
+
+  // socket widget on the routing page
+  GtkWidget *socket_widget;
+
   // PC_DSP, PC_MIX, PC_PCM, or PC_HW
   int port_category;
 
@@ -101,6 +107,12 @@ struct routing_snk {
   // the mixer label widgets for this sink
   GtkWidget *mixer_label_top;
   GtkWidget *mixer_label_bottom;
+};
+
+// hold one callback & its data
+struct alsa_elem_callback {
+  AlsaElemCallback *callback;
+  void             *data;
 };
 
 // entry in alsa_card elems (ALSA control elements) array
@@ -125,15 +137,8 @@ struct alsa_elem {
   // TODO: move this to struct routing_snk?
   int lr_num;
 
-  // the primary GTK widget and callback function for this ALSA
-  // control element
-  GtkWidget        *widget;
-  AlsaElemCallback *widget_callback;
-
-  // text label for volume controls
-  // handle for routing controls
-  // second button for dual controls
-  GtkWidget *widget2;
+  // the callback functions for this ALSA control element
+  GList *callbacks;
 
   // for boolean buttons, the two possible texts
   // for dual buttons, the four possible texts
@@ -202,6 +207,13 @@ struct alsa_elem *get_elem_by_name(GArray *elems, char *name);
 struct alsa_elem *get_elem_by_prefix(GArray *elems, char *prefix);
 int get_max_elem_by_name(GArray *elems, char *prefix, char *needle);
 int is_elem_routing_snk(struct alsa_elem *elem);
+
+// add callback to alsa_elem callback list
+void alsa_elem_add_callback(
+  struct alsa_elem *elem,
+  AlsaElemCallback *callback,
+  void             *data
+);
 
 // alsa snd_ctl_elem_*() functions
 int alsa_get_elem_type(struct alsa_elem *elem);
