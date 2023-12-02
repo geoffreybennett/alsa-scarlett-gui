@@ -25,7 +25,7 @@ static void toggle_button_updated(struct alsa_elem *elem) {
   int is_writable = alsa_get_elem_writable(elem);
   gtk_widget_set_sensitive(elem->widget, is_writable);
 
-  int value = alsa_get_elem_value(elem);
+  int value = !!alsa_get_elem_value(elem);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(elem->widget), value);
 
   toggle_button_set_text(elem, elem->bool_text[value]);
