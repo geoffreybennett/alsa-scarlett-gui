@@ -143,7 +143,7 @@ flatpak-builder --user --install --force-clean flatpak-build \
 ```
 
 Be sure to use `flatpak-build` as the directory where the flatpak is
-built or hence you risk bundling the artifacts when comitting!
+built or hence you risk bundling the artifacts when committing!
 
 If you get messages like these:
 
