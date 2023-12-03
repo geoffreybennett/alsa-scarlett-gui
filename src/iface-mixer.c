@@ -9,6 +9,7 @@
 #include "widget-combo.h"
 #include "widget-dual.h"
 #include "widget-gain.h"
+#include "widget-input-select.h"
 #include "widget-label.h"
 #include "window-helper.h"
 #include "window-levels.h"
@@ -339,6 +340,9 @@ static void create_input_controls(
   if (!input_count)
     return;
 
+  struct alsa_elem *input_select_elem =
+    get_elem_by_name(elems, "Input Select Capture Enum");
+
   GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
   gtk_widget_set_halign(sep, GTK_ALIGN_CENTER);
   gtk_grid_attach(GTK_GRID(top), sep, (*x)++, 0, 1, 3);
@@ -354,9 +358,15 @@ static void create_input_controls(
   gtk_grid_attach(GTK_GRID(top), input_grid, *x, 2, 1, 1);
 
   for (int i = 1; i <= input_count; i++) {
-    char s[20];
-    snprintf(s, 20, "%d", i);
-    GtkWidget *label = gtk_label_new(s);
+    GtkWidget *label;
+
+    if (input_select_elem) {
+      label = make_input_select_alsa_elem(input_select_elem, i);
+    } else {
+      char s[20];
+      snprintf(s, 20, "%d", i);
+      label = gtk_label_new(s);
+    }
     gtk_grid_attach(GTK_GRID(input_grid), label, i, 0, 1, 1);
   }
 
