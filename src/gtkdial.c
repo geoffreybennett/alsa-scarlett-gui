@@ -333,6 +333,14 @@ static void gtk_dial_class_init(GtkDialClass *klass)
                       GTK_SCROLL_STEP_RIGHT);
     add_slider_binding (w_class, binding_set, GDK_KEY_Up, 0,
                       GTK_SCROLL_STEP_RIGHT);
+    add_slider_binding (w_class, binding_set, GDK_KEY_Page_Up, 0,
+                      GTK_SCROLL_PAGE_RIGHT);
+    add_slider_binding (w_class, binding_set, GDK_KEY_Page_Down, 0,
+                      GTK_SCROLL_PAGE_LEFT);
+    add_slider_binding (w_class, binding_set, GDK_KEY_Home, 0,
+                      GTK_SCROLL_START);
+    add_slider_binding (w_class, binding_set, GDK_KEY_End, 0,
+                      GTK_SCROLL_END);
 }
 
 static void gtk_dial_focus_change_cb(
