@@ -26,15 +26,7 @@ static int update_levels_controls(void *user_data) {
       GtkWidget *meter = card->meters[meter_num];
       double value = 20 * log10(values[meter_num] / 4095.0);
 
-      int int_value;
-      if (value < -80)
-        int_value = -80;
-      else if (value > 0)
-        int_value = 0;
-      else
-        int_value = round(value);
-
-      gtk_dial_set_value(GTK_DIAL(meter), int_value);
+      gtk_dial_set_value(GTK_DIAL(meter), value);
       meter_num++;
     }
   }
