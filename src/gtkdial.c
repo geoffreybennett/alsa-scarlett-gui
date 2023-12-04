@@ -667,6 +667,9 @@ page_forward (GtkDial *dial)
 static void
 scroll_begin (GtkDial *dial)
 {
+  double newval = gtk_adjustment_get_lower (dial->adj);
+
+  set_value(dial, newval);
 }
 
 static void scroll_end(GtkDial *dial)
