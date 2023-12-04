@@ -141,6 +141,11 @@ static void dial_measure(GtkWidget *widget,
 
 static inline double calc_valp(double val, double mn, double mx)
 {
+    return (val - mn)/(mx-mn);
+}
+
+static inline double calc_valp_log(double val, double mn, double mx)
+{
     if (val <= mn)
         return 0.0;
     if (val >= mx)
@@ -195,7 +200,7 @@ static void get_dial_properties(GtkDial *dial,
     double mn = dial->adj ? gtk_adjustment_get_lower(dial->adj) : 0;
     double mx = dial->adj ? gtk_adjustment_get_upper(dial->adj) : 1;
     double value = dial->adj ? gtk_adjustment_get_value(dial->adj) : 0.25;
-    props->valp = calc_valp(value, mn, mx);
+    props->valp = calc_valp_log(value, mn, mx);
 
     double SIN = sin( (RAD_SE_DIFF2*(props->valp) ) );
     double COS = cos( (RAD_SE_DIFF2*(props->valp) ) );
