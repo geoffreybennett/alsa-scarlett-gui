@@ -9,6 +9,7 @@ struct gain {
   GtkWidget        *vbox;
   GtkWidget        *dial;
   GtkWidget        *label;
+  int               zero_is_off;
 };
 
 static void gain_changed(GtkWidget *widget, struct gain *data) {
@@ -30,21 +31,35 @@ static void gain_updated(
   gtk_dial_set_value(GTK_DIAL(data->dial), alsa_value);
 
   char s[20];
+  char *p = s;
   float scale = (float)(elem->max_dB - elem->min_dB) /
                        (elem->max_val - elem->min_val);
 
   float value = (float)alsa_value * scale + elem->min_dB;
 
-  if (scale < 1)
-    snprintf(s, 20, "%.1f", value);
-  else
-    snprintf(s, 20, "%.0fdB", value);
+  if (value > elem->max_dB)
+    value = elem->max_dB;
+  else if (value < elem->min_dB)
+    value = elem->min_dB;
+
+  if (data->zero_is_off && alsa_value == 0) {
+    p += sprintf(p, "−∞");
+  } else {
+    if (value < 0)
+      p += sprintf(p, "−");
+    if (scale < 1)
+      p += sprintf(p, "%.1f", fabs(value));
+    else
+      p += sprintf(p, "%.0f", fabs(value));
+  }
+  if (scale >= 1)
+    p += sprintf(p, "dB");
 
   gtk_label_set_text(GTK_LABEL(data->label), s);
 }
 
 //GList *make_gain_alsa_elem(struct alsa_elem *elem) {
-GtkWidget *make_gain_alsa_elem(struct alsa_elem *elem) {
+GtkWidget *make_gain_alsa_elem(struct alsa_elem *elem, int zero_is_off) {
   struct gain *data = g_malloc(sizeof(struct gain));
   data->elem = elem;
   data->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -61,6 +76,8 @@ GtkWidget *make_gain_alsa_elem(struct alsa_elem *elem) {
 
   data->label = gtk_label_new(NULL);
   gtk_widget_set_vexpand(data->dial, TRUE);
+
+  data->zero_is_off = zero_is_off;
 
   g_signal_connect(
     data->dial, "value-changed", G_CALLBACK(gain_changed), data

@@ -7,4 +7,4 @@
 
 #include "alsa.h"
 
-GtkWidget *make_gain_alsa_elem(struct alsa_elem *alsa_elem);
+GtkWidget *make_gain_alsa_elem(struct alsa_elem *alsa_elem, int zero_is_off);
