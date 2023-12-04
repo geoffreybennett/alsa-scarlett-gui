@@ -832,9 +832,9 @@ gtk_dial_scroll_controller_scroll (GtkEventControllerScroll *scroll,
                                     double                    dy,
                                     GtkDial                  *dial)
 {
-    double delta = dx ? dx : dy;
-    if (abs(delta) > 1)
-      delta *= abs(delta);
+    double delta = dx ? dx : dy, absolute_delta = fabs(delta);
+    if (absolute_delta > 1)
+      delta *= absolute_delta;
     double step = -gtk_adjustment_get_step_increment(dial->adj)*delta;
 
     set_value(dial, gtk_adjustment_get_value(dial->adj) + step);
