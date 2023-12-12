@@ -80,32 +80,72 @@ static const GActionEntry app_entries[] = {
   {"quit",     activate_quit},
 };
 
+struct MenuItem {
+  const char* label;
+  const char* action_name;
+  const char* accelerators[2];
+};
+typedef struct MenuItem MenuItem;
+
+struct MenuData {
+  const char *label;
+  MenuItem *items;
+};
+typedef struct MenuData MenuData;
+
+static const MenuData menus[] = {
+  {
+    "_File",
+    (MenuItem[]){
+      { "_Load Configuration",   "win.load", { "<Control>O", NULL } },
+      { "_Save Configuration",   "win.save", { "<Control>S", NULL } },
+      { "_Interface Simulation", "win.sim",  { "<Control>I", NULL } },
+      { "E_xit",                 "app.quit", { "<Control>Q", NULL } },
+      {}
+    }
+  },
+  {
+    "_View",
+    (MenuItem[]){
+      { "_Routing", "win.routing", { "<Control>R", NULL } },
+      { "_Mixer",   "win.mixer",   { "<Control>M", NULL } },
+      { "_Levels",  "win.levels",  { "<Control>L", NULL } },
+      { "_Startup", "win.startup", { "<Control>T", NULL } },
+      {}
+    }
+  },
+  {
+    "_Help",
+    (MenuItem[]){
+      { "_Supported Hardware", "app.hardware", { "<Control>H",     NULL } },
+      { "_About",              "win.about",    { "<Control>slash", NULL } },
+      {}
+    }
+  }
+};
+
+void populate_submenu(GtkApplication *app, GMenu *menu, const MenuData *data) {
+  GMenu *submenu = g_menu_new();
+  g_menu_append_submenu(menu, data->label, G_MENU_MODEL(submenu));
+
+  /* An empty-initialized MenuItem marks the end */
+  for (int i = 0; data->items[i].label != NULL; i = i + 1) {
+    const char *action_name = data->items[i].action_name;
+    g_menu_append(submenu, data->items[i].label, action_name);
+    gtk_application_set_accels_for_action(app, action_name, data->items[i].accelerators);
+  }
+}
+
 GMenu *create_app_menu(GtkApplication *app) {
   g_action_map_add_action_entries(
     G_ACTION_MAP(app), app_entries, G_N_ELEMENTS(app_entries), app
   );
 
   GMenu *menu = g_menu_new();
-
-  GMenu *file_menu = g_menu_new();
-  g_menu_append_submenu(menu, "_File", G_MENU_MODEL(file_menu));
-  g_menu_append(file_menu, "_Load Configuration",   "win.load");
-  g_menu_append(file_menu, "_Save Configuration",   "win.save");
-  g_menu_append(file_menu, "_Interface Simulation", "win.sim");
-  g_menu_append(file_menu, "E_xit", "app.quit");
-
-  GMenu *view_menu = g_menu_new();
-  g_menu_append_submenu(menu, "_View", G_MENU_MODEL(view_menu));
-  g_menu_append(view_menu, "_Routing", "win.routing");
-  g_menu_append(view_menu, "_Mixer",   "win.mixer");
-  g_menu_append(view_menu, "_Levels",  "win.levels");
-  g_menu_append(view_menu, "_Startup", "win.startup");
-
-  GMenu *help_menu = g_menu_new();
-  g_menu_append_submenu(menu, "_Help", G_MENU_MODEL(help_menu));
-  g_menu_append(help_menu, "_Supported Hardware", "app.hardware");
-  g_menu_append(help_menu, "_About",              "win.about");
-
+  const int num_menus = sizeof(menus) / sizeof(MenuData);
+  for (int i = 0; i < num_menus; i = i + 1) {
+    populate_submenu(app, menu, &(menus[i]));
+  }
   return menu;
 }
 
