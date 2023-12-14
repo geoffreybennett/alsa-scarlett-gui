@@ -335,6 +335,12 @@ static void gtk_dial_class_init(GtkDialClass *klass)
                       GTK_SCROLL_STEP_RIGHT);
 }
 
+static void gtk_dial_focus_change_cb(
+  GtkEventControllerFocus *controller, GtkDial *dial
+) {
+  gtk_widget_queue_draw(GTK_WIDGET(dial));
+}
+
 static void gtk_dial_init(GtkDial *dial)
 {
 //    gtk_dial_set_style(dial, "#cdc7c2", "white", "#3584e4");
@@ -371,6 +377,11 @@ static void gtk_dial_init(GtkDial *dial)
     g_signal_connect (dial->scroll_controller, "scroll",
                         G_CALLBACK (gtk_dial_scroll_controller_scroll), dial);
     gtk_widget_add_controller (GTK_WIDGET (dial), dial->scroll_controller);
+
+    GtkEventController *controller = gtk_event_controller_focus_new ();
+    g_signal_connect (controller, "enter", G_CALLBACK (gtk_dial_focus_change_cb), dial);
+    g_signal_connect (controller, "leave", G_CALLBACK (gtk_dial_focus_change_cb), dial);
+    gtk_widget_add_controller (GTK_WIDGET (dial), controller);
 }
 
 static void dial_measure(GtkWidget *widget,
@@ -398,7 +409,7 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot)
     cairo_t *cr = gtk_snapshot_append_cairo(snapshot, &GRAPHENE_RECT_INIT(0, 0, p.w, p.h) );
 
     // draw border
-    cairo_set_line_width(cr, 2);
+    cairo_set_line_width(cr, gtk_widget_has_focus(widget) ? 5 : 2);
     gdk_cairo_set_source_rgba(cr, &dial->colors.trough_border);
     cairo_arc(cr, p.cx, p.cy, p.radius-p.thickness, RAD_START, RAD_END/*8*M_PI/5*/);
     cairo_line_to(cr, V1x*(p.radius-p.thickness) + p.cx, V1y*(p.radius-p.thickness) + p.cy);
