@@ -23,6 +23,14 @@ static GArray *alsa_cards;
 // static fd and wd for ALSA inotify
 static int inotify_fd, inotify_wd;
 
+struct reopen_callback {
+  ReOpenCallback *callback;
+  void           *data;
+};
+
+// hash table for cards being rebooted
+GHashTable *reopen_callbacks;
+
 // forward declaration
 static void alsa_elem_change(struct alsa_elem *elem);
 
@@ -704,6 +712,18 @@ static void alsa_scan_cards(void) {
     alsa_subscribe(card);
     alsa_get_serial_number(card);
 
+    if (card->serial) {
+
+      // call the callbacks for this card
+      struct reopen_callback *rc = g_hash_table_lookup(
+        reopen_callbacks, card->serial
+      );
+      if (rc)
+        rc->callback(rc->data);
+
+      g_hash_table_remove(reopen_callbacks, card->serial);
+    }
+
     create_card_window(card);
     alsa_add_card_callback(card);
 
@@ -764,6 +784,29 @@ static void alsa_inotify_init(void) {
 
 void alsa_init(void) {
   alsa_cards = g_array_new(FALSE, TRUE, sizeof(struct alsa_card *));
+  reopen_callbacks = g_hash_table_new_full(
+    g_str_hash, g_str_equal, g_free, g_free
+  );
   alsa_inotify_init();
   alsa_scan_cards();
+}
+
+void alsa_register_reopen_callback(
+  const char     *serial,
+  ReOpenCallback *callback,
+  void           *data
+) {
+  struct reopen_callback *rc = g_new0(struct reopen_callback, 1);
+  rc->callback = callback;
+  rc->data = data;
+
+  g_hash_table_insert(reopen_callbacks, g_strdup(serial), rc);
+}
+
+void alsa_unregister_reopen_callback(const char *serial) {
+  g_hash_table_remove(reopen_callbacks, serial);
+}
+
+int alsa_has_reopen_callbacks(void) {
+  return g_hash_table_size(reopen_callbacks);
 }
