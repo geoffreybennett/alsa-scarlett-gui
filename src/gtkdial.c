@@ -821,6 +821,10 @@ gtk_dial_click_gesture_pressed (GtkGestureClick *gesture,
         return;
     }
 
+    if (gtk_widget_get_focus_on_click(GTK_WIDGET(dial)) &&
+        !gtk_widget_has_focus(GTK_WIDGET(dial)))
+        gtk_widget_grab_focus(GTK_WIDGET(dial));
+
     struct dial_properties p;
     get_dial_properties(dial, &p);
     if (circle_contains_point(p.slider_cx, p.slider_cy, p.slider_radius, x, y) )
