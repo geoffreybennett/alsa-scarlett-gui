@@ -80,23 +80,21 @@ static const GActionEntry app_entries[] = {
   {"quit",     activate_quit},
 };
 
-struct MenuItem {
-  const char* label;
-  const char* action_name;
-  const char* accelerators[2];
-};
-typedef struct MenuItem MenuItem;
-
-struct MenuData {
+struct menu_item {
   const char *label;
-  MenuItem *items;
+  const char *action_name;
+  const char *accelerators[2];
 };
-typedef struct MenuData MenuData;
 
-static const MenuData menus[] = {
+struct menu_data {
+  const char       *label;
+  struct menu_item *items;
+};
+
+static const struct menu_data menus[] = {
   {
     "_File",
-    (MenuItem[]){
+    (struct menu_item[]){
       { "_Load Configuration",   "win.load", { "<Control>O", NULL } },
       { "_Save Configuration",   "win.save", { "<Control>S", NULL } },
       { "_Interface Simulation", "win.sim",  { "<Control>I", NULL } },
@@ -106,7 +104,7 @@ static const MenuData menus[] = {
   },
   {
     "_View",
-    (MenuItem[]){
+    (struct menu_item[]){
       { "_Routing", "win.routing", { "<Control>R", NULL } },
       { "_Mixer",   "win.mixer",   { "<Control>M", NULL } },
       { "_Levels",  "win.levels",  { "<Control>L", NULL } },
@@ -116,23 +114,29 @@ static const MenuData menus[] = {
   },
   {
     "_Help",
-    (MenuItem[]){
+    (struct menu_item[]){
       { "_Supported Hardware", "app.hardware", { "<Control>H",     NULL } },
       { "_About",              "win.about",    { "<Control>slash", NULL } },
       {}
     }
-  }
+  },
+  {}
 };
 
-void populate_submenu(GtkApplication *app, GMenu *menu, const MenuData *data) {
+void populate_submenu(
+  GtkApplication         *app,
+  GMenu                  *menu,
+  const struct menu_data *data
+) {
   GMenu *submenu = g_menu_new();
   g_menu_append_submenu(menu, data->label, G_MENU_MODEL(submenu));
 
-  /* An empty-initialized MenuItem marks the end */
-  for (int i = 0; data->items[i].label != NULL; i = i + 1) {
-    const char *action_name = data->items[i].action_name;
-    g_menu_append(submenu, data->items[i].label, action_name);
-    gtk_application_set_accels_for_action(app, action_name, data->items[i].accelerators);
+  // An empty-initialised menu_item marks the end
+  for (struct menu_item *item = data->items; item->label; item++) {
+    g_menu_append(submenu, item->label, item->action_name);
+    gtk_application_set_accels_for_action(
+      app, item->action_name, item->accelerators
+    );
   }
 }
 
@@ -142,10 +146,12 @@ GMenu *create_app_menu(GtkApplication *app) {
   );
 
   GMenu *menu = g_menu_new();
-  const int num_menus = sizeof(menus) / sizeof(MenuData);
-  for (int i = 0; i < num_menus; i = i + 1) {
-    populate_submenu(app, menu, &(menus[i]));
-  }
+
+  for (const struct menu_data *menu_data = menus;
+       menu_data->label;
+       menu_data++)
+    populate_submenu(app, menu, menu_data);
+
   return menu;
 }
 
