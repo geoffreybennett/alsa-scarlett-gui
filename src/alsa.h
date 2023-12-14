@@ -168,6 +168,7 @@ struct alsa_card {
   GtkWidget          *window_mixer;
   GtkWidget          *window_levels;
   GtkWidget          *window_startup;
+  GtkWidget          *window_modal;
   GtkWidget          *window_main_contents;
   GtkWidget          *routing_grid;
   GtkWidget          *routing_lines;
@@ -225,3 +226,13 @@ struct alsa_card *card_create(int card_num);
 
 // init
 void alsa_init(void);
+
+// register re-open callback
+typedef void (ReOpenCallback)(void *);
+void alsa_register_reopen_callback(
+  const char     *serial,
+  ReOpenCallback *callback,
+  void           *data
+);
+void alsa_unregister_reopen_callback(const char *serial);
+int alsa_has_reopen_callbacks(void);

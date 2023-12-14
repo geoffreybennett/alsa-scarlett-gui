@@ -86,6 +86,9 @@ void destroy_card_window(struct alsa_card *card) {
     gtk_window_destroy(GTK_WINDOW(card->window_levels));
   if (card->window_startup)
     gtk_window_destroy(GTK_WINDOW(card->window_startup));
+  if (card->window_modal) {
+    gtk_window_destroy(GTK_WINDOW(card->window_modal));
+  }
 
   // disable the level meter timer source
   if (card->meter_gsource_timer)
@@ -94,4 +97,9 @@ void destroy_card_window(struct alsa_card *card) {
   // if last window, display the "no card found" blank window
   window_count--;
   create_no_card_window();
+}
+
+void check_modal_window_closed(void) {
+  if (!window_count)
+    gtk_widget_set_visible(no_cards_window, TRUE);
 }

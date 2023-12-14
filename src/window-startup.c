@@ -1,11 +1,16 @@
 // SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "device-reset-config.h"
 #include "gtkhelper.h"
+#include "scarlett2.h"
+#include "scarlett2-ioctls.h"
 #include "widget-boolean.h"
 #include "window-startup.h"
 
-static GtkWidget *small_label(char *text) {
+#define REQUIRED_HWDEP_VERSION_MAJOR 1
+
+static GtkWidget *small_label(const char *text) {
   GtkWidget *w = gtk_label_new(NULL);
 
   char *s = g_strdup_printf("<b>%s</b>", text);
@@ -17,7 +22,7 @@ static GtkWidget *small_label(char *text) {
   return w;
 }
 
-static GtkWidget *big_label(char *text) {
+static GtkWidget *big_label(const char *text) {
   GtkWidget *view = gtk_text_view_new ();
   GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (view));
 
@@ -148,6 +153,82 @@ static void add_msd_control(
   *grid_y += 2;
 }
 
+static void add_reset_action(
+  struct alsa_card *card,
+  GtkWidget        *grid,
+  int              *grid_y,
+  const char       *label,
+  const char       *button_label,
+  const char       *description,
+  GCallback        callback
+) {
+  add_sep(grid, grid_y);
+
+  GtkWidget *w;
+
+  w = small_label(label);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
+
+  w = gtk_button_new_with_label(button_label);
+  gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y + 1, 1, 1);
+  g_signal_connect(w, "clicked", callback, card);
+
+  w = big_label(description);
+  gtk_grid_attach(GTK_GRID(grid), w, 1, *grid_y, 1, 2);
+
+  *grid_y += 2;
+}
+
+static void add_reset_actions(
+  struct alsa_card *card,
+  GtkWidget        *grid,
+  int              *grid_y
+) {
+  // simulated cards don't support hwdep
+  if (!card->device)
+    return;
+
+  snd_hwdep_t *hwdep;
+
+  int err = scarlett2_open_card(card->device, &hwdep);
+  if (err < 0) {
+    fprintf(stderr, "unable to open hwdep interface: %s\n", snd_strerror(err));
+    return;
+  }
+
+  int ver = scarlett2_get_protocol_version(hwdep);
+  if (ver < 0) {
+    fprintf(stderr, "unable to get protocol version: %s\n", snd_strerror(ver));
+    return;
+  }
+
+  if (SCARLETT2_HWDEP_VERSION_MAJOR(ver) != REQUIRED_HWDEP_VERSION_MAJOR) {
+    fprintf(
+      stderr,
+      "Unsupported hwdep protocol version %d.%d.%d on card %s\n",
+      SCARLETT2_HWDEP_VERSION_MAJOR(ver),
+      SCARLETT2_HWDEP_VERSION_MINOR(ver),
+      SCARLETT2_HWDEP_VERSION_SUBMINOR(ver),
+      card->device
+    );
+    return;
+  }
+
+  scarlett2_close(hwdep);
+
+  // Reset Configuration
+  add_reset_action(
+    card,
+    grid,
+    grid_y,
+    "Reset Configuration",
+    "Reset",
+    "Resetting the configuration will reset the interface to its "
+    "factory default settings. The firmware will be left unchanged.",
+    G_CALLBACK(create_reset_config_window)
+  );
+}
+
 static void add_no_startup_controls_msg(GtkWidget *grid) {
   GtkWidget *w = big_label(
     "It appears that there are no startup controls. You probably "
@@ -175,6 +256,7 @@ GtkWidget *create_startup_controls(struct alsa_card *card) {
   add_standalone_control(elems, grid, &grid_y);
   add_phantom_persistence_control(elems, grid, &grid_y);
   add_msd_control(elems, grid, &grid_y);
+  add_reset_actions(card, grid, &grid_y);
 
   if (!grid_y)
     add_no_startup_controls_msg(grid);

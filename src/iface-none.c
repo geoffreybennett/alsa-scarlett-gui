@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "alsa.h"
 #include "iface-none.h"
 #include "gtkhelper.h"
 #include "menu.h"
@@ -24,7 +25,9 @@ GtkWidget *create_window_iface_none(GtkApplication *app) {
     GTK_APPLICATION_WINDOW(w), TRUE
   );
   add_window_action_map(GTK_WINDOW(w));
-  gtk_widget_set_visible(w, TRUE);
+  if (!alsa_has_reopen_callbacks()) {
+    gtk_widget_set_visible(w, TRUE);
+  }
 
   return w;
 }

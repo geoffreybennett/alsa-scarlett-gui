@@ -272,3 +272,12 @@ button.toggle {
 .window-frame separator {
   background: #800000;
 }
+
+.window-frame .big-padding {
+  padding: 50px;
+}
+
+/* Bigger buttons in confirmation dialogs */
+.window-frame .big-padding button {
+  padding: 5px 30px;
+}
