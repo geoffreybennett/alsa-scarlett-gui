@@ -377,6 +377,3 @@ menu option File → Interface Simulation to load.
 
 - There is no facility to give channels custom names (needs kernel
   support to save this information in the interface).
-
-- No keyboard accelerators (e.g. Ctrl-Q to quit) have been
-  implemented.
