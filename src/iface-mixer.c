@@ -499,16 +499,31 @@ static void create_output_controls(
 
     // master output controls
     } else if (strcmp(elem->name, "Master HW Playback Volume") == 0) {
-      GtkWidget *l = gtk_label_new("HW");
-      gtk_widget_set_tooltip_text(
-        l,
-        "This control shows the setting of the physical (hardware) "
-        "volume knob, which controls the volume of the analogue "
-        "outputs which have been set to “HW”."
-      );
+      int gen4 = !!strstr(card->name, "4th Gen");
+
+      GtkWidget *l = gtk_label_new(gen4 ? "Line 1–2" : "HW");
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
       w = make_gain_alsa_elem(elem);
+      gtk_widget_set_tooltip_text(
+        w,
+        gen4
+          ? "This control shows the setting of the master volume "
+            "knob, which controls the volume of the analogue line "
+            "outputs 1 and 2."
+          : "This control shows the setting of the physical "
+            "(hardware) volume knob, which controls the volume of "
+            "the analogue outputs which have been set to “HW”."
+      );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
+    } else if (strcmp(elem->name, "Headphone Playback Volume") == 0) {
+      GtkWidget *l = gtk_label_new("Headphones");
+      gtk_widget_set_tooltip_text(
+        l,
+        "This control shows the setting of the headphone volume knob."
+      );
+      gtk_grid_attach(GTK_GRID(output_grid), l, 1, 0, 1, 1);
+      w = make_gain_alsa_elem(elem);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 1, 1, 1, 1);
     } else if (strcmp(elem->name, "Mute Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
         elem, "*audio-volume-high", "*audio-volume-muted"
