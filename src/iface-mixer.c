@@ -84,6 +84,36 @@ static void add_sync_status_control(
   gtk_box_append(GTK_BOX(b), w);
 }
 
+static void add_power_status_control(
+  struct alsa_card *card,
+  GtkWidget        *global_controls
+) {
+  GArray *elems = card->elems;
+
+  struct alsa_elem *power_status = get_elem_by_name(
+    elems, "Power Status Card Enum"
+  );
+
+  if (!power_status)
+    return;
+
+  GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_tooltip_text(
+    b,
+    "Power indicates if the interface is being powered by the USB "
+    "bus, an external power supply, or if there is insufficient power "
+    "available and the interface has shut down."
+  );
+  gtk_box_append(GTK_BOX(global_controls), b);
+
+  GtkWidget *l = gtk_label_new("Power");
+  gtk_box_append(GTK_BOX(b), l);
+  GtkWidget *w = make_drop_down_alsa_elem(power_status, NULL);
+  gtk_widget_add_css_class(w, "power-status");
+  gtk_widget_add_css_class(w, "fixed");
+  gtk_box_append(GTK_BOX(b), w);
+}
+
 static void add_speaker_switching_controls(
   struct alsa_card *card,
   GtkWidget        *global_controls
@@ -624,6 +654,7 @@ static void create_global_controls(
 
   add_clock_source_control(card, left);
   add_sync_status_control(card, right);
+  add_power_status_control(card, right);
   add_speaker_switching_controls(card, left);
   add_talkback_controls(card, right);
 }
