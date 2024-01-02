@@ -20,6 +20,9 @@ static void combo_box_updated(
 ) {
   struct combo *data = private;
 
+  int is_writable = alsa_get_elem_writable(elem);
+  gtk_widget_set_sensitive(data->combo_box, is_writable);
+
   int value = alsa_get_elem_value(elem);
   gtk_combo_box_set_active(GTK_COMBO_BOX(data->combo_box), value);
 }
