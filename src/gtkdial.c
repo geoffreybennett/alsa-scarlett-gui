@@ -104,13 +104,12 @@ struct _GtkDial {
   GtkGesture *drag_gesture, *click_gesture;
   GtkEventController *scroll_controller;
   e_grab grab;
+  double dvalp;
 
   struct DialColors colors;
 
   int round_digits;
   double zero_db;
-
-  double slider_cx, slider_cy, dvalp;
 };
 
 G_DEFINE_TYPE (GtkDial, gtk_dial, GTK_TYPE_WIDGET)
@@ -132,11 +131,11 @@ static void dial_measure(GtkWidget *widget,
 
 //BEGIN SECTION HELPERS
 
-#define V1x 0.7316888688738209
-#define V1y 0.6816387600233341
-#define RAD_START (-M_PI-0.75)
-#define RAD_END 0.75
-#define RAD_SE_DIFF2 ( (2*M_PI+3)/2 )
+#define TOTAL_ROTATION_DEGREES 290
+#define TOTAL_ROTATION (2 * M_PI * TOTAL_ROTATION_DEGREES / 360)
+#define ANGLE_START (-M_PI / 2 - TOTAL_ROTATION / 2)
+#define ANGLE_END (-M_PI / 2 + TOTAL_ROTATION / 2)
+
 #define DRAG_FACTOR 0.5
 
 static inline double calc_valp(double val, double mn, double mx)
@@ -175,13 +174,10 @@ struct dial_properties
     double cx;
     double cy;
     double valp;
+    double angle;
     double slider_radius;
     double slider_cx;
     double slider_cy;
-    double start_x;
-    double start_y;
-    double end_x;
-    double end_y;
 };
 
 static void get_dial_properties(GtkDial *dial,
@@ -202,20 +198,10 @@ static void get_dial_properties(GtkDial *dial,
     double value = dial->adj ? gtk_adjustment_get_value(dial->adj) : 0.25;
     props->valp = calc_valp_log(value, mn, mx);
 
-    double SIN = sin( (RAD_SE_DIFF2*(props->valp) ) );
-    double COS = cos( (RAD_SE_DIFF2*(props->valp) ) );
-
-    props->slider_cx = (-V1y*SIN - V1x*COS)*(2*(props->radius)-(props->thickness) )/2 + (props->cx);
-    props->slider_cy = (V1y*COS - V1x*SIN)*(2*(props->radius)-(props->thickness) )/2 + (props->cy);
-
-    props->start_x = V1x*(2*(props->radius)-(props->thickness) )/2 + (props->cx);
-    props->start_y = V1y*(2*(props->radius)-(props->thickness) )/2 + (props->cy);
-
-    SIN = -0.9974949866040545;
-    COS = -0.07073720166770303;
-
-    props->end_x = (-V1y*SIN - V1x*COS)*(2*(props->radius)-(props->thickness) )/2 + (props->cx);
-    props->end_y = (V1y*COS - V1x*SIN)*(2*(props->radius)-(props->thickness) )/2 + (props->cy);
+    props->angle = calc_val(props->valp, ANGLE_START, ANGLE_END);
+    double radius = props->radius - props->thickness / 2;
+    props->slider_cx = cos(props->angle) * radius + props->cx;
+    props->slider_cy = sin(props->angle) * radius + props->cy;
 }
 
 static inline double pdist2(double x1, double y1, double x2, double y2)
@@ -359,9 +345,6 @@ static void gtk_dial_init(GtkDial *dial)
 
     dial->adj = NULL;
 
-    dial->slider_cx = gtk_widget_get_width(GTK_WIDGET(dial) ) / 2.0;
-    dial->slider_cy = 0;
-
     dial->grab = GRAB_NONE;
     dial->drag_gesture = gtk_gesture_drag_new();
     gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (dial->drag_gesture), 0);
@@ -419,20 +402,19 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot)
     // draw border
     cairo_set_line_width(cr, gtk_widget_has_focus(widget) ? 5 : 2);
     gdk_cairo_set_source_rgba(cr, &dial->colors.trough_border);
-    cairo_arc(cr, p.cx, p.cy, p.radius-p.thickness, RAD_START, RAD_END/*8*M_PI/5*/);
-    cairo_line_to(cr, V1x*(p.radius-p.thickness) + p.cx, V1y*(p.radius-p.thickness) + p.cy);
-    cairo_arc_negative(cr, p.cx, p.cy, p.radius, RAD_END, RAD_START/*8*M_PI/5*/);
+    cairo_arc(cr, p.cx, p.cy, p.radius-p.thickness, ANGLE_START, ANGLE_END);
+    cairo_arc_negative(cr, p.cx, p.cy, p.radius, ANGLE_END, ANGLE_START);
     cairo_close_path(cr);
     cairo_stroke(cr);
 
     // bg trough
-    cairo_arc(cr, p.cx, p.cy, (2*p.radius-p.thickness)/2.0, RAD_START, RAD_END/*8*M_PI/5*/);
+    cairo_arc(cr, p.cx, p.cy, (2*p.radius-p.thickness)/2.0, ANGLE_START, ANGLE_END);
     cairo_set_line_width(cr, p.thickness);
     gdk_cairo_set_source_rgba(cr, &dial->colors.trough_bg);
     cairo_stroke(cr);
 
     // fill trough
-    cairo_arc(cr, p.cx, p.cy, (2*p.radius-p.thickness)/2.0, RAD_START, RAD_END - (1.0-p.valp)*(RAD_END-RAD_START)/*8*M_PI/5*/);
+    cairo_arc(cr, p.cx, p.cy, (2*p.radius-p.thickness)/2.0, ANGLE_START, p.angle);
     cairo_set_line_width(cr, p.thickness);
     gdk_cairo_set_source_rgba(cr, &dial->colors.trough_fill);
     cairo_stroke(cr);
