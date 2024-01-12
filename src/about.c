@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "about.h"
@@ -21,7 +21,7 @@ void activate_about(
     "version", "Version " VERSION,
     "comments", "GTK4 interface to the ALSA Scarlett Gen 2/3 Mixer controls",
     "website", "https://github.com/geoffreybennett/alsa-scarlett-gui",
-    "copyright", "Copyright 2022 Geoffrey D. Bennett",
+    "copyright", "Copyright 2022-2024 Geoffrey D. Bennett",
     "license-type", GTK_LICENSE_GPL_3_0,
     "logo-icon-name", "alsa-scarlett-gui-logo",
     "title", "About ALSA Scarlett Mixer Interface",

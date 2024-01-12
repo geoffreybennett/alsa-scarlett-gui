@@ -76,7 +76,7 @@ Scarlett 4th Gen support.
 
 ## License
 
-Copyright 2022-2023 Geoffrey D. Bennett
+Copyright 2022-2024 Geoffrey D. Bennett
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
