@@ -39,42 +39,29 @@ struct _GtkDialClass
                              double        new_value);
 };
 
-GDK_AVAILABLE_IN_ALL
 GType             gtk_dial_get_type           (void) G_GNUC_CONST;
-GDK_AVAILABLE_IN_ALL
 GtkWidget       * gtk_dial_new                (GtkAdjustment   *adjustment);
-GDK_AVAILABLE_IN_ALL
 GtkWidget       * gtk_dial_new_with_range     (double           min,
                                                 double           max,
                                                 double           step);
-GDK_AVAILABLE_IN_ALL
 void              gtk_dial_set_has_origin     (GtkDial        *dial,
                                                 gboolean         has_origin);
-GDK_AVAILABLE_IN_ALL
 gboolean          gtk_dial_get_has_origin     (GtkDial        *dial);
 
-GDK_AVAILABLE_IN_ALL
 void              gtk_dial_set_adjustment     (GtkDial        *dial,
                                                GtkAdjustment  *adj);
 
-GDK_AVAILABLE_IN_ALL
 GtkAdjustment*    gtk_dial_get_adjustment     (GtkDial        *dial);
 
-GDK_AVAILABLE_IN_ALL
 double            gtk_dial_get_value             (GtkDial      *dial);
 
-GDK_AVAILABLE_IN_ALL
 void            gtk_dial_set_value             (GtkDial      *dial,
                                                   double        value);
-GDK_AVAILABLE_IN_ALL
 void               gtk_dial_set_round_digits              (GtkDial      *dial,
                                                             int            round_digits);
-GDK_AVAILABLE_IN_ALL
 int                 gtk_dial_get_round_digits              (GtkDial      *range);
-GDK_AVAILABLE_IN_ALL
 void               gtk_dial_set_zero_db              (GtkDial      *dial,
                                                             double         zero_db);
-GDK_AVAILABLE_IN_ALL
 double              gtk_dial_get_zero_db              (GtkDial      *range);
 
 /**
