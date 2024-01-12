@@ -39,10 +39,6 @@ struct _GtkDialClass
                              double        new_value);
 };
 
-typedef char * (*GtkDialFormatValueFunc) (GtkDial *dial,
-                                           double    value,
-                                           gpointer  user_data);
-
 GDK_AVAILABLE_IN_ALL
 GType             gtk_dial_get_type           (void) G_GNUC_CONST;
 GDK_AVAILABLE_IN_ALL
