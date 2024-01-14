@@ -277,7 +277,7 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
   /**
    * GtkDial:zero_db: (attributes org.gtk.Method.get=gtk_dial_get_zero_db org.gtk.Method.set=gtk_dial_set_zero_db)
    *
-   * Limits the number of decimal points this GtkDial will store (default 0: integers).
+   * The zero-dB value of the dial.
    */
   properties[PROP_ZERO_DB] = g_param_spec_double(
     "zero_db",
