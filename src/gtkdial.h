@@ -14,55 +14,51 @@
 
 G_BEGIN_DECLS
 
-#define GTK_TYPE_DIAL            (gtk_dial_get_type ())
-#define GTK_DIAL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GTK_TYPE_DIAL, GtkDial))
-#define GTK_DIAL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), GTK_TYPE_DIAL, GtkDialClass))
-#define GTK_IS_DIAL(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GTK_TYPE_DIAL))
-#define GTK_IS_DIAL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), GTK_TYPE_DIAL))
-#define GTK_DIAL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), GTK_TYPE_DIAL, GtkDialClass))
+#define GTK_TYPE_DIAL            (gtk_dial_get_type())
+#define GTK_DIAL(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj), GTK_TYPE_DIAL, GtkDial))
+#define GTK_DIAL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass), GTK_TYPE_DIAL, GtkDialClass))
+#define GTK_IS_DIAL(obj)         (G_TYPE_CHECK_INSTANCE_TYPE((obj), GTK_TYPE_DIAL))
+#define GTK_IS_DIAL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass), GTK_TYPE_DIAL))
+#define GTK_DIAL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj), GTK_TYPE_DIAL, GtkDialClass))
 
-typedef struct _GtkDial              GtkDial;
-typedef struct _GtkDialClass         GtkDialClass;
+typedef struct _GtkDial      GtkDial;
+typedef struct _GtkDialClass GtkDialClass;
 
-struct _GtkDialClass
-{
+struct _GtkDialClass {
   GtkWidgetClass parent_class;
 
-  void (* value_changed)    (GtkDial     *dial);
+  void (*value_changed)(GtkDial *dial);
 
   /* action signals for keybindings */
-  void (* move_slider)      (GtkDial     *dial,
-                             GtkScrollType scroll);
+  void (*move_slider)(GtkDial *dial, GtkScrollType scroll);
 
-  gboolean (*change_value) (GtkDial     *dial,
-                             GtkScrollType scroll,
-                             double        new_value);
+  gboolean (*change_value)(
+    GtkDial       *dial,
+    GtkScrollType  scroll,
+    double         new_value
+  );
 };
 
-GType             gtk_dial_get_type           (void) G_GNUC_CONST;
-GtkWidget       * gtk_dial_new                (GtkAdjustment   *adjustment);
-GtkWidget       * gtk_dial_new_with_range     (double           min,
-                                                double           max,
-                                                double           step);
-void              gtk_dial_set_has_origin     (GtkDial        *dial,
-                                                gboolean         has_origin);
-gboolean          gtk_dial_get_has_origin     (GtkDial        *dial);
+GType gtk_dial_get_type(void) G_GNUC_CONST;
 
-void              gtk_dial_set_adjustment     (GtkDial        *dial,
-                                               GtkAdjustment  *adj);
+GtkWidget *gtk_dial_new(GtkAdjustment *adjustment);
 
-GtkAdjustment*    gtk_dial_get_adjustment     (GtkDial        *dial);
+GtkWidget *gtk_dial_new_with_range(double min, double max, double step);
 
-double            gtk_dial_get_value             (GtkDial      *dial);
+void gtk_dial_set_has_origin(GtkDial *dial, gboolean has_origin);
+gboolean gtk_dial_get_has_origin(GtkDial *dial);
 
-void            gtk_dial_set_value             (GtkDial      *dial,
-                                                  double        value);
-void               gtk_dial_set_round_digits              (GtkDial      *dial,
-                                                            int            round_digits);
-int                 gtk_dial_get_round_digits              (GtkDial      *range);
-void               gtk_dial_set_zero_db              (GtkDial      *dial,
-                                                            double         zero_db);
-double              gtk_dial_get_zero_db              (GtkDial      *range);
+void gtk_dial_set_adjustment(GtkDial *dial, GtkAdjustment *adj);
+GtkAdjustment *gtk_dial_get_adjustment(GtkDial *dial);
+
+double gtk_dial_get_value(GtkDial *dial);
+void gtk_dial_set_value(GtkDial *dial, double value);
+
+void gtk_dial_set_round_digits(GtkDial *dial, int round_digits);
+int gtk_dial_get_round_digits(GtkDial *range);
+
+void gtk_dial_set_zero_db(GtkDial *dial, double zero_db);
+double gtk_dial_get_zero_db(GtkDial *range);
 
 /**
  * @brief Set the colors which this dial uses. String codes can be one of the following:
@@ -79,10 +75,11 @@ double              gtk_dial_get_zero_db              (GtkDial      *range);
  * @return TRUE if all the colors were set successfully, FALSE otherwise
  */
 gboolean gtk_dial_set_style(GtkDial *dial,
-                        const char *trough_border,
-                        const char *trough_bg,
-                        const char *trough_fill,
-                        const char *pointer);
+                            const char *trough_border,
+                            const char *trough_bg,
+                            const char *trough_fill,
+                            const char *pointer);
+
 G_END_DECLS
 
 #endif
