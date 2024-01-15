@@ -497,7 +497,7 @@ GtkWidget *gtk_dial_new_with_range(double min, double max, double step) {
   return g_object_new(
     GTK_TYPE_DIAL,
     "adjustment",   adj,
-    "round_digits", 0,
+    "round_digits", digits,
     NULL
   );
 }
