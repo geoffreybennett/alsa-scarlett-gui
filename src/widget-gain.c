@@ -10,6 +10,7 @@ struct gain {
   GtkWidget        *dial;
   GtkWidget        *label;
   int               zero_is_off;
+  float             scale;
 };
 
 static void gain_changed(GtkWidget *widget, struct gain *data) {
@@ -32,10 +33,7 @@ static void gain_updated(
 
   char s[20];
   char *p = s;
-  float scale = (float)(elem->max_dB - elem->min_dB) /
-                       (elem->max_val - elem->min_val);
-
-  float value = (float)alsa_value * scale + elem->min_dB;
+  float value = (float)alsa_value * data->scale + elem->min_dB;
 
   if (value > elem->max_dB)
     value = elem->max_dB;
@@ -47,12 +45,12 @@ static void gain_updated(
   } else {
     if (value < 0)
       p += sprintf(p, "−");
-    if (scale < 1)
+    if (data->scale < 1)
       p += sprintf(p, "%.1f", fabs(value));
     else
       p += sprintf(p, "%.0f", fabs(value));
   }
-  if (scale >= 1)
+  if (data->scale >= 1)
     p += sprintf(p, "dB");
 
   gtk_label_set_text(GTK_LABEL(data->label), s);
@@ -67,10 +65,11 @@ GtkWidget *make_gain_alsa_elem(struct alsa_elem *elem, int zero_is_off) {
 
   data->dial = gtk_dial_new_with_range(elem->min_val, elem->max_val, 1);
 
-  // calculate 0dB value from min/max dB and min/max value
-  float scale = (float)(elem->max_dB - elem->min_dB) /
+  data->scale = (float)(elem->max_dB - elem->min_dB) /
                        (elem->max_val - elem->min_val);
-  int zero_db_value = (int)((0 - elem->min_dB) / scale + elem->min_val);
+
+  // calculate 0dB value
+  int zero_db_value = (int)((0 - elem->min_dB) / data->scale + elem->min_val);
 
   gtk_dial_set_zero_db(GTK_DIAL(data->dial), zero_db_value);
 
