@@ -482,11 +482,12 @@ GtkWidget *gtk_dial_new_with_range(double min, double max, double step) {
   int digits;
 
   g_return_val_if_fail(min < max, NULL);
-  g_return_val_if_fail(step != 0.0, NULL);
 
   adj = gtk_adjustment_new(min, min, max, step, 10 * step, 0);
 
-  if (fabs(step) >= 1.0 || step == 0.0) {
+  if (step == 0.0) {
+    digits = -1;
+  } else if (fabs(step) >= 1.0) {
     digits = 0;
   } else {
     digits = abs((int)floor(log10(fabs(step))));
