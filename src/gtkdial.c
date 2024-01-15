@@ -477,13 +477,18 @@ GtkWidget *gtk_dial_new(GtkAdjustment *adjustment) {
   );
 }
 
-GtkWidget *gtk_dial_new_with_range(double min, double max, double step) {
+GtkWidget *gtk_dial_new_with_range(
+  double min,
+  double max,
+  double step,
+  double page
+) {
   GtkAdjustment *adj;
   int digits;
 
   g_return_val_if_fail(min < max, NULL);
 
-  adj = gtk_adjustment_new(min, min, max, step, 10 * step, 0);
+  adj = gtk_adjustment_new(min, min, max, step, page, 0);
 
   if (step == 0.0) {
     digits = -1;

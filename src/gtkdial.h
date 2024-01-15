@@ -43,7 +43,12 @@ GType gtk_dial_get_type(void) G_GNUC_CONST;
 
 GtkWidget *gtk_dial_new(GtkAdjustment *adjustment);
 
-GtkWidget *gtk_dial_new_with_range(double min, double max, double step);
+GtkWidget *gtk_dial_new_with_range(
+  double min,
+  double max,
+  double step,
+  double page
+);
 
 void gtk_dial_set_has_origin(GtkDial *dial, gboolean has_origin);
 gboolean gtk_dial_get_has_origin(GtkDial *dial);

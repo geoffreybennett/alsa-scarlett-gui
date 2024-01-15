@@ -63,10 +63,15 @@ GtkWidget *make_gain_alsa_elem(struct alsa_elem *elem, int zero_is_off) {
   data->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_hexpand(data->vbox, TRUE);
 
-  data->dial = gtk_dial_new_with_range(elem->min_val, elem->max_val, 1);
-
   data->scale = (float)(elem->max_dB - elem->min_dB) /
                        (elem->max_val - elem->min_val);
+
+  data->dial = gtk_dial_new_with_range(
+    elem->min_val,
+    elem->max_val,
+    1,
+    3 / data->scale
+  );
 
   // calculate 0dB value
   int zero_db_value = (int)((0 - elem->min_dB) / data->scale + elem->min_val);
