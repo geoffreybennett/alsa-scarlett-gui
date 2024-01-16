@@ -60,10 +60,10 @@ double gtk_dial_get_value(GtkDial *dial);
 void gtk_dial_set_value(GtkDial *dial, double value);
 
 void gtk_dial_set_round_digits(GtkDial *dial, int round_digits);
-int gtk_dial_get_round_digits(GtkDial *range);
+int gtk_dial_get_round_digits(GtkDial *dial);
 
 void gtk_dial_set_zero_db(GtkDial *dial, double zero_db);
-double gtk_dial_get_zero_db(GtkDial *range);
+double gtk_dial_get_zero_db(GtkDial *dial);
 
 /**
  * @brief Set the colors which this dial uses. String codes can be one of the following:

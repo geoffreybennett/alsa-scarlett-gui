@@ -250,7 +250,7 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
   /**
    * GtkDial:adjustment: (attributes org.gtk.Method.get=gtk_dial_get_adjustment org.gtk.Method.set=gtk_dial_set_adjustment)
    *
-   * The GtkAdjustment that contains the current value of this range object.
+   * The GtkAdjustment that contains the current value of this dial object.
    */
   properties[PROP_ADJUSTMENT] = g_param_spec_object(
     "adjustment",
@@ -291,10 +291,10 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
   g_object_class_install_properties(g_class, LAST_PROP, properties);
 
   /**
-   * GtkRange::value-changed:
-   * @range: the `GtkRange` that received the signal
+   * GtkDial::value-changed:
+   * @dial: the `GtkDial` that received the signal
    *
-   * Emitted when the range value changes.
+   * Emitted when the dial value changes.
    */
   signals[VALUE_CHANGED] = g_signal_new(
     "value-changed",
