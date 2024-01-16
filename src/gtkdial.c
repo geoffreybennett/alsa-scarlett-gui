@@ -147,11 +147,11 @@ static void dial_measure(
 
 #define DRAG_FACTOR 0.5
 
-static inline double calc_valp(double val, double mn, double mx) {
+static double calc_valp(double val, double mn, double mx) {
   return (val - mn) / (mx - mn);
 }
 
-static inline double calc_valp_log(double val, double mn, double mx) {
+static double calc_valp_log(double val, double mn, double mx) {
   if (val <= mn)
     return 0.0;
   if (val >= mx)
@@ -167,7 +167,7 @@ static inline double calc_valp_log(double val, double mn, double mx) {
   return (val - 0.1) / 0.9;
 }
 
-static inline double calc_val(double valp, double mn, double mx) {
+static double calc_val(double valp, double mn, double mx) {
   return (mx - mn) * valp + mn;
 }
 
@@ -210,14 +210,14 @@ static void get_dial_properties(
   props->slider_cy = sin(props->angle) * radius + props->cy;
 }
 
-static inline double pdist2(double x1, double y1, double x2, double y2) {
+static double pdist2(double x1, double y1, double x2, double y2) {
   double dx = x2 - x1;
   double dy = y2 - y1;
 
   return dx * dx + dy * dy;
 }
 
-static inline gboolean circle_contains_point(
+static gboolean circle_contains_point(
   double cx,
   double cy,
   double r,
