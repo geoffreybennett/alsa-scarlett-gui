@@ -81,26 +81,6 @@ void gtk_dial_set_taper_linear_breakpoints(
   int           count
 );
 
-/**
- * @brief Set the colors which this dial uses. String codes can be one of the following:
- *     A standard name (Taken from the X11 rgb.txt file)
- *     A hexadecimal value in the form “#rgb”, “#rrggbb”, “#rrrgggbbb” or ”#rrrrggggbbbb”
- *     A RGB color in the form “rgb(r,g,b)” (In this case the color will have full opacity)
- *     A RGBA color in the form “rgba(r,g,b,a)”
- *     NULL if the color is to remain unchanged
- *
- * @param dial: The dial
- * @param trough_border: String code for trough border color
- * @param trough_bg: String code for trough background color
- * @param trough_fill: String code for trough fill color
- * @return TRUE if all the colors were set successfully, FALSE otherwise
- */
-gboolean gtk_dial_set_style(GtkDial *dial,
-                            const char *trough_border,
-                            const char *trough_bg,
-                            const char *trough_fill,
-                            const char *pointer);
-
 G_END_DECLS
 
 #endif

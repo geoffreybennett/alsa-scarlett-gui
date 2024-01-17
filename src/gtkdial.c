@@ -18,6 +18,9 @@
 
 #include "gtkdial.h"
 
+#define DIAL_MIN_WIDTH 60
+#define DIAL_MAX_WIDTH 70
+
 static void set_value(GtkDial *dial, double newval);
 
 static void gtk_dial_set_property(
@@ -98,13 +101,6 @@ enum {
 static guint signals[LAST_SIGNAL];
 static GParamSpec *properties[LAST_PROP];
 
-struct DialColors {
-  GdkRGBA trough_border,
-          trough_bg,
-          trough_fill,
-          pointer;
-};
-
 struct _GtkDial {
   GtkWidget parent_instance;
   GtkAdjustment *adj;
@@ -113,8 +109,6 @@ struct _GtkDial {
   GtkEventController *scroll_controller;
   e_grab grab;
   double dvalp;
-
-  struct DialColors colors;
 
   int round_digits;
   double zero_db;
@@ -216,15 +210,27 @@ struct dial_properties {
   double w;
   double h;
   double radius;
-  double thickness;
+  double slider_thickness;
   double cx;
   double cy;
   double valp;
   double angle;
-  double slider_radius;
   double slider_cx;
   double slider_cy;
 };
+
+static int calculate_dial_height(int width) {
+  double radius = width / 2;
+  double angle = (360 - TOTAL_ROTATION_DEGREES) / 2 * M_PI / 180;
+  double height = radius + radius * cos(angle);
+
+  return ceil(height);
+}
+
+static double calculate_dial_radius_from_height(int height) {
+  double angle = (360 - TOTAL_ROTATION_DEGREES) / 2.0 * M_PI / 180.0;
+  return height / (1 + cos(angle));
+}
 
 static void get_dial_properties(
   GtkDial                *dial,
@@ -233,12 +239,29 @@ static void get_dial_properties(
   props->w = gtk_widget_get_width(GTK_WIDGET(dial));
   props->h = gtk_widget_get_height(GTK_WIDGET(dial));
 
+  double width = props->w;
+  if (width > DIAL_MAX_WIDTH)
+    width = DIAL_MAX_WIDTH;
+
+  double max_height = calculate_dial_height(DIAL_MAX_WIDTH);
+  double height = props->h;
+  if (height > max_height)
+    height = max_height;
+
+  double radius_from_width = width / 2;
+
+  double radius_from_height = calculate_dial_radius_from_height(height);
+
+  props->radius = radius_from_width < radius_from_height ?
+    radius_from_width : radius_from_height;
+  props->radius -= 0.5;
+
   props->cx = props->w / 2;
-  props->cy = props->h / 2;
-  props->radius = props->h < props->w ? props->h / 2 - 2 : props->w / 2 - 2;
-  props->thickness = 10;
-  props->slider_radius = props->thickness * 1.5;
-  props->radius -= props->slider_radius / 2;
+  double angle = (360 - TOTAL_ROTATION_DEGREES) / 2.0 * M_PI / 180.0;
+  double y_offset = props->radius * cos(angle);
+  props->cy = (props->h / 2.0) + (props->radius - y_offset) / 2.0 - 0.5;
+
+  props->slider_thickness = 16;
 
   double mn = dial->adj ? gtk_adjustment_get_lower(dial->adj) : 0;
   double mx = dial->adj ? gtk_adjustment_get_upper(dial->adj) : 1;
@@ -246,9 +269,9 @@ static void get_dial_properties(
   props->valp = calc_taper(dial, calc_valp(value, mn, mx));
 
   props->angle = calc_val(props->valp, ANGLE_START, ANGLE_END);
-  double radius = props->radius - props->thickness / 2;
-  props->slider_cx = cos(props->angle) * radius + props->cx;
-  props->slider_cy = sin(props->angle) * radius + props->cy;
+  double slider_radius = props->radius - props->slider_thickness / 2;
+  props->slider_cx = cos(props->angle) * slider_radius + props->cx;
+  props->slider_cy = sin(props->angle) * slider_radius + props->cy;
 }
 
 static double pdist2(double x1, double y1, double x2, double y2) {
@@ -287,6 +310,8 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
 
   klass->move_slider = &gtk_dial_move_slider;
   klass->value_changed = NULL;
+
+  gtk_widget_class_set_css_name(w_class, "dial");
 
   /**
    * GtkDial:adjustment: (attributes org.gtk.Method.get=gtk_dial_get_adjustment org.gtk.Method.set=gtk_dial_set_adjustment)
@@ -398,7 +423,6 @@ static void gtk_dial_focus_change_cb(
 }
 
 static void gtk_dial_init(GtkDial *dial) {
-  gtk_dial_set_style(dial, "#cdc7c2", "#f0f0f0", "#3584e4", "#808080");
   gtk_widget_set_focusable(GTK_WIDGET(dial), TRUE);
 
   dial->adj = NULL;
@@ -461,10 +485,15 @@ static void dial_measure(
   int            *minimum_baseline,
   int            *natural_baseline
 ) {
-  *minimum = 50;
-  *natural = 50;
-  *minimum_baseline = for_size;
-  *natural_baseline = for_size;
+  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
+    *minimum = DIAL_MIN_WIDTH;
+    *natural = DIAL_MAX_WIDTH;
+  } else {
+    *minimum = calculate_dial_height(DIAL_MIN_WIDTH);
+    *natural = calculate_dial_height(DIAL_MAX_WIDTH);
+  }
+  *minimum_baseline = -1;
+  *natural_baseline = -1;
 }
 
 static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
@@ -472,49 +501,122 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
 
   struct dial_properties p;
   get_dial_properties(dial, &p);
-  p.valp = CLAMP(p.valp, 0.0001, 1.0);
 
   cairo_t *cr = gtk_snapshot_append_cairo(
     snapshot,
     &GRAPHENE_RECT_INIT(0, 0, p.w, p.h)
   );
 
-  // draw border
-  cairo_set_line_width(cr, gtk_widget_has_focus(widget) ? 5 : 2);
-  gdk_cairo_set_source_rgba(cr, &dial->colors.trough_border);
-  cairo_arc(cr, p.cx, p.cy, p.radius - p.thickness, ANGLE_START, ANGLE_END);
-  cairo_arc_negative(cr, p.cx, p.cy, p.radius, ANGLE_END, ANGLE_START);
-  cairo_close_path(cr);
-  cairo_stroke(cr);
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+  cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 
-  // bg trough
-  cairo_arc(
-    cr,
-    p.cx, p.cy,
-    (2 * p.radius - p.thickness) / 2.0,
-    ANGLE_START, ANGLE_END
-  );
-  cairo_set_line_width(cr, p.thickness);
-  gdk_cairo_set_source_rgba(cr, &dial->colors.trough_bg);
-  cairo_stroke(cr);
+  double slider_radius = p.radius - p.slider_thickness / 2;
+  double background_radius = slider_radius + p.slider_thickness / 4;
 
-  // fill trough
-  cairo_arc(
-    cr,
-    p.cx, p.cy,
-    (2 * p.radius - p.thickness) / 2.0,
-    ANGLE_START, p.angle
-  );
-  cairo_set_line_width(cr, p.thickness);
-  gdk_cairo_set_source_rgba(cr, &dial->colors.trough_fill);
-  cairo_stroke(cr);
-
-  // pointer
-  gdk_cairo_set_source_rgba(cr, &dial->colors.pointer);
+  // background line
+  cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, ANGLE_END);
   cairo_set_line_width(cr, 2);
-  cairo_move_to(cr, p.cx, p.cy);
-  cairo_line_to(cr, p.slider_cx, p.slider_cy);
+  cairo_set_source_rgba(cr, 1, 1, 1, 0.17);
   cairo_stroke(cr);
+
+  if (p.valp > 0.0) {
+    // outside value shadow
+    cairo_arc(cr, p.cx, p.cy, background_radius, ANGLE_START, p.angle);
+    cairo_set_line_width(cr, p.slider_thickness / 2);
+    cairo_set_source_rgba(cr, 1, 1, 1, 0.15);
+    cairo_stroke(cr);
+
+    // value blur 2
+    cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
+    cairo_set_line_width(cr, 6);
+    cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
+    cairo_stroke(cr);
+  }
+
+  // draw line to zero db
+  double zero_db = gtk_dial_get_zero_db(dial);
+  if (zero_db != 0.0) {
+    double zero_db_valp = calc_taper(
+      dial,
+      calc_valp(
+        zero_db,
+        gtk_adjustment_get_lower(dial->adj),
+        gtk_adjustment_get_upper(dial->adj)
+      )
+    );
+
+    double zero_db_angle = calc_val(zero_db_valp, ANGLE_START, ANGLE_END);
+    double zero_db_x = cos(zero_db_angle) * slider_radius + p.cx;
+    double zero_db_y = sin(zero_db_angle) * slider_radius + p.cy;
+
+    cairo_move_to(cr, p.cx, p.cy);
+    cairo_line_to(cr, zero_db_x, zero_db_y);
+    cairo_set_line_width(cr, 2);
+    cairo_set_source_rgba(cr, 1, 1, 1, 0.17);
+    cairo_stroke(cr);
+  }
+
+  // marker when at min or max
+  if (gtk_dial_get_value(dial) == gtk_adjustment_get_lower(dial->adj) ||
+      gtk_dial_get_value(dial) == gtk_adjustment_get_upper(dial->adj)) {
+    cairo_move_to(cr, p.cx, p.cy);
+    cairo_line_to(cr, p.slider_cx, p.slider_cy);
+    cairo_set_line_width(cr, 2);
+    cairo_set_source_rgba(cr, 1, 1, 1, 0.5);
+    cairo_stroke(cr);
+  }
+
+  if (p.valp > 0.0) {
+    // value blur 1
+    cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
+    cairo_set_line_width(cr, 4);
+    cairo_set_source_rgba(cr, 1, 1, 1, 0.5);
+    cairo_stroke(cr);
+
+    // value
+    cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
+    cairo_set_line_width(cr, 2);
+    cairo_set_source_rgb(cr, 1, 1, 1);
+    cairo_stroke(cr);
+  }
+
+  // fill the circle
+  cairo_pattern_t *pat;
+  pat = cairo_pattern_create_radial(
+    p.cx + 5, p.cy + 5, 0, p.cx, p.cy, p.radius
+  );
+  if (gtk_widget_has_focus(GTK_WIDGET(dial))) {
+    cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.30, 0.30, 0.33);
+    cairo_pattern_add_color_stop_rgb(pat, 0.4, 0.30, 0.30, 0.33);
+    cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.50, 0.50, 0.53);
+  } else {
+    cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.18, 0.18, 0.20);
+    cairo_pattern_add_color_stop_rgb(pat, 0.4, 0.18, 0.18, 0.20);
+    cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.40, 0.40, 0.42);
+  }
+  cairo_set_source(cr, pat);
+
+  cairo_arc(cr, p.cx, p.cy, p.radius - p.slider_thickness, 0, 2 * M_PI);
+  cairo_fill(cr);
+
+  // draw the circle
+  cairo_pattern_t *pat2;
+  pat2 = cairo_pattern_create_linear(
+    p.cx - p.radius / 2,
+    p.cy - p.radius / 2,
+    p.cx + p.radius / 2,
+    p.cy + p.radius / 2
+  );
+  cairo_pattern_add_color_stop_rgb(pat2, 0, 0.9, 0.9, 0.9);
+  cairo_pattern_add_color_stop_rgb(pat2, 1, 0.3, 0.3, 0.3);
+  cairo_set_source(cr, pat2);
+
+  cairo_arc(cr, p.cx, p.cy, p.radius - p.slider_thickness, 0, 2 * M_PI);
+  cairo_set_line_width(cr, 2);
+  cairo_stroke(cr);
+
+  cairo_pattern_destroy(pat);
+  cairo_pattern_destroy(pat2);
 
   cairo_destroy(cr);
 }
@@ -683,27 +785,6 @@ void gtk_dial_set_taper_linear_breakpoints(
   dial->taper_outputs[total_count - 1] = 1;
 
   dial->taper_breakpoints_count = total_count;
-}
-
-gboolean gtk_dial_set_style(
-  GtkDial    *dial,
-  const char *trough_border,
-  const char *trough_bg,
-  const char *trough_fill,
-  const char *pointer
-) {
-  gboolean out = TRUE;
-
-  if (trough_border)
-    out = out && gdk_rgba_parse(&dial->colors.trough_border, trough_border);
-  if (trough_bg)
-    out = out && gdk_rgba_parse(&dial->colors.trough_bg, trough_bg);
-  if (trough_fill)
-    out = out && gdk_rgba_parse(&dial->colors.trough_fill, trough_fill);
-  if (pointer)
-    out = out && gdk_rgba_parse(&dial->colors.pointer, pointer);
-
-  return out;
 }
 
 void gtk_dial_set_adjustment(GtkDial *dial, GtkAdjustment *adj) {
@@ -950,7 +1031,7 @@ static void gtk_dial_click_gesture_pressed(
   struct dial_properties p;
 
   get_dial_properties(dial, &p);
-  if (circle_contains_point(p.slider_cx, p.slider_cy, p.slider_radius, x, y))
+  if (circle_contains_point(p.slider_cx, p.slider_cy, p.radius, x, y))
     dial->grab = GRAB_SLIDER;
   else
     dial->grab = GRAB_NONE;
