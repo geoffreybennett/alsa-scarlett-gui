@@ -74,6 +74,13 @@ enum {
 void gtk_dial_set_taper(GtkDial *dial, int taper);
 int gtk_dial_get_taper(GtkDial *dial);
 
+void gtk_dial_set_taper_linear_breakpoints(
+  GtkDial      *dial,
+  const double *breakpoints,
+  const double *outputs,
+  int           count
+);
+
 /**
  * @brief Set the colors which this dial uses. String codes can be one of the following:
  *     A standard name (Taken from the X11 rgb.txt file)

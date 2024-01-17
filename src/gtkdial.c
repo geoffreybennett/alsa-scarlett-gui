@@ -119,6 +119,11 @@ struct _GtkDial {
   int round_digits;
   double zero_db;
   int taper;
+
+  // linear taper breakpoints array
+  double *taper_breakpoints;
+  double *taper_outputs;
+  int taper_breakpoints_count;
 };
 
 G_DEFINE_TYPE(GtkDial, gtk_dial, GTK_TYPE_WIDGET)
@@ -159,6 +164,24 @@ static double calc_valp(double val, double mn, double mx) {
   return (val - mn) / (mx - mn);
 }
 
+static double taper_linear(double val, double *bp, double *out, int count) {
+  if (count < 3)
+    return val;
+
+  if (val <= bp[0])
+    return out[0];
+
+  for (int i = 0; i < count - 1; i++) {
+    if (val > bp[i + 1])
+      continue;
+
+    double scale = (out[i + 1] - out[i]) / (bp[i + 1] - bp[i]);
+    return out[i] + scale * (val - bp[i]);
+  }
+
+  return out[count - 1];
+}
+
 static double taper_log(double val) {
 
   // 10^(val - 1) converts it to 0.1..1 with a nice curve
@@ -170,7 +193,12 @@ static double taper_log(double val) {
 
 static double calc_taper(GtkDial *dial, double val) {
   if (dial->taper == GTK_DIAL_TAPER_LINEAR)
-    return val;
+    return taper_linear(
+      val,
+      dial->taper_breakpoints,
+      dial->taper_outputs,
+      dial->taper_breakpoints_count
+    );
 
   if (dial->taper == GTK_DIAL_TAPER_LOG)
     return taper_log(val);
@@ -623,6 +651,40 @@ int gtk_dial_get_taper(GtkDial *dial) {
   return dial->taper;
 }
 
+void gtk_dial_set_taper_linear_breakpoints(
+  GtkDial      *dial,
+  const double *breakpoints,
+  const double *outputs,
+  int           count
+) {
+  free(dial->taper_breakpoints);
+  free(dial->taper_outputs);
+  dial->taper_breakpoints = NULL;
+  dial->taper_outputs = NULL;
+  dial->taper_breakpoints_count = 0;
+
+  if (count < 1)
+    return;
+
+  int total_count = count + 2;
+
+  dial->taper_breakpoints = malloc(total_count * sizeof(double));
+  dial->taper_outputs = malloc(total_count * sizeof(double));
+
+  dial->taper_breakpoints[0] = 0;
+  dial->taper_outputs[0] = 0;
+
+  for (int i = 0; i < count; i++) {
+    dial->taper_breakpoints[i + 1] = breakpoints[i];
+    dial->taper_outputs[i + 1] = outputs[i];
+  }
+
+  dial->taper_breakpoints[total_count - 1] = 1;
+  dial->taper_outputs[total_count - 1] = 1;
+
+  dial->taper_breakpoints_count = total_count;
+}
+
 gboolean gtk_dial_set_style(
   GtkDial    *dial,
   const char *trough_border,
@@ -919,6 +981,13 @@ static gboolean gtk_dial_scroll_controller_scroll(
 
 void gtk_dial_dispose(GObject *o) {
   GtkDial *dial = GTK_DIAL(o);
+
+  free(dial->taper_breakpoints);
+  dial->taper_breakpoints = NULL;
+  free(dial->taper_outputs);
+  dial->taper_outputs = NULL;
+  dial->taper_breakpoints_count = 0;
+
   g_object_unref(dial->adj);
   dial->adj = NULL;
   G_OBJECT_CLASS(gtk_dial_parent_class)->dispose(o);

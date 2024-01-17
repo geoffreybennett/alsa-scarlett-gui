@@ -92,6 +92,14 @@ GtkWidget *make_gain_alsa_elem(
     gtk_dial_taper = GTK_DIAL_TAPER_LINEAR;
   gtk_dial_set_taper(GTK_DIAL(data->dial), gtk_dial_taper);
 
+  if (widget_taper == WIDGET_GAIN_TAPER_GEN4_VOLUME)
+    gtk_dial_set_taper_linear_breakpoints(
+      GTK_DIAL(data->dial),
+      (const double[]){ 0.488, 0.76 },
+      (const double[]){ 0.07, 0.4 },
+      2
+    );
+
   data->label = gtk_label_new(NULL);
   gtk_widget_set_vexpand(data->dial, TRUE);
 

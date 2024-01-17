@@ -9,7 +9,8 @@
 
 enum {
   WIDGET_GAIN_TAPER_LINEAR,
-  WIDGET_GAIN_TAPER_LOG
+  WIDGET_GAIN_TAPER_LOG,
+  WIDGET_GAIN_TAPER_GEN4_VOLUME
 };
 
 GtkWidget *make_gain_alsa_elem(
