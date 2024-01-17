@@ -147,18 +147,17 @@ static void dial_measure(
 
 #define DRAG_FACTOR 0.5
 
+// convert val from mn..mx to 0..1 with clamp
 static double calc_valp(double val, double mn, double mx) {
-  return (val - mn) / (mx - mn);
-}
-
-static double calc_valp_log(double val, double mn, double mx) {
   if (val <= mn)
     return 0.0;
   if (val >= mx)
     return 1.0;
 
-  // convert val from mn..mx to 0..1
-  val = (val - mn) / (mx - mn);
+  return (val - mn) / (mx - mn);
+}
+
+static double taper_log(double val) {
 
   // 10^(val - 1) converts it to 0.1..1 with a nice curve
   val = pow(10, val - 1);
@@ -202,7 +201,7 @@ static void get_dial_properties(
   double mn = dial->adj ? gtk_adjustment_get_lower(dial->adj) : 0;
   double mx = dial->adj ? gtk_adjustment_get_upper(dial->adj) : 1;
   double value = dial->adj ? gtk_adjustment_get_value(dial->adj) : 0.25;
-  props->valp = calc_valp_log(value, mn, mx);
+  props->valp = taper_log(calc_valp(value, mn, mx));
 
   props->angle = calc_val(props->valp, ANGLE_START, ANGLE_END);
   double radius = props->radius - props->thickness / 2;
