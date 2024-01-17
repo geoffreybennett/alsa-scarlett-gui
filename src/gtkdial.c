@@ -84,6 +84,7 @@ enum {
   PROP_ADJUSTMENT,
   PROP_ROUND_DIGITS,
   PROP_ZERO_DB,
+  PROP_TAPER,
   LAST_PROP
 };
 
@@ -117,6 +118,7 @@ struct _GtkDial {
 
   int round_digits;
   double zero_db;
+  int taper;
 };
 
 G_DEFINE_TYPE(GtkDial, gtk_dial, GTK_TYPE_WIDGET)
@@ -166,6 +168,18 @@ static double taper_log(double val) {
   return (val - 0.1) / 0.9;
 }
 
+static double calc_taper(GtkDial *dial, double val) {
+  if (dial->taper == GTK_DIAL_TAPER_LINEAR)
+    return val;
+
+  if (dial->taper == GTK_DIAL_TAPER_LOG)
+    return taper_log(val);
+
+  g_warning("Invalid taper value: %d", dial->taper);
+
+  return val;
+}
+
 static double calc_val(double valp, double mn, double mx) {
   return (mx - mn) * valp + mn;
 }
@@ -201,7 +215,7 @@ static void get_dial_properties(
   double mn = dial->adj ? gtk_adjustment_get_lower(dial->adj) : 0;
   double mx = dial->adj ? gtk_adjustment_get_upper(dial->adj) : 1;
   double value = dial->adj ? gtk_adjustment_get_value(dial->adj) : 0.25;
-  props->valp = taper_log(calc_valp(value, mn, mx));
+  props->valp = calc_taper(dial, calc_valp(value, mn, mx));
 
   props->angle = calc_val(props->valp, ANGLE_START, ANGLE_END);
   double radius = props->radius - props->thickness / 2;
@@ -284,6 +298,20 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
     "The zero-dB value of the dial",
     -G_MAXDOUBLE, G_MAXDOUBLE,
     0.0,
+    G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+  );
+
+  /**
+   * GtkDial:taper: (attributes org.gtk.Method.get=gtk_dial_get_taper org.gtk.Method.set=gtk_dial_set_taper)
+   *
+   * The taper of the dial.
+   */
+  properties[PROP_TAPER] = g_param_spec_int(
+    "taper",
+    "Taper",
+    "The taper of the dial",
+    GTK_DIAL_TAPER_LINEAR, GTK_DIAL_TAPER_LOG,
+    GTK_DIAL_TAPER_LINEAR,
     G_PARAM_READWRITE | G_PARAM_CONSTRUCT
   );
 
@@ -525,6 +553,9 @@ static void gtk_dial_set_property(
     case PROP_ZERO_DB:
       gtk_dial_set_zero_db(dial, g_value_get_double(value));
       break;
+    case PROP_TAPER:
+      gtk_dial_set_taper(dial, g_value_get_int(value));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
       break;
@@ -548,6 +579,9 @@ static void gtk_dial_get_property(
       break;
     case PROP_ZERO_DB:
       g_value_set_double(value, dial->zero_db);
+      break;
+    case PROP_TAPER:
+      g_value_set_int(value, dial->taper);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -579,6 +613,14 @@ void gtk_dial_set_zero_db(GtkDial *dial, double zero_db) {
 
 double gtk_dial_get_zero_db(GtkDial *dial) {
   return dial->zero_db;
+}
+
+void gtk_dial_set_taper(GtkDial *dial, int taper) {
+  dial->taper = taper;
+}
+
+int gtk_dial_get_taper(GtkDial *dial) {
+  return dial->taper;
 }
 
 gboolean gtk_dial_set_style(

@@ -96,6 +96,7 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
 
       // create the meter widget and attach to the grid
       GtkWidget *meter = gtk_dial_new_with_range(-80, 0, 0, 0);
+      gtk_dial_set_taper(GTK_DIAL(meter), GTK_DIAL_TAPER_LINEAR);
       gtk_widget_set_sensitive(meter, FALSE);
       card->meters[meter_num++] = meter;
       gtk_grid_attach(GTK_GRID(grid), meter, j + 1, i + 1, 1, 1);

@@ -57,7 +57,11 @@ static void gain_updated(
 }
 
 //GList *make_gain_alsa_elem(struct alsa_elem *elem) {
-GtkWidget *make_gain_alsa_elem(struct alsa_elem *elem, int zero_is_off) {
+GtkWidget *make_gain_alsa_elem(
+  struct alsa_elem *elem,
+  int               zero_is_off,
+  int               widget_taper
+) {
   struct gain *data = g_malloc(sizeof(struct gain));
   data->elem = elem;
   data->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -77,6 +81,16 @@ GtkWidget *make_gain_alsa_elem(struct alsa_elem *elem, int zero_is_off) {
   int zero_db_value = (int)((0 - elem->min_dB) / data->scale + elem->min_val);
 
   gtk_dial_set_zero_db(GTK_DIAL(data->dial), zero_db_value);
+
+  // convert from widget_taper to gtk_dial_taper
+  int gtk_dial_taper;
+  if (widget_taper == WIDGET_GAIN_TAPER_LINEAR)
+    gtk_dial_taper = GTK_DIAL_TAPER_LINEAR;
+  else if (widget_taper == WIDGET_GAIN_TAPER_LOG)
+    gtk_dial_taper = GTK_DIAL_TAPER_LOG;
+  else
+    gtk_dial_taper = GTK_DIAL_TAPER_LINEAR;
+  gtk_dial_set_taper(GTK_DIAL(data->dial), gtk_dial_taper);
 
   data->label = gtk_label_new(NULL);
   gtk_widget_set_vexpand(data->dial, TRUE);

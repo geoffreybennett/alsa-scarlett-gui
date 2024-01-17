@@ -7,4 +7,13 @@
 
 #include "alsa.h"
 
-GtkWidget *make_gain_alsa_elem(struct alsa_elem *alsa_elem, int zero_is_off);
+enum {
+  WIDGET_GAIN_TAPER_LINEAR,
+  WIDGET_GAIN_TAPER_LOG
+};
+
+GtkWidget *make_gain_alsa_elem(
+  struct alsa_elem *elem,
+  int               zero_is_off,
+  int               taper_type
+);
