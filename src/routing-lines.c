@@ -14,64 +14,42 @@ static const double dash[] = { 4 };
 // top/bottom?
 #define IS_MIXER(x) ((x) == PC_MIX || (x) == PC_DSP)
 
-static void choose_line_colour(
-  struct routing_src *r_src,
-  struct routing_snk *r_snk,
-  double             *r,
-  double             *g,
-  double             *b
+static void hsl_to_rgb(
+  double h, double s, double l,
+  double *r, double *g, double *b
 ) {
-  // left channels have odd numbers
-  // right channels have even numbers
-  int odd_src = r_src->lr_num & 1;
-  int odd_snk = r_snk->elem->lr_num & 1;
+  double c = (1 - fabs(2 * l - 1)) * s;
+  double hp = h / 60;
+  double x = c * (1 - fabs(fmod(hp, 2) - 1));
+  double m = l - c / 2;
 
-  // for colouring, pair channels up
-  // 0 for odd pairs, 1 for even pairs
-  int src2 = ((r_src->lr_num - 1) / 2 & 1);
-  int snk2 = ((r_snk->elem->lr_num - 1) / 2 & 1);
+       if (hp < 1) { *r = c; *g = x; *b = 0; }
+  else if (hp < 2) { *r = x; *g = c; *b = 0; }
+  else if (hp < 3) { *r = 0; *g = c; *b = x; }
+  else if (hp < 4) { *r = 0; *g = x; *b = c; }
+  else if (hp < 5) { *r = x; *g = 0; *b = c; }
+  else             { *r = c; *g = 0; *b = x; }
 
-  // left -> left, black
-  if (odd_src && odd_snk) {
-    *r = 0;
-    *g = 0;
-    *b = 0;
+  *r += m;
+  *g += m;
+  *b += m;
+}
 
-  // right -> right, red
-  } else if (!odd_src && !odd_snk) {
-    *r = 1;
-    *g = 0;
-    *b = 0;
-
-  // left -> right, dark green
-  } else if (odd_src) {
-    *r = 0;
-    *g = 0.25;
-    *b = 0;
-
-  // right -> left, dark brown/olive
-  } else {
-    *r = 0.25;
-    *g = 0.25;
-    *b = 0;
-  }
-
-  // mix <-> non-mix, add blue
-  if (IS_MIXER(r_src->port_category) !=
-      IS_MIXER(r_snk->port_category)) {
-    *b = 0.5;
-  }
-
-  // even input pairs, lighten red and green components
-  if (src2) {
-    *r = (*r + 1) / 2;
-    *g = (*g + 1) / 2;
-  }
-
-  // even output pairs, lighten blue component
-  if (snk2) {
-    *b = (*b + 1) / 2;
-  }
+static void choose_line_colour(
+  int     i,
+  int     count,
+  double *r,
+  double *g,
+  double *b
+) {
+  if (count % 2)
+    count++;
+  hsl_to_rgb(
+    ((i / (count / 2) * 360 + i * 720) / count) % 360,
+    0.75,
+    0.5,
+    r, g, b
+  );
 }
 
 // draw a bezier curve given the end and control points
@@ -309,7 +287,7 @@ void draw_routing_lines(
 
     // pick a colour
     double r, g, b;
-    choose_line_colour(r_src, r_snk, &r, &g, &b);
+    choose_line_colour(i, card->routing_snks->len, &r, &g, &b);
 
     // make the colour lighter if it's being shown dotted
     if (dragging_this) {
@@ -385,14 +363,14 @@ void draw_drag_line(
       cr,
       x1, y1, card->src_drag->port_category,
       x2, y2, card->snk_drag->port_category,
-      0, 0, 0, 2
+      1, 1, 1, 2
     );
 
   // otherwise draw a straight line
   } else {
     cairo_set_dash(cr, dash, 1, 0);
 
-    cairo_set_source_rgb(cr, 0, 0, 0);
+    cairo_set_source_rgb(cr, 1, 1, 1);
     cairo_set_line_width(cr, 2);
     cairo_move_to(cr, x1, y1);
     cairo_line_to(cr, x2, y2);
