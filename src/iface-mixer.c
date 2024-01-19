@@ -156,36 +156,36 @@ static void create_input_link_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Off", "On");
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Link", NULL);
 
   int from, to;
   get_two_num_from_string(elem->name, &from, &to);
   if (to == -1)
     to = from;
 
-  gtk_grid_attach(GTK_GRID(grid), w, from, current_row, to - from + 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, from - 1, current_row, to - from + 1, 1);
 }
 
 static void create_input_gain_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
   GtkWidget *w = make_gain_alsa_elem(elem, 0, WIDGET_GAIN_TAPER_LINEAR);
 
-  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_autogain_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Off", "On");
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Autogain", NULL);
   gtk_widget_set_tooltip_text(
     w,
     "Autogain will listen to the input signal for 10 seconds and "
@@ -193,95 +193,95 @@ static void create_input_autogain_control(
     "best signal level."
   );
 
-  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_autogain_status_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
   GtkWidget *w = make_label_alsa_elem(elem);
 
-  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_safe_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Off", "On");
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Safe", NULL);
   gtk_widget_set_tooltip_text(
     w,
     "Enabling Safe Mode prevents the input from clipping by "
     "automatically reducing the gain if the signal is too hot."
   );
 
-  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_level_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Line", "Inst");
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Inst", NULL);
   gtk_widget_set_tooltip_text(w, level_descr);
 
-  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_air_switch_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Off", "On");
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Air", NULL);
   gtk_widget_set_tooltip_text(w, air_descr);
 
-  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_air_enum_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
   GtkWidget *w = make_combo_box_alsa_elem(elem);
   gtk_widget_set_tooltip_text(w, air_descr);
 
-  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_pad_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Off", "On");
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Pad", NULL);
   gtk_widget_set_tooltip_text(
     w,
     "Enabling Pad engages a 10dB attenuator in the channel, giving "
     "you more headroom for very hot signals."
   );
 
-  gtk_grid_attach(GTK_GRID(grid), w, line_num, current_row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_phantom_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
-  int               line_num
+  int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "48V Off", "48V On");
+  GtkWidget *w = make_boolean_alsa_elem(elem, "48V", NULL);
   gtk_widget_set_tooltip_text(w, phantom_descr);
 
   int from, to;
@@ -289,18 +289,17 @@ static void create_input_phantom_control(
   if (to == -1)
     to = from;
 
-  gtk_grid_attach(GTK_GRID(grid), w, from, current_row, to - from + 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), w, from - 1, current_row, to - from + 1, 1);
 }
 
 static void create_input_controls_by_type(
   GArray *elems,
   GtkWidget *grid,
   int *current_row,
-  char *label,
   char *control,
   void (*create_func)(struct alsa_elem *, GtkWidget *, int, int)
 ) {
-  GtkWidget *l = NULL;
+  int count = 0;
 
   for (int i = 0; i < elems->len; i++) {
     struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
@@ -312,17 +311,13 @@ static void create_input_controls_by_type(
     if (!strstr(elem->name, control))
       continue;
 
-    int line_num = get_num_from_string(elem->name);
+    int column_num = get_num_from_string(elem->name) - 1;
+    create_func(elem, grid, *current_row, column_num);
 
-    if (!l) {
-      l = gtk_label_new(label);
-      gtk_grid_attach(GTK_GRID(grid), l, 0, *current_row, 1, 1);
-    }
-
-    create_func(elem, grid, *current_row, line_num);
+    count++;
   }
 
-  if (l)
+  if (count)
     (*current_row)++;
 }
 
@@ -367,50 +362,49 @@ static void create_input_controls(
       snprintf(s, 20, "%d", i);
       label = gtk_label_new(s);
     }
-    gtk_grid_attach(GTK_GRID(input_grid), label, i, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(input_grid), label, i - 1, 0, 1, 1);
   }
 
   int current_row = 1;
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Link", "Link Capture Switch", create_input_link_control
+    "Link Capture Switch", create_input_link_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Gain", "Gain Capture Volume", create_input_gain_control
+    "Gain Capture Volume", create_input_gain_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Autogain", "Autogain Capture Switch", create_input_autogain_control
+    "Autogain Capture Switch", create_input_autogain_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Autogain Status", "Autogain Status Capture Enum",
-    create_input_autogain_status_control
+    "Autogain Status Capture Enum", create_input_autogain_status_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Safe", "Safe Capture Switch", create_input_safe_control
+    "Safe Capture Switch", create_input_safe_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Level", "Level Capture Enum", create_input_level_control
+    "Level Capture Enum", create_input_level_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Air", "Air Capture Switch", create_input_air_switch_control
+    "Air Capture Switch", create_input_air_switch_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Air", "Air Capture Enum", create_input_air_enum_control
+    "Air Capture Enum", create_input_air_enum_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    "Pad", "Pad Capture Switch", create_input_pad_control
+    "Pad Capture Switch", create_input_pad_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
-    NULL, "Phantom Power Capture Switch", create_input_phantom_control
+    "Phantom Power Capture Switch", create_input_phantom_control
   );
 
   (*x)++;

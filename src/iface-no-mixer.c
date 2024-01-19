@@ -67,23 +67,21 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
     int line_num = get_num_from_string(elem->name);
 
     if (strstr(elem->name, "Level Capture Enum")) {
-      w = make_boolean_alsa_elem(elem, "Line", "Inst");
+      w = make_boolean_alsa_elem(elem, "Inst", NULL);
       gtk_widget_set_tooltip_text(w, level_descr);
       gtk_grid_attach(GTK_GRID(input_grid), w, line_num - 1, 1, 1, 1);
     } else if (strstr(elem->name, "Air Capture Switch")) {
-      w = make_boolean_alsa_elem(elem, "Air Off", "Air On");
+      w = make_boolean_alsa_elem(elem, "Air", NULL);
       gtk_widget_set_tooltip_text(w, air_descr);
       gtk_grid_attach(
         GTK_GRID(input_grid), w, line_num - 1, 1 + !is_solo, 1, 1
       );
     } else if (strstr(elem->name, "Phantom Power Capture Switch")) {
-      w = make_boolean_alsa_elem(elem, "48V Off", "48V On");
+      w = make_boolean_alsa_elem(elem, "48V", NULL);
       gtk_widget_set_tooltip_text(w, phantom_descr);
       gtk_grid_attach(GTK_GRID(input_grid), w, 0, 3, 1 + !is_solo, 1);
     } else if (strcmp(elem->name, "Direct Monitor Playback Switch") == 0) {
-      w = make_boolean_alsa_elem(
-        elem, "Direct Monitor Off", "Direct Monitor On"
-      );
+      w = make_boolean_alsa_elem(elem, "Direct Monitor", NULL);
       gtk_widget_set_tooltip_text(
         w,
         "Direct Monitor sends the analogue input signals to the "
