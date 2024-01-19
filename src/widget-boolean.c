@@ -6,6 +6,7 @@
 struct boolean {
   struct alsa_elem *elem;
   GtkWidget        *button;
+  const char       *text[2];
 };
 
 static void button_clicked(GtkWidget *widget, struct alsa_elem *elem) {
@@ -38,7 +39,7 @@ static void toggle_button_updated(
   int value = !!alsa_get_elem_value(elem);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->button), value);
 
-  toggle_button_set_text(data->button, elem->bool_text[value]);
+  toggle_button_set_text(data->button, data->text[value]);
 }
 
 GtkWidget *make_boolean_alsa_elem(
@@ -54,13 +55,13 @@ GtkWidget *make_boolean_alsa_elem(
     data->button, "clicked", G_CALLBACK(button_clicked), elem
   );
   alsa_elem_add_callback(elem, toggle_button_updated, data);
-  elem->bool_text[0] = disabled_text;
-  elem->bool_text[1] = enabled_text;
+  data->text[0] = disabled_text;
+  data->text[1] = enabled_text;
 
   // find the maximum width and height of both possible labels
   int max_width = 0, max_height = 0;
   for (int i = 0; i < 2; i++) {
-    toggle_button_set_text(data->button, elem->bool_text[i]);
+    toggle_button_set_text(data->button, data->text[i]);
 
     GtkRequisition *size = gtk_requisition_new();
     gtk_widget_get_preferred_size(data->button, size, NULL);

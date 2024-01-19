@@ -140,10 +140,6 @@ struct alsa_elem {
   // the callback functions for this ALSA control element
   GList *callbacks;
 
-  // for boolean buttons, the two possible texts
-  // for dual buttons, the four possible texts
-  const char *bool_text[4];
-
   // for simulated elements, the current state
   int  writable;
   long value;

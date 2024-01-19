@@ -7,6 +7,7 @@ struct dual_button {
   struct alsa_elem *elem;
   GtkWidget        *button1;
   GtkWidget        *button2;
+  const char       *text[4];
 };
 
 static void dual_button_clicked(GtkWidget *widget, struct dual_button *data) {
@@ -33,13 +34,13 @@ static void dual_button_updated(
   int value1 = !!value;
 
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->button1), value1);
-  gtk_button_set_label(GTK_BUTTON(data->button1), elem->bool_text[value1]);
+  gtk_button_set_label(GTK_BUTTON(data->button1), data->text[value1]);
   gtk_widget_set_sensitive(data->button2, value1);
   if (value1) {
     int value2 = value - 1;
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->button2), value2);
     gtk_button_set_label(
-      GTK_BUTTON(data->button2), elem->bool_text[value2 + 2]
+      GTK_BUTTON(data->button2), data->text[value2 + 2]
     );
   }
 }
@@ -68,10 +69,10 @@ GtkWidget *make_dual_boolean_alsa_elems(
     data->button2, "clicked", G_CALLBACK(dual_button_clicked), data
   );
   alsa_elem_add_callback(elem, dual_button_updated, data);
-  elem->bool_text[0] = disabled_text_1;
-  elem->bool_text[1] = enabled_text_1;
-  elem->bool_text[2] = disabled_text_2;
-  elem->bool_text[3] = enabled_text_2;
+  data->text[0] = disabled_text_1;
+  data->text[1] = enabled_text_1;
+  data->text[2] = disabled_text_2;
+  data->text[3] = enabled_text_2;
 
   gtk_button_set_label(GTK_BUTTON(data->button2), disabled_text_2);
 
