@@ -26,13 +26,14 @@ static struct routing_snk *get_mixer_r_snk(
 
 GtkWidget *create_mixer_controls(struct alsa_card *card) {
   GtkWidget *mixer_top = gtk_grid_new();
-  GArray *elems = card->elems;
+  gtk_widget_add_css_class(mixer_top, "window-content");
+  gtk_widget_add_css_class(mixer_top, "window-mixer");
 
   gtk_widget_set_halign(mixer_top, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(mixer_top, GTK_ALIGN_CENTER);
-
-  gtk_widget_set_margin(mixer_top, 5);
   gtk_grid_set_column_homogeneous(GTK_GRID(mixer_top), TRUE);
+
+  GArray *elems = card->elems;
 
   // create the Mix X labels on the left and right of the grid
   for (int i = 0; i < card->routing_in_count[PC_MIX]; i++) {

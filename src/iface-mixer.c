@@ -571,7 +571,8 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   int x = 0;
 
   GtkWidget *top = gtk_grid_new();
-  gtk_widget_set_margin(top, 10);
+  gtk_widget_add_css_class(top, "window-content");
+  gtk_widget_add_css_class(top, "iface-mixer");
   gtk_grid_set_spacing(GTK_GRID(top), 10);
 
   int input_count = get_max_elem_by_name(

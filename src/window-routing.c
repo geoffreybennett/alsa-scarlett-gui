@@ -974,6 +974,8 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
   create_routing_grid(card);
 
   GtkWidget *routing_overlay = gtk_overlay_new();
+  gtk_widget_add_css_class(routing_overlay, "window-content");
+  gtk_widget_add_css_class(routing_overlay, "window-routing");
 
   gtk_overlay_set_child(GTK_OVERLAY(routing_overlay), card->routing_grid);
 

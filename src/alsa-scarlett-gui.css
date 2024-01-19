@@ -1,8 +1,15 @@
+.window-content {
+  background: black;
+  color: white;
+  padding: 15px;
+}
+
 .routing-group {
-  background: #EEE;
+  background: #181818;
   padding: 5px;
-  border: 1px solid #DDD;
+  border: 1px solid #303030;
   border-radius: 5px;
+  color: #d0d0d0;
 }
 
 .route-label {
@@ -22,8 +29,17 @@
 
 button {
   padding: 0px 5px 0px 5px;
+  border: 1px solid #181818;
+  background: linear-gradient(175deg, #101010, #181818);
+  box-shadow: none;
+  font-weight: bold;
+  color: #808080;
 }
 
-dial {
-  background: black;
+button:checked {
+  color: #ffffff;
+}
+
+button:hover {
+  background: #202020;
 }

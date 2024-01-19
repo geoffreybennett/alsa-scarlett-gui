@@ -154,7 +154,8 @@ GtkWidget *create_startup_controls(struct alsa_card *card) {
   int grid_y = 0;
 
   GtkWidget *grid = gtk_grid_new();
-  gtk_widget_set_margin(grid, 20);
+  gtk_widget_add_css_class(grid, "window-content");
+  gtk_widget_add_css_class(grid, "window-startup");
   gtk_grid_set_column_spacing(GTK_GRID(grid), 20);
 
   add_standalone_control(elems, grid, &grid_y);

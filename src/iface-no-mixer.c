@@ -14,12 +14,13 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
   GArray *elems = card->elems;
 
   GtkWidget *grid = gtk_grid_new();
+  gtk_widget_add_css_class(grid, "window-content");
+  gtk_widget_add_css_class(grid, "iface-no-mixer");
+  gtk_grid_set_spacing(GTK_GRID(grid), 10);
+
   GtkWidget *label_ic = gtk_label_new("Input Controls");
   GtkWidget *vert_sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
   GtkWidget *label_oc = gtk_label_new("Output Controls");
-
-  gtk_widget_set_margin(grid, 10);
-  gtk_grid_set_spacing(GTK_GRID(grid), 10);
 
   gtk_grid_attach(GTK_GRID(grid), label_ic, 0, 0, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), vert_sep, 1, 0, 1, 3);

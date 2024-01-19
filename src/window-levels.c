@@ -65,9 +65,10 @@ static struct alsa_elem *get_level_meter_elem(struct alsa_card *card) {
 
 GtkWidget *create_levels_controls(struct alsa_card *card) {
   GtkWidget *levels_top = gtk_grid_new();
-  GtkGrid *grid = GTK_GRID(levels_top);
+  gtk_widget_add_css_class(levels_top, "window-content");
+  gtk_widget_add_css_class(levels_top, "window-levels");
 
-  gtk_widget_set_margin(GTK_WIDGET(grid), 5);
+  GtkGrid *grid = GTK_GRID(levels_top);
 
   GtkWidget *count_labels[MAX_MUX_IN] = { NULL };
 
