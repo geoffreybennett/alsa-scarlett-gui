@@ -48,7 +48,7 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
 
   for (int i = 0; i < 2; i++) {
     char s[20];
-    snprintf(s, 20, "Analogue %d", i + 1);
+    snprintf(s, 20, "%d", i + 1);
     GtkWidget *label = gtk_label_new(s);
     gtk_grid_attach(GTK_GRID(input_grid), label, i, 0, 1, 1);
   }
