@@ -454,6 +454,50 @@ static void create_output_controls(
 
   int output_count = get_max_elem_by_name(elems, "Line", "Playback Volume");
 
+  /* 4th Gen Solo/2i2 */
+  if (get_elem_by_prefix(elems, "Direct Monitor Playback")) {
+    struct alsa_elem *elem;
+
+    for (int i = 0; i < 2; i++) {
+      char s[20];
+      snprintf(s, 20, "%d", i + 1);
+      GtkWidget *label = gtk_label_new(s);
+      gtk_grid_attach(GTK_GRID(output_grid), label, i, 0, 1, 1);
+    }
+
+    /* Solo */
+
+    elem = get_elem_by_name(elems, "Direct Monitor Playback Switch");
+
+    if (elem) {
+      GtkWidget *w = make_boolean_alsa_elem(elem, "Direct Monitor", NULL);
+      gtk_widget_add_css_class(w, "direct-monitor");
+      gtk_widget_set_tooltip_text(
+        w,
+        "Direct Monitor sends the analogue input signals to the "
+        "analogue outputs for zero-latency monitoring."
+      );
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 2, 1);
+    }
+
+    /* 2i2 */
+
+    elem = get_elem_by_name(elems, "Direct Monitor Playback Enum");
+
+    if (elem) {
+      GtkWidget *w = make_drop_down_alsa_elem(elem, "Direct Monitor");
+      gtk_widget_add_css_class(w, "direct-monitor");
+      gtk_widget_set_tooltip_text(
+        w,
+        "Direct Monitor sends the analogue input signals to the "
+        "analogue outputs for zero-latency monitoring."
+      );
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 2, 1);
+    }
+
+    return;
+  }
+
   int has_hw_vol = !!get_elem_by_name(elems, "Master HW Playback Volume");
   int line_1_col = has_hw_vol;
 
