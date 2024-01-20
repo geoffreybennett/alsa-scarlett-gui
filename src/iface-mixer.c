@@ -7,6 +7,7 @@
 #include "tooltips.h"
 #include "widget-boolean.h"
 #include "widget-combo.h"
+#include "widget-drop-down.h"
 #include "widget-dual.h"
 #include "widget-gain.h"
 #include "widget-input-select.h"
@@ -262,7 +263,7 @@ static void create_input_air_enum_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_combo_box_alsa_elem(elem);
+  GtkWidget *w = make_drop_down_alsa_elem(elem, "Air");
   gtk_widget_add_css_class(w, "air");
   gtk_widget_set_tooltip_text(w, air_descr);
 

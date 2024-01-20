@@ -50,6 +50,11 @@ button:disabled {
   color: #505050;
 }
 
+/* Stop text shadows on buttons from being applied to the popup menu */
+button > label > * {
+  text-shadow: none;
+}
+
 /* Button controls that are always disabled because they indicate status */
 button.fixed {
   color: #ffffff;
@@ -94,7 +99,19 @@ button.inst:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
+/* Air Checked (Gen 3) */
 button.air:checked {
+  text-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
+}
+
+/* Air Selections (Gen 4) */
+button.air.selected-presence > label {
+  color: #ffffff;
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+button.air.selected-presencedrive > label {
+  color: #ffffff;
   text-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
 }
 
