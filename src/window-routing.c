@@ -657,7 +657,7 @@ static void make_src_routing_widget(
   if (strlen(name) > 1 || !card->has_talkback) {
     GtkWidget *label = gtk_label_new(name);
     gtk_box_append(GTK_BOX(box), label);
-    gtk_widget_add_class(box, "route-label");
+    gtk_widget_add_css_class(box, "route-label");
 
     if (orientation == GTK_ORIENTATION_HORIZONTAL) {
       gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -712,7 +712,7 @@ static void make_snk_routing_widget(
 
   // create a box, a "socket", and a label
   GtkWidget *box = elem->widget = gtk_box_new(orientation, 5);
-  gtk_widget_add_class(box, "route-label");
+  gtk_widget_add_css_class(box, "route-label");
   GtkWidget *label = gtk_label_new(name);
   gtk_box_append(GTK_BOX(box), label);
   GtkWidget *socket = elem->widget2 = make_socket_widget();

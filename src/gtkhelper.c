@@ -24,8 +24,3 @@ void gtk_grid_set_spacing(GtkGrid *grid, int spacing) {
   gtk_grid_set_row_spacing(grid, spacing);
   gtk_grid_set_column_spacing(grid, spacing);
 }
-
-void gtk_widget_add_class(GtkWidget *w, const char *class) {
-  GtkStyleContext *style_context = gtk_widget_get_style_context(w);
-  gtk_style_context_add_class(style_context, class);
-}
