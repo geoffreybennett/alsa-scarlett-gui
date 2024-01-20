@@ -38,8 +38,79 @@ button {
 
 button:checked {
   color: #ffffff;
+  border: 1px solid #202020;
 }
 
 button:hover {
   background: #202020;
+}
+
+button:disabled {
+  background: #000000;
+  color: #505050;
+}
+
+/* Button controls that are always disabled because they indicate status */
+button.fixed {
+  color: #ffffff;
+}
+
+/* Combobox controls that are always disabled because they indicate status */
+combobox.fixed > box > button {
+  color: #ffffff;
+}
+
+/* Buttons that glow when on */
+button.sync-status {
+  text-shadow: 0 0 5px #a00000, 0 0 15px #800000;
+}
+
+button.sync-status:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+button.input-select:checked {
+  color: #ffffff;
+  text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00, 0 0 15px #00ff00;
+}
+
+button.input-link:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+button.autogain:checked {
+  text-shadow: 0 0 5px #0000ff, 0 0 15px #0000ff;
+}
+
+button.safe:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+button.inst:checked {
+  text-shadow: 0 0 5px #ff0000, 0 0 15px #ff0000;
+}
+
+.gen4 button.inst:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+button.air:checked {
+  text-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
+}
+
+button.pad:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+button.phantom:checked {
+  text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
+}
+
+.gen4 button.phantom:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+/* Direct Monitor Checked (Solo) */
+.direct-monitor:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }

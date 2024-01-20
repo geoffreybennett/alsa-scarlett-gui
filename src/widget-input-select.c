@@ -62,6 +62,8 @@ GtkWidget *make_input_select_alsa_elem(
   data->button = gtk_toggle_button_new();
   data->line_num = line_num;
 
+  gtk_widget_add_css_class(data->button, "input-select");
+
   char s[20];
   snprintf(s, 20, "%d", line_num);
   gtk_button_set_label(GTK_BUTTON(data->button), s);

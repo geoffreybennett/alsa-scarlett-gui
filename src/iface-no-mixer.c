@@ -69,20 +69,24 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
 
     if (strstr(elem->name, "Level Capture Enum")) {
       w = make_boolean_alsa_elem(elem, "Inst", NULL);
+      gtk_widget_add_css_class(w, "inst");
       gtk_widget_set_tooltip_text(w, level_descr);
       gtk_grid_attach(GTK_GRID(input_grid), w, line_num - 1, 1, 1, 1);
     } else if (strstr(elem->name, "Air Capture Switch")) {
       w = make_boolean_alsa_elem(elem, "Air", NULL);
+      gtk_widget_add_css_class(w, "air");
       gtk_widget_set_tooltip_text(w, air_descr);
       gtk_grid_attach(
         GTK_GRID(input_grid), w, line_num - 1, 1 + !is_solo, 1, 1
       );
     } else if (strstr(elem->name, "Phantom Power Capture Switch")) {
       w = make_boolean_alsa_elem(elem, "48V", NULL);
+      gtk_widget_add_css_class(w, "phantom");
       gtk_widget_set_tooltip_text(w, phantom_descr);
       gtk_grid_attach(GTK_GRID(input_grid), w, 0, 3, 1 + !is_solo, 1);
     } else if (strcmp(elem->name, "Direct Monitor Playback Switch") == 0) {
       w = make_boolean_alsa_elem(elem, "Direct Monitor", NULL);
+      gtk_widget_add_css_class(w, "direct-monitor");
       gtk_widget_set_tooltip_text(
         w,
         "Direct Monitor sends the analogue input signals to the "
@@ -93,6 +97,7 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
       GtkWidget *l = gtk_label_new("Direct Monitor");
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
       w = make_combo_box_alsa_elem(elem);
+      gtk_widget_add_css_class(w, "direct-monitor");
       gtk_widget_set_tooltip_text(
         w,
         "Direct Monitor sends the analogue input signals to the "

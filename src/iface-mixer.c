@@ -39,6 +39,8 @@ static void add_clock_source_control(
 
   GtkWidget *l = gtk_label_new("Clock Source");
   GtkWidget *w = make_combo_box_alsa_elem(clock_source);
+  gtk_widget_add_css_class(w, "clock-source");
+  gtk_widget_add_css_class(w, "fixed");
 
   gtk_box_append(GTK_BOX(b), l);
   gtk_box_append(GTK_BOX(b), w);
@@ -77,6 +79,8 @@ static void add_sync_status_control(
   GtkWidget *l = gtk_label_new("Sync Status");
   gtk_box_append(GTK_BOX(b), l);
   GtkWidget *w = make_boolean_alsa_elem(sync_status, "Unlocked", "Locked");
+  gtk_widget_add_css_class(w, "sync-status");
+  gtk_widget_add_css_class(w, "fixed");
   gtk_box_append(GTK_BOX(b), w);
 }
 
@@ -159,6 +163,7 @@ static void create_input_link_control(
   int               column_num
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Link", NULL);
+  gtk_widget_add_css_class(w, "input-link");
 
   int from, to;
   get_two_num_from_string(elem->name, &from, &to);
@@ -186,6 +191,7 @@ static void create_input_autogain_control(
   int               column_num
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Autogain", NULL);
+  gtk_widget_add_css_class(w, "autogain");
   gtk_widget_set_tooltip_text(
     w,
     "Autogain will listen to the input signal for 10 seconds and "
@@ -214,6 +220,7 @@ static void create_input_safe_control(
   int               column_num
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Safe", NULL);
+  gtk_widget_add_css_class(w, "safe");
   gtk_widget_set_tooltip_text(
     w,
     "Enabling Safe Mode prevents the input from clipping by "
@@ -230,6 +237,7 @@ static void create_input_level_control(
   int               column_num
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Inst", NULL);
+  gtk_widget_add_css_class(w, "inst");
   gtk_widget_set_tooltip_text(w, level_descr);
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -242,6 +250,7 @@ static void create_input_air_switch_control(
   int               column_num
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Air", NULL);
+  gtk_widget_add_css_class(w, "air");
   gtk_widget_set_tooltip_text(w, air_descr);
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -254,6 +263,7 @@ static void create_input_air_enum_control(
   int               column_num
 ) {
   GtkWidget *w = make_combo_box_alsa_elem(elem);
+  gtk_widget_add_css_class(w, "air");
   gtk_widget_set_tooltip_text(w, air_descr);
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -266,6 +276,7 @@ static void create_input_pad_control(
   int               column_num
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Pad", NULL);
+  gtk_widget_add_css_class(w, "pad");
   gtk_widget_set_tooltip_text(
     w,
     "Enabling Pad engages a 10dB attenuator in the channel, giving "
@@ -282,6 +293,7 @@ static void create_input_phantom_control(
   int               column_num
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "48V", NULL);
+  gtk_widget_add_css_class(w, "phantom");
   gtk_widget_set_tooltip_text(w, phantom_descr);
 
   int from, to;
@@ -578,6 +590,16 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   GtkWidget *top = gtk_grid_new();
   gtk_widget_add_css_class(top, "window-content");
   gtk_widget_add_css_class(top, "iface-mixer");
+
+  if (strstr(card->name, "4th Gen") ||
+      strstr(card->name, "Gen 4")) {
+    gtk_widget_add_css_class(top, "gen4");
+  } else if (strstr(card->name, "Scarlett")) {
+    gtk_widget_add_css_class(top, "scarlett");
+  } else if (strstr(card->name, "Clarett")) {
+    gtk_widget_add_css_class(top, "clarett");
+  }
+
   gtk_grid_set_spacing(GTK_GRID(top), 10);
 
   int input_count = get_max_elem_by_name(
