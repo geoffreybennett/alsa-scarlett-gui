@@ -317,6 +317,11 @@ static void create_input_controls_by_type(
     count++;
   }
 
+  // Don't increment row for 4th Gen Solo Inst control so Air control
+  // goes next to it
+  if (!strcmp(control, "Level Capture Enum") && count == 1)
+    return;
+
   if (count)
     (*current_row)++;
 }
