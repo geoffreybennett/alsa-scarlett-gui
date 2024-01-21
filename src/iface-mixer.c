@@ -6,7 +6,6 @@
 #include "stringhelper.h"
 #include "tooltips.h"
 #include "widget-boolean.h"
-#include "widget-combo.h"
 #include "widget-drop-down.h"
 #include "widget-dual.h"
 #include "widget-gain.h"
@@ -39,7 +38,7 @@ static void add_clock_source_control(
   gtk_box_append(GTK_BOX(global_controls), b);
 
   GtkWidget *l = gtk_label_new("Clock Source");
-  GtkWidget *w = make_combo_box_alsa_elem(clock_source);
+  GtkWidget *w = make_drop_down_alsa_elem(clock_source, NULL);
   gtk_widget_add_css_class(w, "clock-source");
   gtk_widget_add_css_class(w, "fixed");
 
