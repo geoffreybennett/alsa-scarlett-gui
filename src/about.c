@@ -17,14 +17,14 @@ void activate_about(
 
   gtk_show_about_dialog(
     w,
-    "program-name", "ALSA Scarlett Gen 2/3 Control Panel",
+    "program-name", "ALSA Scarlett2 Control Panel",
     "version", "Version " VERSION,
-    "comments", "GTK4 interface to the ALSA Scarlett Gen 2/3 Mixer controls",
+    "comments", "GTK4 interface to the ALSA Scarlett and Clarett Mixer controls",
     "website", "https://github.com/geoffreybennett/alsa-scarlett-gui",
     "copyright", "Copyright 2022-2024 Geoffrey D. Bennett",
     "license-type", GTK_LICENSE_GPL_3_0,
     "logo-icon-name", "alsa-scarlett-gui-logo",
-    "title", "About ALSA Scarlett Mixer Interface",
+    "title", "About ALSA Scarlett2 Mixer Interface",
     "authors", authors,
     NULL
   );

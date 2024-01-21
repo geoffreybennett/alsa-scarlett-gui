@@ -11,14 +11,14 @@ GtkWidget *create_window_iface_none(GtkApplication *app) {
   GtkWidget *picture = gtk_picture_new_for_resource(
     "/vu/b4/alsa-scarlett-gui/icons/alsa-scarlett-gui-logo.png"
   );
-  GtkWidget *label = gtk_label_new("No Scarlett Gen 2/3 interface found.");
+  GtkWidget *label = gtk_label_new("No Scarlett/Clarett interface found.");
 
   gtk_box_append(GTK_BOX(box), picture);
   gtk_box_append(GTK_BOX(box), label);
 
   GtkWidget *w = gtk_application_window_new(app);
   gtk_window_set_resizable(GTK_WINDOW(w), FALSE);
-  gtk_window_set_title(GTK_WINDOW(w), "ALSA Scarlett Gen 2/3 Control Panel");
+  gtk_window_set_title(GTK_WINDOW(w), "ALSA Scarlett2 Control Panel");
   gtk_window_set_child(GTK_WINDOW(w), box);
   gtk_application_window_set_show_menubar(
     GTK_APPLICATION_WINDOW(w), TRUE
