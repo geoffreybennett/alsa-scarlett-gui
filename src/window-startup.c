@@ -33,7 +33,10 @@ static void add_sep(GtkWidget *grid, int *grid_y) {
     return;
 
   GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-  gtk_widget_set_margin(sep, 20);
+  gtk_widget_set_margin_top(sep, 10);
+  gtk_widget_set_margin_bottom(sep, 10);
+  gtk_widget_set_margin_start(sep, 20);
+  gtk_widget_set_margin_end(sep, 20);
   gtk_grid_attach(GTK_GRID(grid), sep, 0, (*grid_y)++, 3, 1);
 }
 
@@ -55,6 +58,7 @@ static void add_standalone_control(
   gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
 
   w = make_boolean_alsa_elem(standalone, "Disabled", "Enabled");
+  gtk_widget_set_valign(w, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y + 1, 1, 1);
 
   w = big_label(
@@ -90,6 +94,7 @@ static void add_phantom_persistence_control(
   gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
 
   w = make_boolean_alsa_elem(phantom, "Disabled", "Enabled");
+  gtk_widget_set_valign(w, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y + 1, 1, 1);
 
   w = big_label(
@@ -124,6 +129,7 @@ static void add_msd_control(
   gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
 
   w = make_boolean_alsa_elem(msd, "Disabled", "Enabled");
+  gtk_widget_set_valign(w, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y + 1, 1, 1);
 
   w = big_label(
@@ -151,12 +157,18 @@ static void add_no_startup_controls_msg(GtkWidget *grid) {
 GtkWidget *create_startup_controls(struct alsa_card *card) {
   GArray *elems = card->elems;
 
+  GtkWidget *top = gtk_frame_new(NULL);
+  gtk_widget_add_css_class(top, "window-frame");
+
   int grid_y = 0;
 
   GtkWidget *grid = gtk_grid_new();
   gtk_widget_add_css_class(grid, "window-content");
+  gtk_widget_add_css_class(grid, "top-level-content");
   gtk_widget_add_css_class(grid, "window-startup");
   gtk_grid_set_column_spacing(GTK_GRID(grid), 20);
+  gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
+  gtk_frame_set_child(GTK_FRAME(top), grid);
 
   add_standalone_control(elems, grid, &grid_y);
   add_phantom_persistence_control(elems, grid, &grid_y);
@@ -165,5 +177,5 @@ GtkWidget *create_startup_controls(struct alsa_card *card) {
   if (!grid_y)
     add_no_startup_controls_msg(grid);
 
-  return grid;
+  return top;
 }

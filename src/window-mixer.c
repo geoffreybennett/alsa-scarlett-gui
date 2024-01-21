@@ -25,9 +25,14 @@ static struct routing_snk *get_mixer_r_snk(
 }
 
 GtkWidget *create_mixer_controls(struct alsa_card *card) {
+  GtkWidget *top = gtk_frame_new(NULL);
+  gtk_widget_add_css_class(top, "window-frame");
+
   GtkWidget *mixer_top = gtk_grid_new();
   gtk_widget_add_css_class(mixer_top, "window-content");
+  gtk_widget_add_css_class(mixer_top, "top-level-content");
   gtk_widget_add_css_class(mixer_top, "window-mixer");
+  gtk_frame_set_child(GTK_FRAME(top), mixer_top);
 
   gtk_widget_set_halign(mixer_top, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(mixer_top, GTK_ALIGN_CENTER);
@@ -109,7 +114,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
   update_mixer_labels(card);
 
-  return mixer_top;
+  return top;
 }
 
 void update_mixer_labels(struct alsa_card *card) {

@@ -262,7 +262,7 @@ static GtkWidget *create_routing_group_grid(
 ) {
   GtkWidget *grid = gtk_grid_new();
   gtk_widget_set_name(grid, name);
-  gtk_widget_add_css_class(grid, "routing-group");
+  gtk_widget_add_css_class(grid, "controls-content");
 
   gtk_grid_set_spacing(GTK_GRID(grid), 2);
 
@@ -368,7 +368,6 @@ static void create_routing_grid(struct alsa_card *card) {
   gtk_grid_attach(
     routing_grid, card->routing_mixer_out_grid, mix_col_num, 3, 1, 1
   );
-  gtk_widget_set_margin(card->routing_grid, 10);
   gtk_grid_set_spacing(routing_grid, 10);
 
   GtkWidget *src_label = gtk_label_new("↑\nSources →");
@@ -973,9 +972,14 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
 
   create_routing_grid(card);
 
+  GtkWidget *top = gtk_frame_new(NULL);
+  gtk_widget_add_css_class(top, "window-frame");
+  gtk_widget_add_css_class(top, "window-routing");
+
   GtkWidget *routing_overlay = gtk_overlay_new();
   gtk_widget_add_css_class(routing_overlay, "window-content");
   gtk_widget_add_css_class(routing_overlay, "window-routing");
+  gtk_frame_set_child(GTK_FRAME(top), routing_overlay);
 
   gtk_overlay_set_child(GTK_OVERLAY(routing_overlay), card->routing_grid);
 
@@ -983,5 +987,5 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
 
   add_drop_controller_motion(card, routing_overlay);
 
-  return routing_overlay;
+  return top;
 }

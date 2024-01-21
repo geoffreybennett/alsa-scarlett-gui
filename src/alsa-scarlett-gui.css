@@ -1,15 +1,43 @@
-.window-content {
+/* Top-level window frame */
+.window-frame {
   background: black;
   color: white;
   padding: 15px;
+  border-radius: 0px;
+  border: none;
 }
 
-.routing-group {
-  background: #181818;
-  padding: 5px;
-  border: 1px solid #303030;
+/* Top-level window content */
+.window-content {
+  padding: 15px;
+  border: 2px solid #800000;
+  border-radius: 20px;
+}
+
+/* Label above controls-content */
+.controls-label {
+  font-size: smaller;
+  margin-top: -4px;
+}
+
+/* controls-content boxes */
+.controls-content {
+  background: #141414;
+  padding: 10px;
+  border: 1px solid #a00000;
   border-radius: 5px;
   color: #d0d0d0;
+}
+
+/* Tighten up routing groups and make the background a little lighter */
+.window-routing .controls-content {
+  background: #181818;
+  padding: 5px;
+}
+
+/* Used when the controls content is at the top level */
+.top-level-content {
+  background: #141414;
 }
 
 .route-label {
@@ -18,35 +46,39 @@
 }
 
 .route-label:hover {
-  background: @theme_selected_bg_color;
-  outline: 2px solid @theme_selected_bg_color;
+  background: #801010;
+  outline: 2px solid #801010;
 }
 
 .route-label:drop(active) {
   box-shadow: none;
-  background: @theme_selected_bg_color;
+  background: #801010;
 }
 
 button {
   padding: 0px 5px 0px 5px;
-  border: 1px solid #181818;
-  background: linear-gradient(175deg, #101010, #181818);
+  border: 1px solid #303030;
+  background: linear-gradient(175deg, #202020, #282828);
   box-shadow: none;
   font-weight: bold;
   color: #808080;
 }
 
+button:focus:focus-visible {
+  outline-color: #801010;
+}
+
 button:checked {
   color: #ffffff;
-  border: 1px solid #202020;
+  border: 1px solid #404040;
 }
 
 button:hover {
-  background: #202020;
+  background: #303030;
 }
 
 button:disabled {
-  background: #000000;
+  background: #202020;
   color: #505050;
 }
 
@@ -141,4 +173,14 @@ button.direct-monitor.selected-mono > label {
 button.direct-monitor.selected-stereo > label {
   color: #ffffff;
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+/* Bigger buttons in the startup window */
+.window-startup button {
+  padding: 5px;
+}
+
+/* Separators */
+.window-frame separator {
+  background: #800000;
 }

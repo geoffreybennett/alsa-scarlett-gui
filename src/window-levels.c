@@ -64,9 +64,14 @@ static struct alsa_elem *get_level_meter_elem(struct alsa_card *card) {
 }
 
 GtkWidget *create_levels_controls(struct alsa_card *card) {
+  GtkWidget *top = gtk_frame_new(NULL);
+  gtk_widget_add_css_class(top, "window-frame");
+
   GtkWidget *levels_top = gtk_grid_new();
   gtk_widget_add_css_class(levels_top, "window-content");
+  gtk_widget_add_css_class(levels_top, "top-level-content");
   gtk_widget_add_css_class(levels_top, "window-levels");
+  gtk_frame_set_child(GTK_FRAME(top), levels_top);
 
   GtkGrid *grid = GTK_GRID(levels_top);
 
@@ -113,5 +118,5 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
 
   card->meter_gsource_timer = g_timeout_add(50, update_levels_controls, card);
 
-  return levels_top;
+  return top;
 }

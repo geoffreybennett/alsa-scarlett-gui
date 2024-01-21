@@ -172,14 +172,20 @@ static void add_talkback_controls(
 }
 
 static GtkWidget *create_global_box(GtkWidget *grid, int *x, int orient) {
-  GtkWidget *label = gtk_label_new("Global");
-  GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-  GtkWidget *controls = gtk_box_new(orient, 15);
-  gtk_widget_set_margin(controls, 10);
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_vexpand(box, TRUE);
 
-  gtk_grid_attach(GTK_GRID(grid), label, *x, 0, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), sep, *x, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), controls, *x, 2, 1, 1);
+  GtkWidget *label = gtk_label_new("Global");
+  gtk_widget_add_css_class(label, "controls-label");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  GtkWidget *controls = gtk_box_new(orient, 15);
+  gtk_widget_add_css_class(controls, "controls-content");
+  gtk_widget_set_vexpand(controls, TRUE);
+
+  gtk_box_append(GTK_BOX(box), label);
+  gtk_box_append(GTK_BOX(box), controls);
+
+  gtk_grid_attach(GTK_GRID(grid), box, *x, 0, 1, 1);
 
   (*x)++;
 
@@ -194,6 +200,7 @@ static void create_input_link_control(
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Link", NULL);
   gtk_widget_add_css_class(w, "input-link");
+  gtk_widget_set_hexpand(w, TRUE);
 
   int from, to;
   get_two_num_from_string(elem->name, &from, &to);
@@ -222,6 +229,7 @@ static void create_input_autogain_control(
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Autogain", NULL);
   gtk_widget_add_css_class(w, "autogain");
+  gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(
     w,
     "Autogain will listen to the input signal for 10 seconds and "
@@ -251,6 +259,7 @@ static void create_input_safe_control(
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Safe", NULL);
   gtk_widget_add_css_class(w, "safe");
+  gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(
     w,
     "Enabling Safe Mode prevents the input from clipping by "
@@ -268,6 +277,7 @@ static void create_input_level_control(
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Inst", NULL);
   gtk_widget_add_css_class(w, "inst");
+  gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(w, level_descr);
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -281,6 +291,7 @@ static void create_input_air_switch_control(
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Air", NULL);
   gtk_widget_add_css_class(w, "air");
+  gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(w, air_descr);
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -294,6 +305,7 @@ static void create_input_air_enum_control(
 ) {
   GtkWidget *w = make_drop_down_alsa_elem(elem, "Air");
   gtk_widget_add_css_class(w, "air");
+  gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(w, air_descr);
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -307,6 +319,7 @@ static void create_input_pad_control(
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "Pad", NULL);
   gtk_widget_add_css_class(w, "pad");
+  gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(
     w,
     "Enabling Pad engages a 10dB attenuator in the channel, giving "
@@ -324,6 +337,7 @@ static void create_input_phantom_control(
 ) {
   GtkWidget *w = make_boolean_alsa_elem(elem, "48V", NULL);
   gtk_widget_add_css_class(w, "phantom");
+  gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(w, phantom_descr);
 
   int from, to;
@@ -385,19 +399,22 @@ static void create_input_controls(
   struct alsa_elem *input_select_elem =
     get_elem_by_name(elems, "Input Select Capture Enum");
 
-  GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
-  gtk_widget_set_halign(sep, GTK_ALIGN_CENTER);
-  gtk_grid_attach(GTK_GRID(top), sep, (*x)++, 0, 1, 3);
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 
   GtkWidget *label_ic = gtk_label_new("Analogue Inputs");
-  gtk_grid_attach(GTK_GRID(top), label_ic, *x, 0, 1, 1);
-
-  GtkWidget *horiz_input_sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-  gtk_grid_attach(GTK_GRID(top), horiz_input_sep, *x, 1, 1, 1);
+  gtk_widget_add_css_class(label_ic, "controls-label");
+  gtk_widget_set_halign(label_ic, GTK_ALIGN_START);
+  gtk_box_append(GTK_BOX(box), label_ic);
 
   GtkWidget *input_grid = gtk_grid_new();
+  gtk_widget_add_css_class(input_grid, "controls-content");
   gtk_grid_set_spacing(GTK_GRID(input_grid), 10);
-  gtk_grid_attach(GTK_GRID(top), input_grid, *x, 2, 1, 1);
+  gtk_widget_set_hexpand(input_grid, TRUE);
+  gtk_widget_set_halign(input_grid, GTK_ALIGN_FILL);
+  gtk_widget_set_vexpand(input_grid, TRUE);
+  gtk_box_append(GTK_BOX(box), input_grid);
+
+  gtk_grid_attach(GTK_GRID(top), box, *x, 0, 1, 1);
 
   for (int i = 1; i <= input_count; i++) {
     GtkWidget *label;
@@ -466,21 +483,21 @@ static void create_output_controls(
 ) {
   GArray *elems = card->elems;
 
-  if (*x) {
-    GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
-    gtk_grid_attach(GTK_GRID(top), sep, (*x)++, y, x_span, 3);
-  }
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 
   GtkWidget *label_oc = gtk_label_new("Analogue Outputs");
-  gtk_grid_attach(GTK_GRID(top), label_oc, *x, y, x_span, 1);
-
-  GtkWidget *horiz_output_sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
-  gtk_grid_attach(GTK_GRID(top), horiz_output_sep, *x, y + 1, x_span, 1);
+  gtk_widget_add_css_class(label_oc, "controls-label");
+  gtk_widget_set_halign(label_oc, GTK_ALIGN_START);
+  gtk_box_append(GTK_BOX(box), label_oc);
 
   GtkWidget *output_grid = gtk_grid_new();
+  gtk_widget_add_css_class(output_grid, "controls-content");
   gtk_grid_set_spacing(GTK_GRID(output_grid), 10);
-  gtk_grid_attach(GTK_GRID(top), output_grid, *x, y + 2, x_span, 1);
   gtk_widget_set_hexpand(output_grid, TRUE);
+  gtk_widget_set_vexpand(output_grid, TRUE);
+  gtk_box_append(GTK_BOX(box), output_grid);
+
+  gtk_grid_attach(GTK_GRID(top), box, *x, y, x_span, 1);
 
   int output_count = get_max_elem_by_name(elems, "Line", "Playback Volume");
 
@@ -675,7 +692,7 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
     gtk_widget_add_css_class(top, "clarett");
   }
 
-  gtk_grid_set_spacing(GTK_GRID(top), 10);
+  gtk_grid_set_spacing(GTK_GRID(top), 15);
 
   int input_count = get_max_elem_by_name(
     card->elems, "Line", "Capture Switch"
@@ -689,10 +706,7 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
 
   if (input_count + output_count >= 12) {
     x = 0;
-    GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_grid_attach(GTK_GRID(top), sep, 0, 3, 3, 1);
-
-    create_output_controls(card, top, &x, 4, 3);
+    create_output_controls(card, top, &x, 1, 2);
   } else {
     create_output_controls(card, top, &x, 0, 1);
   }
@@ -755,7 +769,10 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   card->has_talkback =
     !!get_elem_by_name(card->elems, "Talkback Playback Enum");
 
-  GtkWidget *top = create_main_window_controls(card);
+  GtkWidget *top = gtk_frame_new(NULL);
+  gtk_widget_add_css_class(top, "window-frame");
+  GtkWidget *contents = create_main_window_controls(card);
+  gtk_frame_set_child(GTK_FRAME(top), contents);
 
   GtkWidget *routing_top = create_routing_controls(card);
   if (!routing_top)

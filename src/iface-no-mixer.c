@@ -13,32 +13,42 @@
 GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
   GArray *elems = card->elems;
 
-  GtkWidget *grid = gtk_grid_new();
-  gtk_widget_add_css_class(grid, "window-content");
-  gtk_widget_add_css_class(grid, "iface-no-mixer");
-  gtk_grid_set_spacing(GTK_GRID(grid), 10);
+  GtkWidget *top = gtk_frame_new(NULL);
+  gtk_widget_add_css_class(top, "window-frame");
+
+  GtkWidget *content = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
+  gtk_widget_add_css_class(content, "window-content");
+  gtk_widget_add_css_class(content, "iface-no-mixer");
+  gtk_frame_set_child(GTK_FRAME(top), content);
+
+  GtkWidget *input_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  GtkWidget *output_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_box_append(GTK_BOX(content), input_box);
+  gtk_box_append(GTK_BOX(content), output_box);
 
   GtkWidget *label_ic = gtk_label_new("Input Controls");
-  GtkWidget *vert_sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
   GtkWidget *label_oc = gtk_label_new("Output Controls");
 
-  gtk_grid_attach(GTK_GRID(grid), label_ic, 0, 0, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), vert_sep, 1, 0, 1, 3);
-  gtk_grid_attach(GTK_GRID(grid), label_oc, 2, 0, 1, 1);
+  gtk_widget_add_css_class(label_ic, "controls-label");
+  gtk_widget_add_css_class(label_oc, "controls-label");
 
-  GtkWidget *horiz_input_sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-  gtk_grid_attach(GTK_GRID(grid), horiz_input_sep, 0, 1, 1, 1);
+  gtk_widget_set_halign(label_ic, GTK_ALIGN_START);
+  gtk_widget_set_halign(label_oc, GTK_ALIGN_START);
+
+  gtk_box_append(GTK_BOX(input_box), label_ic);
+  gtk_box_append(GTK_BOX(output_box), label_oc);
 
   GtkWidget *input_grid = gtk_grid_new();
   gtk_grid_set_spacing(GTK_GRID(input_grid), 10);
-  gtk_grid_attach(GTK_GRID(grid), input_grid, 0, 2, 1, 1);
-
-  GtkWidget *horiz_output_sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
-  gtk_grid_attach(GTK_GRID(grid), horiz_output_sep, 2, 1, 1, 1);
+  gtk_widget_add_css_class(input_grid, "controls-content");
+  gtk_widget_set_vexpand(input_grid, TRUE);
+  gtk_box_append(GTK_BOX(input_box), input_grid);
 
   GtkWidget *output_grid = gtk_grid_new();
   gtk_grid_set_spacing(GTK_GRID(output_grid), 10);
-  gtk_grid_attach(GTK_GRID(grid), output_grid, 2, 2, 1, 1);
+  gtk_widget_add_css_class(output_grid, "controls-content");
+  gtk_widget_set_vexpand(output_grid, TRUE);
+  gtk_box_append(GTK_BOX(output_box), output_grid);
 
   // Solo or 2i2?
   // Solo Phantom Power is Line 1 only
@@ -114,5 +124,5 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
   GtkWidget *startup = create_startup_controls(card);
   gtk_window_set_child(GTK_WINDOW(card->window_startup), startup);
 
-  return grid;
+  return top;
 }

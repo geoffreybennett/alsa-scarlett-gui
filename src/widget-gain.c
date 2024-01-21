@@ -66,6 +66,8 @@ GtkWidget *make_gain_alsa_elem(
   data->elem = elem;
   data->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_hexpand(data->vbox, TRUE);
+  gtk_widget_set_valign(data->vbox, GTK_ALIGN_START);
+  gtk_widget_set_vexpand(data->vbox, TRUE);
 
   data->scale = (float)(elem->max_dB - elem->min_dB) /
                        (elem->max_val - elem->min_val);
