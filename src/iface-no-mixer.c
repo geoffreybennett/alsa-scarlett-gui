@@ -6,7 +6,7 @@
 #include "stringhelper.h"
 #include "tooltips.h"
 #include "widget-boolean.h"
-#include "widget-combo.h"
+#include "widget-drop-down.h"
 #include "window-helper.h"
 #include "window-startup.h"
 
@@ -94,9 +94,7 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
       );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 0, 1, 1);
     } else if (strcmp(elem->name, "Direct Monitor Playback Enum") == 0) {
-      GtkWidget *l = gtk_label_new("Direct Monitor");
-      gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
-      w = make_combo_box_alsa_elem(elem);
+      w = make_drop_down_alsa_elem(elem, "Direct Monitor");
       gtk_widget_add_css_class(w, "direct-monitor");
       gtk_widget_set_tooltip_text(
         w,
@@ -105,7 +103,7 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
         "both inputs to the left and right outputs. Stereo sends "
         "input 1 to the left, and input 2 to the right output."
       );
-      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 0, 1, 1);
     }
   }
 

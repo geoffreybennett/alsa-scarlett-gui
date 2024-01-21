@@ -131,3 +131,14 @@ button.phantom:checked {
 .direct-monitor:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
+
+/* Direct Monitor Selections (2i2) */
+button.direct-monitor.selected-mono > label {
+  color: #ffffff;
+  text-shadow: 0 0 5px #c0c0c0, 0 0 15px #c0c0c0;
+}
+
+button.direct-monitor.selected-stereo > label {
+  color: #ffffff;
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
