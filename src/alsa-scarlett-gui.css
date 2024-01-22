@@ -215,6 +215,16 @@ button.sw-hw:checked {
   border-color: #303030;
 }
 
+/* Textview used for long descriptions in the startup window */
+textview {
+  color: #ffffff;
+  background: none;
+}
+
+textview > text {
+  background: none;
+}
+
 /* Bigger buttons in the startup window */
 .window-startup button {
   padding: 5px;

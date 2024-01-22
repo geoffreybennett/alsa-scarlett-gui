@@ -18,14 +18,16 @@ static GtkWidget *small_label(char *text) {
 }
 
 static GtkWidget *big_label(char *text) {
-  GtkWidget *w = gtk_label_new(text);
+  GtkWidget *view = gtk_text_view_new ();
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (view));
 
-  gtk_widget_set_halign(w, GTK_ALIGN_START);
+  gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (view), GTK_WRAP_WORD);
+  gtk_widget_set_size_request (view, 600, -1);
+  gtk_widget_set_sensitive (view, FALSE);
 
-  gtk_label_set_wrap(GTK_LABEL(w), true);
-  gtk_label_set_max_width_chars(GTK_LABEL(w), 60);
+  gtk_text_buffer_set_text (buffer, text, -1);
 
-  return w;
+  return view;
 }
 
 static void add_sep(GtkWidget *grid, int *grid_y) {
