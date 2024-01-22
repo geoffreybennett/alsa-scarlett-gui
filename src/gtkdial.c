@@ -217,6 +217,7 @@ struct dial_properties {
   double angle;
   double slider_cx;
   double slider_cy;
+  int    dim;
 };
 
 static int calculate_dial_height(int width) {
@@ -272,6 +273,8 @@ static void get_dial_properties(
   double slider_radius = props->radius - props->slider_thickness / 2;
   props->slider_cx = cos(props->angle) * slider_radius + props->cx;
   props->slider_cy = sin(props->angle) * slider_radius + props->cy;
+
+  props->dim = !gtk_widget_is_sensitive(GTK_WIDGET(dial));
 }
 
 static double pdist2(double x1, double y1, double x2, double y2) {
@@ -496,6 +499,38 @@ static void dial_measure(
   *natural_baseline = -1;
 }
 
+// internal replacement for cairo_set_source_rgba() that dims the
+// color if the widget is insensitive
+static void cairo_set_source_rgba_dim(
+  cairo_t *cr,
+  double   r,
+  double   g,
+  double   b,
+  double   a,
+  int      dim
+) {
+  if (dim)
+    cairo_set_source_rgba(cr, r * 0.5, g * 0.5, b * 0.5, a);
+  else
+    cairo_set_source_rgba(cr, r, g, b, a);
+}
+
+// internal replacement for cairo_pattern_add_color_stop_rgb() that
+// dims the color if the widget is insensitive
+static void cairo_add_stop_rgb_dim(
+  cairo_pattern_t *pat,
+  double           offset,
+  double           r,
+  double           g,
+  double           b,
+  int              dim
+) {
+  if (dim)
+    cairo_pattern_add_color_stop_rgb(pat, offset, r * 0.5, g * 0.5, b * 0.5);
+  else
+    cairo_pattern_add_color_stop_rgb(pat, offset, r, g, b);
+}
+
 static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   GtkDial *dial = GTK_DIAL(widget);
 
@@ -516,20 +551,20 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   // background line
   cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, ANGLE_END);
   cairo_set_line_width(cr, 2);
-  cairo_set_source_rgba(cr, 1, 1, 1, 0.17);
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.17, p.dim);
   cairo_stroke(cr);
 
   if (p.valp > 0.0) {
     // outside value shadow
     cairo_arc(cr, p.cx, p.cy, background_radius, ANGLE_START, p.angle);
     cairo_set_line_width(cr, p.slider_thickness / 2);
-    cairo_set_source_rgba(cr, 1, 1, 1, 0.15);
+    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.1, p.dim);
     cairo_stroke(cr);
 
     // value blur 2
     cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
     cairo_set_line_width(cr, 6);
-    cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
+    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.3, p.dim);
     cairo_stroke(cr);
   }
 
@@ -552,7 +587,7 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     cairo_move_to(cr, p.cx, p.cy);
     cairo_line_to(cr, zero_db_x, zero_db_y);
     cairo_set_line_width(cr, 2);
-    cairo_set_source_rgba(cr, 1, 1, 1, 0.17);
+    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.17, p.dim);
     cairo_stroke(cr);
   }
 
@@ -562,7 +597,7 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     cairo_move_to(cr, p.cx, p.cy);
     cairo_line_to(cr, p.slider_cx, p.slider_cy);
     cairo_set_line_width(cr, 2);
-    cairo_set_source_rgba(cr, 1, 1, 1, 0.5);
+    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.5, p.dim);
     cairo_stroke(cr);
   }
 
@@ -570,13 +605,13 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     // value blur 1
     cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
     cairo_set_line_width(cr, 4);
-    cairo_set_source_rgba(cr, 1, 1, 1, 0.5);
+    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.5, p.dim);
     cairo_stroke(cr);
 
     // value
     cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
     cairo_set_line_width(cr, 2);
-    cairo_set_source_rgb(cr, 1, 1, 1);
+    cairo_set_source_rgba_dim(cr, 1, 1, 1, 1, p.dim);
     cairo_stroke(cr);
   }
 
@@ -586,13 +621,13 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     p.cx + 5, p.cy + 5, 0, p.cx, p.cy, p.radius
   );
   if (gtk_widget_has_focus(GTK_WIDGET(dial))) {
-    cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.30, 0.30, 0.33);
-    cairo_pattern_add_color_stop_rgb(pat, 0.4, 0.30, 0.30, 0.33);
-    cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.50, 0.50, 0.53);
+    cairo_add_stop_rgb_dim(pat, 0.0, 0.30, 0.30, 0.33, p.dim);
+    cairo_add_stop_rgb_dim(pat, 0.4, 0.30, 0.30, 0.33, p.dim);
+    cairo_add_stop_rgb_dim(pat, 1.0, 0.50, 0.50, 0.53, p.dim);
   } else {
-    cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.18, 0.18, 0.20);
-    cairo_pattern_add_color_stop_rgb(pat, 0.4, 0.18, 0.18, 0.20);
-    cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.40, 0.40, 0.42);
+    cairo_add_stop_rgb_dim(pat, 0.0, 0.18, 0.18, 0.20, p.dim);
+    cairo_add_stop_rgb_dim(pat, 0.4, 0.18, 0.18, 0.20, p.dim);
+    cairo_add_stop_rgb_dim(pat, 1.0, 0.40, 0.40, 0.42, p.dim);
   }
   cairo_set_source(cr, pat);
 
@@ -607,8 +642,8 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     p.cx + p.radius / 2,
     p.cy + p.radius / 2
   );
-  cairo_pattern_add_color_stop_rgb(pat2, 0, 0.9, 0.9, 0.9);
-  cairo_pattern_add_color_stop_rgb(pat2, 1, 0.3, 0.3, 0.3);
+  cairo_add_stop_rgb_dim(pat2, 0, 0.9, 0.9, 0.9, p.dim);
+  cairo_add_stop_rgb_dim(pat2, 1, 0.3, 0.3, 0.3, p.dim);
   cairo_set_source(cr, pat2);
 
   cairo_arc(cr, p.cx, p.cy, p.radius - p.slider_thickness, 0, 2 * M_PI);
