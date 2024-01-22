@@ -576,6 +576,7 @@ static void create_output_controls(
         w = make_boolean_alsa_elem(
           elem, "*audio-volume-high", "*audio-volume-muted"
         );
+        gtk_widget_add_css_class(w, "mute");
         if (has_hw_vol) {
           gtk_widget_set_tooltip_text(
             w,
@@ -589,6 +590,7 @@ static void create_output_controls(
         );
       } else if (strstr(elem->name, "Volume Control Playback Enum")) {
         w = make_boolean_alsa_elem(elem, "SW", "HW");
+        gtk_widget_add_css_class(w, "sw-hw");
         gtk_widget_set_tooltip_text(
           w,
           "Set software-controlled (SW) or hardware-controlled (HW) "
@@ -634,12 +636,14 @@ static void create_output_controls(
       w = make_boolean_alsa_elem(
         elem, "*audio-volume-high", "*audio-volume-muted"
       );
+      gtk_widget_add_css_class(w, "mute");
       gtk_widget_set_tooltip_text(w, "Mute HW controlled outputs");
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 2, 1, 1);
     } else if (strcmp(elem->name, "Dim Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
         elem, "*audio-volume-medium", "*audio-volume-low"
       );
+      gtk_widget_add_css_class(w, "dim");
       gtk_widget_set_tooltip_text(
         w, "Dim (lower volume) of HW controlled outputs"
       );

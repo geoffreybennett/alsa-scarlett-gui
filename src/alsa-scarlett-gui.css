@@ -55,6 +55,7 @@
   background: #801010;
 }
 
+/* Default button style */
 button {
   padding: 0px 5px 0px 5px;
   border: 1px solid #303030;
@@ -173,6 +174,45 @@ button.direct-monitor.selected-mono > label {
 button.direct-monitor.selected-stereo > label {
   color: #ffffff;
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+/* Button controls where checked is dimmer */
+
+/* Mute button */
+button.mute {
+  color: #ffffff;
+  -gtk-icon-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+  border-color: #404040;
+}
+
+button.mute:checked {
+  -gtk-icon-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
+  border-color: #303030;
+}
+
+/* Dim button */
+button.dim {
+  color: #ffffff;
+  -gtk-icon-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+  border-color: #404040;
+}
+
+button.dim:checked {
+  -gtk-icon-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
+  border-color: #303030;
+}
+
+/* SW/HW button */
+button.sw-hw {
+  color: #ffffff;
+  -gtk-icon-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+  border-color: #404040;
+}
+
+button.sw-hw:checked {
+  color: #808080;
+  -gtk-icon-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
+  border-color: #303030;
 }
 
 /* Bigger buttons in the startup window */
