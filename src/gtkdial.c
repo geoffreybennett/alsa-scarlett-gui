@@ -531,6 +531,19 @@ static void cairo_add_stop_rgb_dim(
     cairo_pattern_add_color_stop_rgb(pat, offset, r, g, b);
 }
 
+static void draw_slider(
+  cairo_t                *cr,
+  struct dial_properties *p,
+  double                  radius,
+  double                  thickness,
+  double                  alpha
+) {
+  cairo_arc(cr, p->cx, p->cy, radius, ANGLE_START, p->angle);
+  cairo_set_line_width(cr, thickness);
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, alpha, p->dim);
+  cairo_stroke(cr);
+}
+
 static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   GtkDial *dial = GTK_DIAL(widget);
 
@@ -556,16 +569,10 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
 
   if (p.valp > 0.0) {
     // outside value shadow
-    cairo_arc(cr, p.cx, p.cy, background_radius, ANGLE_START, p.angle);
-    cairo_set_line_width(cr, p.slider_thickness / 2);
-    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.1, p.dim);
-    cairo_stroke(cr);
+    draw_slider(cr, &p, background_radius, p.slider_thickness / 2, 0.1);
 
     // value blur 2
-    cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
-    cairo_set_line_width(cr, 6);
-    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.3, p.dim);
-    cairo_stroke(cr);
+    draw_slider(cr, &p, slider_radius, 6, 0.3);
   }
 
   // draw line to zero db
@@ -603,16 +610,10 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
 
   if (p.valp > 0.0) {
     // value blur 1
-    cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
-    cairo_set_line_width(cr, 4);
-    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.5, p.dim);
-    cairo_stroke(cr);
+    draw_slider(cr, &p, slider_radius, 4, 0.5);
 
     // value
-    cairo_arc(cr, p.cx, p.cy, slider_radius, ANGLE_START, p.angle);
-    cairo_set_line_width(cr, 2);
-    cairo_set_source_rgba_dim(cr, 1, 1, 1, 1, p.dim);
-    cairo_stroke(cr);
+    draw_slider(cr, &p, slider_radius, 2, 1);
   }
 
   // fill the circle
