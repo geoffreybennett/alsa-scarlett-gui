@@ -132,6 +132,10 @@ button.inst:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
+button.pcm-input-mix:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
 /* Air Checked (Gen 3) */
 button.air:checked {
   text-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;

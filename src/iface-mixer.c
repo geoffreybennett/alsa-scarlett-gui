@@ -192,6 +192,30 @@ static GtkWidget *create_global_box(GtkWidget *grid, int *x, int orient) {
   return controls;
 }
 
+/* 4th Gen Solo Mix switch */
+static void create_input_select_control(
+  GArray    *elems,
+  GtkWidget *input_grid,
+  int       *current_row
+) {
+  struct alsa_elem *elem = get_elem_by_name(elems, "PCM Input Capture Switch");
+
+  if (!elem)
+    return;
+
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Mix", "Mix");
+  gtk_widget_add_css_class(w, "pcm-input-mix");
+  gtk_widget_set_tooltip_text(
+    w,
+    "Enabling Input Mix selects Mix E/F as the input source for "
+    "the PCM 1/2 Inputs rather than the DSP 1/2 Inputs. This is "
+    "useful to get a mono mix of both input channels."
+  );
+  gtk_grid_attach(GTK_GRID(input_grid), w, 0, *current_row, 2, 1);
+
+  (*current_row)++;
+}
+
 static void create_input_link_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
@@ -430,6 +454,9 @@ static void create_input_controls(
   }
 
   int current_row = 1;
+
+  create_input_select_control(elems, input_grid, &current_row);
+
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "Link Capture Switch", create_input_link_control
