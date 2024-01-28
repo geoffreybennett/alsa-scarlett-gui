@@ -82,7 +82,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     }
 
     // create the gain control and attach to the grid
-    GtkWidget *w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG);
+    GtkWidget *w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0);
     gtk_grid_attach(GTK_GRID(mixer_top), w, input_num + 1, mix_num + 2, 1, 1);
 
     // look up the r_snk entry for the mixer input number

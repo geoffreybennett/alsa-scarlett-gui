@@ -60,7 +60,8 @@ static void gain_updated(
 GtkWidget *make_gain_alsa_elem(
   struct alsa_elem *elem,
   int               zero_is_off,
-  int               widget_taper
+  int               widget_taper,
+  int               can_control
 ) {
   struct gain *data = g_malloc(sizeof(struct gain));
   data->elem = elem;
@@ -101,6 +102,8 @@ GtkWidget *make_gain_alsa_elem(
       (const double[]){ 0.07, 0.4 },
       2
     );
+
+  gtk_dial_set_can_control(GTK_DIAL(data->dial), can_control);
 
   data->label = gtk_label_new(NULL);
   gtk_widget_set_vexpand(data->dial, TRUE);

@@ -88,6 +88,7 @@ enum {
   PROP_ROUND_DIGITS,
   PROP_ZERO_DB,
   PROP_TAPER,
+  PROP_CAN_CONTROL,
   LAST_PROP
 };
 
@@ -113,6 +114,7 @@ struct _GtkDial {
   int round_digits;
   double zero_db;
   int taper;
+  gboolean can_control;
 
   // linear taper breakpoints array
   double *taper_breakpoints;
@@ -274,7 +276,7 @@ static void get_dial_properties(
   props->slider_cx = cos(props->angle) * slider_radius + props->cx;
   props->slider_cy = sin(props->angle) * slider_radius + props->cy;
 
-  props->dim = !gtk_widget_is_sensitive(GTK_WIDGET(dial));
+  props->dim = !gtk_widget_is_sensitive(GTK_WIDGET(dial)) && dial->can_control;
 }
 
 static double pdist2(double x1, double y1, double x2, double y2) {
@@ -368,6 +370,20 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
     "The taper of the dial",
     GTK_DIAL_TAPER_LINEAR, GTK_DIAL_TAPER_LOG,
     GTK_DIAL_TAPER_LINEAR,
+    G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+  );
+
+  /**
+   * GtkDial:can-control: (attributes org.gtk.Method.get=gtk_dial_get_can_control org.gtk.Method.set=gtk_dial_set_can_control)
+   *
+   * Whether the dial can be controlled by the user (even though it
+   * might sometimes be insensitive).
+   */
+  properties[PROP_CAN_CONTROL] = g_param_spec_boolean(
+    "can-control",
+    "CanControl",
+    "Whether the dial can be controlled by the user",
+    TRUE,
     G_PARAM_READWRITE | G_PARAM_CONSTRUCT
   );
 
@@ -722,6 +738,9 @@ static void gtk_dial_set_property(
     case PROP_TAPER:
       gtk_dial_set_taper(dial, g_value_get_int(value));
       break;
+    case PROP_CAN_CONTROL:
+      gtk_dial_set_can_control(dial, g_value_get_boolean(value));
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
       break;
@@ -748,6 +767,9 @@ static void gtk_dial_get_property(
       break;
     case PROP_TAPER:
       g_value_set_int(value, dial->taper);
+      break;
+    case PROP_CAN_CONTROL:
+      g_value_set_boolean(value, dial->can_control);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -821,6 +843,14 @@ void gtk_dial_set_taper_linear_breakpoints(
   dial->taper_outputs[total_count - 1] = 1;
 
   dial->taper_breakpoints_count = total_count;
+}
+
+void gtk_dial_set_can_control(GtkDial *dial, gboolean can_control) {
+  dial->can_control = can_control;
+}
+
+gboolean gtk_dial_get_can_control(GtkDial *dial) {
+  return dial->can_control;
 }
 
 void gtk_dial_set_adjustment(GtkDial *dial, GtkAdjustment *adj) {

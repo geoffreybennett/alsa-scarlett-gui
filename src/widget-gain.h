@@ -16,5 +16,6 @@ enum {
 GtkWidget *make_gain_alsa_elem(
   struct alsa_elem *elem,
   int               zero_is_off,
-  int               taper_type
+  int               taper_type,
+  int               can_control
 );

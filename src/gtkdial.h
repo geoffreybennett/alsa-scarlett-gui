@@ -81,6 +81,9 @@ void gtk_dial_set_taper_linear_breakpoints(
   int           count
 );
 
+void gtk_dial_set_can_control(GtkDial *dial, gboolean can_control);
+gboolean gtk_dial_get_can_control(GtkDial *dial);
+
 G_END_DECLS
 
 #endif

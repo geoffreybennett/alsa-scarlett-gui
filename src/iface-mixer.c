@@ -216,7 +216,7 @@ static void create_input_gain_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_gain_alsa_elem(elem, 0, WIDGET_GAIN_TAPER_LINEAR);
+  GtkWidget *w = make_gain_alsa_elem(elem, 0, WIDGET_GAIN_TAPER_LINEAR, 1);
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
@@ -568,7 +568,7 @@ static void create_output_controls(
     // output controls
     if (strncmp(elem->name, "Line", 4) == 0) {
       if (strstr(elem->name, "Playback Volume")) {
-        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG);
+        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 1);
         gtk_grid_attach(
           GTK_GRID(output_grid), w, line_num - 1 + line_1_col, 1, 1, 1
         );
@@ -608,9 +608,9 @@ static void create_output_controls(
       GtkWidget *l = gtk_label_new(gen4 ? "Line 1–2" : "HW");
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
       if (gen4) {
-        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME);
+        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0);
       } else {
-        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG);
+        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0);
       }
       gtk_widget_set_tooltip_text(
         w,
@@ -630,7 +630,7 @@ static void create_output_controls(
         "This control shows the setting of the headphone volume knob."
       );
       gtk_grid_attach(GTK_GRID(output_grid), l, 1, 0, 1, 1);
-      w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME);
+      w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0);
       gtk_grid_attach(GTK_GRID(output_grid), w, 1, 1, 1, 1);
     } else if (strcmp(elem->name, "Mute Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
