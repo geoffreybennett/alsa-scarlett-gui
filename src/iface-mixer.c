@@ -222,7 +222,7 @@ static void create_input_controls(
       w = make_boolean_alsa_elem(elem, "Off", "On");
       gtk_widget_set_tooltip_text(
         w,
-        "Enabling Pad engages an attenuator in the channel, giving "
+        "Enabling Pad engages a 10dB attenuator in the channel, giving "
         "you more headroom for very hot signals."
       );
       gtk_grid_attach(GTK_GRID(input_grid), w, line_num, 3, 1, 1);
