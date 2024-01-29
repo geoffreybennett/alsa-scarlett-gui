@@ -9,8 +9,8 @@ const char *level_descr =
   "Mic/Line or Instrument Level (Impedance)";
 
 const char *air_descr =
-  "Enabling Air will transform your recordings and inspire you while "
-  "making music.";
+  "AIR mode applies a frequency response filter to the input stage that "
+  "mimics the sound of prior transformer-based Focusrite interfaces.";
 
 const char *phantom_descr =
   "Enabling 48V sends “Phantom Power” to the XLR microphone input. "
