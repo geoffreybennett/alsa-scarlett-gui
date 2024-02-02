@@ -65,6 +65,9 @@ int gtk_dial_get_round_digits(GtkDial *dial);
 void gtk_dial_set_zero_db(GtkDial *dial, double zero_db);
 double gtk_dial_get_zero_db(GtkDial *dial);
 
+void gtk_dial_set_off_db(GtkDial *dial, double off_db);
+double gtk_dial_get_off_db(GtkDial *dial);
+
 // taper functions
 enum {
   GTK_DIAL_TAPER_LINEAR,

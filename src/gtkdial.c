@@ -87,6 +87,7 @@ enum {
   PROP_ADJUSTMENT,
   PROP_ROUND_DIGITS,
   PROP_ZERO_DB,
+  PROP_OFF_DB,
   PROP_TAPER,
   PROP_CAN_CONTROL,
   LAST_PROP
@@ -113,6 +114,7 @@ struct _GtkDial {
 
   int round_digits;
   double zero_db;
+  double off_db;
   int taper;
   gboolean can_control;
 
@@ -188,6 +190,23 @@ static double taper_log(double val) {
 }
 
 static double calc_taper(GtkDial *dial, double val) {
+  double mn = gtk_adjustment_get_lower(dial->adj);
+  double mx = gtk_adjustment_get_upper(dial->adj);
+  double off_db = gtk_dial_get_off_db(dial);
+
+  // if off_db is set, then values below it are considered as
+  // almost-silence, so we clamp them to 0.01
+  if (off_db > mn) {
+    if (val == mn)
+      val = 0;
+    else if (val <= off_db)
+      val = 0.01;
+    else
+      val = calc_valp(val, off_db, mx) * 0.99 + 0.01;
+  } else {
+    val = calc_valp(val, mn, mx);
+  }
+
   if (dial->taper == GTK_DIAL_TAPER_LINEAR)
     return taper_linear(
       val,
@@ -266,10 +285,7 @@ static void get_dial_properties(
 
   props->slider_thickness = 16;
 
-  double mn = dial->adj ? gtk_adjustment_get_lower(dial->adj) : 0;
-  double mx = dial->adj ? gtk_adjustment_get_upper(dial->adj) : 1;
-  double value = dial->adj ? gtk_adjustment_get_value(dial->adj) : 0.25;
-  props->valp = calc_taper(dial, calc_valp(value, mn, mx));
+  props->valp = calc_taper(dial, gtk_adjustment_get_value(dial->adj));
 
   props->angle = calc_val(props->valp, ANGLE_START, ANGLE_END);
   double slider_radius = props->radius - props->slider_thickness / 2;
@@ -356,6 +372,22 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
     "The zero-dB value of the dial",
     -G_MAXDOUBLE, G_MAXDOUBLE,
     0.0,
+    G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+  );
+
+  /**
+   * GtkDial:off_db: (attributes org.gtk.Method.get=gtk_dial_get_off_db org.gtk.Method.set=gtk_dial_set_off_db)
+   *
+   * Values above the lower value of the adjustment up to this value
+   * will be considered as the minimum value + 1 (so will display as
+   * just-above-zero).
+   */
+  properties[PROP_OFF_DB] = g_param_spec_double(
+    "off_db",
+    "OffdB",
+    "Values up to this value will be considered as almost-silence",
+    -G_MAXDOUBLE, G_MAXDOUBLE,
+    -G_MAXDOUBLE,
     G_PARAM_READWRITE | G_PARAM_CONSTRUCT
   );
 
@@ -594,14 +626,7 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   // draw line to zero db
   double zero_db = gtk_dial_get_zero_db(dial);
   if (zero_db != 0.0) {
-    double zero_db_valp = calc_taper(
-      dial,
-      calc_valp(
-        zero_db,
-        gtk_adjustment_get_lower(dial->adj),
-        gtk_adjustment_get_upper(dial->adj)
-      )
-    );
+    double zero_db_valp = calc_taper(dial, zero_db);
 
     double zero_db_angle = calc_val(zero_db_valp, ANGLE_START, ANGLE_END);
     double zero_db_x = cos(zero_db_angle) * slider_radius + p.cx;
@@ -735,6 +760,9 @@ static void gtk_dial_set_property(
     case PROP_ZERO_DB:
       gtk_dial_set_zero_db(dial, g_value_get_double(value));
       break;
+    case PROP_OFF_DB:
+      gtk_dial_set_off_db(dial, g_value_get_double(value));
+      break;
     case PROP_TAPER:
       gtk_dial_set_taper(dial, g_value_get_int(value));
       break;
@@ -764,6 +792,9 @@ static void gtk_dial_get_property(
       break;
     case PROP_ZERO_DB:
       g_value_set_double(value, dial->zero_db);
+      break;
+    case PROP_OFF_DB:
+      g_value_set_double(value, dial->off_db);
       break;
     case PROP_TAPER:
       g_value_set_int(value, dial->taper);
@@ -801,6 +832,14 @@ void gtk_dial_set_zero_db(GtkDial *dial, double zero_db) {
 
 double gtk_dial_get_zero_db(GtkDial *dial) {
   return dial->zero_db;
+}
+
+void gtk_dial_set_off_db(GtkDial *dial, double off_db) {
+  dial->off_db = off_db;
+}
+
+double gtk_dial_get_off_db(GtkDial *dial) {
+  return dial->off_db;
 }
 
 void gtk_dial_set_taper(GtkDial *dial, int taper) {
