@@ -105,6 +105,10 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
       gtk_dial_set_taper(GTK_DIAL(meter), GTK_DIAL_TAPER_LINEAR);
       gtk_dial_set_can_control(GTK_DIAL(meter), FALSE);
       gtk_widget_set_sensitive(meter, FALSE);
+
+      // HW Output off_db is -55db; otherwise -45db
+      gtk_dial_set_off_db(GTK_DIAL(meter), i == PC_HW ? -55 : -45);
+
       card->meters[meter_num++] = meter;
       gtk_grid_attach(GTK_GRID(grid), meter, j + 1, i + 1, 1, 1);
     }
