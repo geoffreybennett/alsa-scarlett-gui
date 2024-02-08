@@ -18,7 +18,7 @@
 
 #include "gtkdial.h"
 
-#define DIAL_MIN_WIDTH 60
+#define DIAL_MIN_WIDTH 50
 #define DIAL_MAX_WIDTH 70
 
 static void set_value(GtkDial *dial, double newval);
@@ -303,7 +303,7 @@ static void update_dial_properties(GtkDial *dial) {
   dial->cx = dial->w / 2;
   dial->cy = (dial->h / 2.0) + (dial->radius - y_offset) / 2.0 - 0.5;
 
-  dial->slider_thickness = 16;
+  dial->slider_thickness = dial->radius / 2.2;
   dial->knob_radius = dial->radius - dial->slider_thickness;
   dial->slider_radius = dial->radius - dial->slider_thickness / 2;
   dial->background_radius = dial->slider_radius + dial->slider_thickness / 4;
