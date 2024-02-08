@@ -140,6 +140,10 @@ struct _GtkDial {
   double zero_db_x;
   double zero_db_y;
 
+  // cairo patterns dependent on the above
+  cairo_pattern_t *fill_pattern[2][2];
+  cairo_pattern_t *outline_pattern[2];
+
   // variables derived from the dial value
   double valp;
   double angle;
@@ -263,6 +267,24 @@ static double calculate_dial_radius_from_height(int height) {
   return height / (1 + cos(angle));
 }
 
+// internal replacement for cairo_pattern_add_color_stop_rgb() that
+// dims the color if the widget is insensitive and brightens it by
+// focus_mult
+static void cairo_add_stop_rgb_dim(
+  cairo_pattern_t *pat,
+  double           offset,
+  double           r,
+  double           g,
+  double           b,
+  int              dim,
+  double           focus_mult
+) {
+  double x = dim ? 0.5 : 1.0;
+  x *= focus_mult;
+
+  cairo_pattern_add_color_stop_rgb(pat, offset, r * x, g * x, b * x);
+}
+
 static void update_dial_properties(GtkDial *dial) {
 
   // always update
@@ -317,6 +339,40 @@ static void update_dial_properties(GtkDial *dial) {
 
     dial->zero_db_x = cos(zero_db_angle) * dial->slider_radius + dial->cx;
     dial->zero_db_y = sin(zero_db_angle) * dial->slider_radius + dial->cy;
+  }
+
+  // generate cairo fill patterns
+  for (int focus = 0; focus <= 1; focus++) {
+    for (int dim = 0; dim <= 1; dim++) {
+      if (dial->fill_pattern[focus][dim])
+        cairo_pattern_destroy(dial->fill_pattern[focus][dim]);
+
+      cairo_pattern_t *pat = cairo_pattern_create_radial(
+        dial->cx + 5, dial->cy + 5, 0, dial->cx, dial->cy, dial->radius
+      );
+      cairo_add_stop_rgb_dim(pat, 0.0, 0.18, 0.18, 0.20, dim, focus ? 1.65 : 1);
+      cairo_add_stop_rgb_dim(pat, 0.4, 0.18, 0.18, 0.20, dim, focus ? 1.65 : 1);
+      cairo_add_stop_rgb_dim(pat, 1.0, 0.40, 0.40, 0.42, dim, focus ? 1.25 : 1);
+
+      dial->fill_pattern[focus][dim] = pat;
+    }
+  }
+
+  // generate cairo outline pattern
+  for (int dim = 0; dim <= 1; dim++) {
+    if (dial->outline_pattern[dim])
+      cairo_pattern_destroy(dial->outline_pattern[dim]);
+
+    cairo_pattern_t *pat = cairo_pattern_create_linear(
+      dial->cx - dial->radius / 2,
+      dial->cy - dial->radius / 2,
+      dial->cx + dial->radius / 2,
+      dial->cy + dial->radius / 2
+    );
+    cairo_add_stop_rgb_dim(pat, 0, 0.9, 0.9, 0.9, dim, 1);
+    cairo_add_stop_rgb_dim(pat, 1, 0.3, 0.3, 0.3, dim, 1);
+
+    dial->outline_pattern[dim] = pat;
   }
 }
 
@@ -595,22 +651,6 @@ static void cairo_set_source_rgba_dim(
     cairo_set_source_rgba(cr, r, g, b, a);
 }
 
-// internal replacement for cairo_pattern_add_color_stop_rgb() that
-// dims the color if the widget is insensitive
-static void cairo_add_stop_rgb_dim(
-  cairo_pattern_t *pat,
-  double           offset,
-  double           r,
-  double           g,
-  double           b,
-  int              dim
-) {
-  if (dim)
-    cairo_pattern_add_color_stop_rgb(pat, offset, r * 0.5, g * 0.5, b * 0.5);
-  else
-    cairo_pattern_add_color_stop_rgb(pat, offset, r, g, b);
-}
-
 static void draw_slider(
   GtkDial *dial,
   cairo_t *cr,
@@ -685,42 +725,17 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   }
 
   // fill the circle
-  cairo_pattern_t *pat;
-  pat = cairo_pattern_create_radial(
-    dial->cx + 5, dial->cy + 5, 0, dial->cx, dial->cy, dial->radius
-  );
-  if (gtk_widget_has_focus(GTK_WIDGET(dial))) {
-    cairo_add_stop_rgb_dim(pat, 0.0, 0.30, 0.30, 0.33, dial->dim);
-    cairo_add_stop_rgb_dim(pat, 0.4, 0.30, 0.30, 0.33, dial->dim);
-    cairo_add_stop_rgb_dim(pat, 1.0, 0.50, 0.50, 0.53, dial->dim);
-  } else {
-    cairo_add_stop_rgb_dim(pat, 0.0, 0.18, 0.18, 0.20, dial->dim);
-    cairo_add_stop_rgb_dim(pat, 0.4, 0.18, 0.18, 0.20, dial->dim);
-    cairo_add_stop_rgb_dim(pat, 1.0, 0.40, 0.40, 0.42, dial->dim);
-  }
-  cairo_set_source(cr, pat);
-
+  int has_focus = gtk_widget_has_focus(GTK_WIDGET(dial));
+  cairo_set_source(cr, dial->fill_pattern[has_focus][dial->dim]);
   cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI);
   cairo_fill(cr);
 
   // draw the circle
-  cairo_pattern_t *pat2;
-  pat2 = cairo_pattern_create_linear(
-    dial->cx - dial->radius / 2,
-    dial->cy - dial->radius / 2,
-    dial->cx + dial->radius / 2,
-    dial->cy + dial->radius / 2
-  );
-  cairo_add_stop_rgb_dim(pat2, 0, 0.9, 0.9, 0.9, dial->dim);
-  cairo_add_stop_rgb_dim(pat2, 1, 0.3, 0.3, 0.3, dial->dim);
-  cairo_set_source(cr, pat2);
+  cairo_set_source(cr, dial->outline_pattern[dial->dim]);
 
   cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI);
   cairo_set_line_width(cr, 2);
   cairo_stroke(cr);
-
-  cairo_pattern_destroy(pat);
-  cairo_pattern_destroy(pat2);
 
   cairo_destroy(cr);
 }
@@ -1202,6 +1217,15 @@ void gtk_dial_dispose(GObject *o) {
   free(dial->taper_outputs);
   dial->taper_outputs = NULL;
   dial->taper_breakpoints_count = 0;
+
+  for (int focus = 0; focus <= 1; focus++)
+    for (int dim = 0; dim <= 1; dim++)
+      if (dial->fill_pattern[focus][dim])
+        cairo_pattern_destroy(dial->fill_pattern[focus][dim]);
+
+  for (int dim = 0; dim <= 1; dim++)
+    if (dial->outline_pattern[dim])
+      cairo_pattern_destroy(dial->outline_pattern[dim]);
 
   g_object_unref(dial->adj);
   dial->adj = NULL;
