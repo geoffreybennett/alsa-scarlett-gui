@@ -9,6 +9,20 @@
 #include "widget-gain.h"
 #include "window-levels.h"
 
+static const int level_breakpoints_out[] = { -80, -18, -12, -6, -3, -1 };
+
+// inputs glow all-red when limit is reached
+static const int level_breakpoints_in[]  = { -80, -18, -12, -6, -3,  0 };
+
+static const double level_colours[] = {
+  0.00, 1.00, 0.00, // -80
+  0.75, 1.00, 0.00, // -18
+  1.00, 1.00, 0.00, // -12
+  1.00, 0.75, 0.00, //  -6
+  1.00, 0.50, 0.00, //  -3
+  1.00, 0.00, 0.00  //  -1/0
+};
+
 static int update_levels_controls(void *user_data) {
   struct alsa_card *card = user_data;
 
@@ -104,6 +118,14 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
       GtkWidget *meter = gtk_dial_new_with_range(-80, 0, 0, 0);
       gtk_dial_set_taper(GTK_DIAL(meter), GTK_DIAL_TAPER_LINEAR);
       gtk_dial_set_can_control(GTK_DIAL(meter), FALSE);
+      gtk_dial_set_level_meter_colours(
+        GTK_DIAL(meter),
+        (i == PC_DSP || i == PC_PCM)
+          ? level_breakpoints_in
+          : level_breakpoints_out,
+        level_colours,
+        sizeof(level_breakpoints_out) / sizeof(int)
+      );
       gtk_widget_set_sensitive(meter, FALSE);
 
       // HW Output off_db is -55db; otherwise -45db

@@ -125,6 +125,11 @@ struct _GtkDial {
   double *taper_outputs;
   int taper_breakpoints_count;
 
+  // level meter colour breakpoints array
+  const int *level_breakpoints;
+  const double *level_colours;
+  int level_breakpoints_count;
+
   // variables derived from the widget's dynamic properties (size and
   // configuration, excluding the value)
   int    dim;
@@ -139,6 +144,7 @@ struct _GtkDial {
   double cy;
   double zero_db_x;
   double zero_db_y;
+  double *level_breakpoint_angles;
 
   // cairo patterns dependent on the above
   cairo_pattern_t *fill_pattern[2][2];
@@ -373,6 +379,21 @@ static void update_dial_properties(GtkDial *dial) {
     cairo_add_stop_rgb_dim(pat, 1, 0.3, 0.3, 0.3, dim, 1);
 
     dial->outline_pattern[dim] = pat;
+  }
+
+  // calculate level meter breakpoint angles
+  if (dial->level_breakpoint_angles)
+    free(dial->level_breakpoint_angles);
+
+  if (dial->level_breakpoints_count) {
+    dial->level_breakpoint_angles = malloc(
+      dial->level_breakpoints_count * sizeof(double)
+    );
+    for (int i = 0; i < dial->level_breakpoints_count; i++) {
+      double valp = calc_taper(dial, dial->level_breakpoints[i]);
+      dial->level_breakpoint_angles[i] =
+        calc_val(valp, ANGLE_START, ANGLE_END);
+    }
   }
 }
 
@@ -658,10 +679,60 @@ static void draw_slider(
   double   thickness,
   double   alpha
 ) {
-  cairo_arc(cr, dial->cx, dial->cy, radius, ANGLE_START, dial->angle);
   cairo_set_line_width(cr, thickness);
-  cairo_set_source_rgba_dim(cr, 1, 1, 1, alpha, dial->dim);
-  cairo_stroke(cr);
+
+  int count = dial->level_breakpoints_count;
+
+  if (!count) {
+    cairo_arc(cr, dial->cx, dial->cy, radius, ANGLE_START, dial->angle);
+    cairo_set_source_rgba_dim(cr, 1, 1, 1, alpha, dial->dim);
+    cairo_stroke(cr);
+    return;
+  }
+
+  // if the last breakpoint is at the upper limit, then the maximum
+  // value is displayed with the whole slider that colours
+  if (dial->level_breakpoint_angles[count - 1] == ANGLE_END &&
+      dial->angle == ANGLE_END) {
+    const double *colours = &dial->level_colours[(count - 1) * 3];
+
+    cairo_set_source_rgba_dim(
+      cr,
+      colours[0], colours[1], colours[2],
+      alpha,
+      dial->dim
+    );
+
+    cairo_arc(cr, dial->cx, dial->cy, radius, ANGLE_START, ANGLE_END);
+    cairo_stroke(cr);
+    return;
+  }
+
+  for (int i = 0; i < count; i++) {
+    const double *colours = &dial->level_colours[i * 3];
+
+    cairo_set_source_rgba_dim(
+      cr,
+      colours[0], colours[1], colours[2],
+      alpha,
+      dial->dim
+    );
+
+    double angle_start = dial->level_breakpoint_angles[i];
+    double angle_end =
+      i == count - 1
+        ? ANGLE_END
+        : dial->level_breakpoint_angles[i + 1];
+
+    if (dial->angle < angle_end) {
+      cairo_arc(cr, dial->cx, dial->cy, radius, angle_start, dial->angle);
+      cairo_stroke(cr);
+      return;
+    }
+
+    cairo_arc(cr, dial->cx, dial->cy, radius, angle_start, angle_end);
+    cairo_stroke(cr);
+  }
 }
 
 static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
@@ -938,6 +1009,18 @@ void gtk_dial_set_can_control(GtkDial *dial, gboolean can_control) {
 
 gboolean gtk_dial_get_can_control(GtkDial *dial) {
   return dial->can_control;
+}
+
+void gtk_dial_set_level_meter_colours(
+  GtkDial      *dial,
+  const int    *breakpoints,
+  const double *colours,
+  int           count
+) {
+  dial->level_breakpoints = breakpoints;
+  dial->level_colours = colours;
+  dial->level_breakpoints_count = count;
+  dial->properties_updated = 1;
 }
 
 void gtk_dial_set_adjustment(GtkDial *dial, GtkAdjustment *adj) {
@@ -1217,6 +1300,8 @@ void gtk_dial_dispose(GObject *o) {
   free(dial->taper_outputs);
   dial->taper_outputs = NULL;
   dial->taper_breakpoints_count = 0;
+  free(dial->level_breakpoint_angles);
+  dial->level_breakpoint_angles = NULL;
 
   for (int focus = 0; focus <= 1; focus++)
     for (int dim = 0; dim <= 1; dim++)

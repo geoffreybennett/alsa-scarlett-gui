@@ -87,6 +87,13 @@ void gtk_dial_set_taper_linear_breakpoints(
 void gtk_dial_set_can_control(GtkDial *dial, gboolean can_control);
 gboolean gtk_dial_get_can_control(GtkDial *dial);
 
+void gtk_dial_set_level_meter_colours(
+  GtkDial      *dial,
+  const int    *breakpoints,
+  const double *colours,
+  int           count
+);
+
 G_END_DECLS
 
 #endif
