@@ -87,9 +87,6 @@ enum {
 static guint signals[LAST_SIGNAL];
 static GParamSpec *properties[LAST_PROP];
 
-typedef unsigned char guint8;
-typedef size_t gsize;
-
 struct DialColors {
   GdkRGBA trough_border,
           trough_bg,
