@@ -171,3 +171,10 @@ Then:
 ```
 flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 ```
+
+##
+
+A Dockerfile exists in the root directory which will build the binary if you call it via:
+```
+docker build -o out .
+```
