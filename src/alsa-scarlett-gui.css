@@ -56,8 +56,7 @@
 }
 
 /* Default button style */
-button {
-  padding: 0px 5px 0px 5px;
+.window-frame button {
   border: 1px solid #303030;
   background: linear-gradient(175deg, #202020, #282828);
   box-shadow: none;
@@ -65,117 +64,124 @@ button {
   color: #808080;
 }
 
-button:focus:focus-visible {
+.window-frame button:focus:focus-visible {
   outline-color: #801010;
 }
 
-button:checked {
+/* padding doesn't work when selected with .window-frame, so use
+ * .toggle instead
+ */
+button.toggle {
+  padding: 0px 5px 0px 5px;
+}
+
+.window-frame button:checked {
   color: #ffffff;
   border: 1px solid #404040;
 }
 
-button:hover {
+.window-frame button:hover {
   background: #303030;
 }
 
-button:disabled {
+.window-frame button:disabled {
   background: #202020;
   color: #505050;
 }
 
 /* Stop text shadows on buttons from being applied to the popup menu */
-button > label > * {
+.window-frame button > label > * {
   text-shadow: none;
 }
 
 /* Button controls that are always disabled because they indicate status */
-button.fixed {
+.window-frame button.fixed {
   color: #ffffff;
 }
 
 /* Combobox controls that are always disabled because they indicate status */
-combobox.fixed > box > button {
+.window-frame combobox.fixed > box > button {
   color: #ffffff;
 }
 
 /* Buttons that glow when on */
-button.sync-status {
+.window-frame button.sync-status {
   text-shadow: 0 0 5px #a00000, 0 0 15px #800000;
 }
 
-button.sync-status:checked {
+.window-frame button.sync-status:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
-button.input-select:checked {
+.window-frame button.input-select:checked {
   color: #ffffff;
   text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00, 0 0 15px #00ff00;
 }
 
-button.input-link:checked {
+.window-frame button.input-link:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
-button.autogain:checked {
+.window-frame button.autogain:checked {
   text-shadow: 0 0 5px #0000ff, 0 0 15px #0000ff;
 }
 
-button.safe:checked {
+.window-frame button.safe:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
-button.inst:checked {
+.window-frame button.inst:checked {
   text-shadow: 0 0 5px #ff0000, 0 0 15px #ff0000;
 }
 
-.gen4 button.inst:checked {
+.window-frame .gen4 button.inst:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
-button.pcm-input-mix:checked {
+.window-frame button.pcm-input-mix:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
 /* Air Checked (Gen 3) */
-button.air:checked {
+.window-frame button.air:checked {
   text-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
 }
 
 /* Air Selections (Gen 4) */
-button.air.selected-presence > label {
+.window-frame button.air.selected-presence > label {
   color: #ffffff;
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
-button.air.selected-presencedrive > label {
+.window-frame button.air.selected-presencedrive > label {
   color: #ffffff;
   text-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
 }
 
-button.pad:checked {
+.window-frame button.pad:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
-button.phantom:checked {
+.window-frame button.phantom:checked {
   text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
 }
 
-.gen4 button.phantom:checked {
+.window-frame .gen4 button.phantom:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
 /* Direct Monitor Checked (Solo) */
-.direct-monitor:checked {
+.window-frame .direct-monitor:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
 /* Direct Monitor Selections (2i2) */
-button.direct-monitor.selected-mono > label {
+.window-frame button.direct-monitor.selected-mono > label {
   color: #ffffff;
   text-shadow: 0 0 5px #c0c0c0, 0 0 15px #c0c0c0;
 }
 
-button.direct-monitor.selected-stereo > label {
+.window-frame button.direct-monitor.selected-stereo > label {
   color: #ffffff;
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
@@ -183,54 +189,54 @@ button.direct-monitor.selected-stereo > label {
 /* Button controls where checked is dimmer */
 
 /* Mute button */
-button.mute {
+.window-frame button.mute {
   color: #ffffff;
   -gtk-icon-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
   border-color: #404040;
 }
 
-button.mute:checked {
+.window-frame button.mute:checked {
   -gtk-icon-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
   border-color: #303030;
 }
 
 /* Dim button */
-button.dim {
+.window-frame button.dim {
   color: #ffffff;
   -gtk-icon-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
   border-color: #404040;
 }
 
-button.dim:checked {
+.window-frame button.dim:checked {
   -gtk-icon-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
   border-color: #303030;
 }
 
 /* SW/HW button */
-button.sw-hw {
+.window-frame button.sw-hw {
   color: #ffffff;
   -gtk-icon-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
   border-color: #404040;
 }
 
-button.sw-hw:checked {
+.window-frame button.sw-hw:checked {
   color: #808080;
   -gtk-icon-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
   border-color: #303030;
 }
 
 /* Textview used for long descriptions in the startup window */
-textview {
+.window-frame textview {
   color: #ffffff;
   background: none;
 }
 
-textview > text {
+.window-frame textview > text {
   background: none;
 }
 
 /* Bigger buttons in the startup window */
-.window-startup button {
+.window-frame .window-startup button {
   padding: 5px;
 }
 
