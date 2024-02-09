@@ -257,6 +257,7 @@ static GtkWidget *create_routing_group_grid(
   struct alsa_card *card,
   char             *name,
   char             *descr,
+  char             *tooltip,
   GtkOrientation    orientation,
   GtkAlign          align
 ) {
@@ -284,6 +285,7 @@ static GtkWidget *create_routing_group_grid(
   } else {
     gtk_widget_set_halign(label, align);
   }
+  gtk_widget_set_tooltip_text(label, tooltip);
 
   return grid;
 }
@@ -303,37 +305,49 @@ static void create_routing_grid(struct alsa_card *card) {
 
   card->routing_hw_in_grid = create_routing_group_grid(
     card, "routing_hw_in_grid", "Hardware Inputs",
+    "Hardware Inputs are the physical inputs on the interface",
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
   );
   card->routing_pcm_in_grid = create_routing_group_grid(
     card, "routing_pcm_in_grid", "PCM Outputs",
+    "PCM Outputs are the digital audio channels sent from the PC to "
+    "the interface over USB, used for audio playback",
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
   );
   card->routing_pcm_out_grid = create_routing_group_grid(
     card, "routing_pcm_out_grid", "PCM Inputs",
+    "PCM Inputs are the digital audio channels sent from the interface "
+    "to the PC over USB, use for audio recording",
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
   );
   card->routing_hw_out_grid = create_routing_group_grid(
     card, "routing_hw_out_grid", "Hardware Outputs",
+    "Hardware Outputs are the physical outputs on the interface",
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
   );
   if (has_dsp) {
     card->routing_dsp_in_grid = create_routing_group_grid(
       card, "routing_dsp_in_grid", "DSP\nInputs",
+      "DSP Inputs are used to send audio to the DSP, which is used for "
+      "features such as the input level meters, Air mode, and Autogain",
       GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
     );
     card->routing_dsp_out_grid = create_routing_group_grid(
       card, "routing_dsp_out_grid", "DSP\nOutputs",
+      "DSP Outputs are used to send audio from the DSP after it has "
+      "done its processing",
       GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
     );
   }
   card->routing_mixer_in_grid = create_routing_group_grid(
     card, "routing_mixer_in_grid", "Mixer\nInputs",
+    "Mixer Inputs are used to mix multiple audio channels together",
     GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
   );
   card->routing_mixer_out_grid = create_routing_group_grid(
     card, "routing_mixer_out_grid",
     card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
+    "Mixer Outputs are used to send audio from the mixer",
     GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
   );
 
