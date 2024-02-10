@@ -26,6 +26,7 @@ CFLAGS += $(shell $(PKG_CONFIG) --cflags alsa)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs glib-2.0)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs gtk4)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs alsa)
+LDFLAGS += -lm
 
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 
@@ -65,7 +66,7 @@ $(DEPFILES):
 include $(wildcard $(DEPFILES))
 
 $(TARGET): $(OBJS)
-	cc -o $(TARGET) $(OBJS) ${LDFLAGS} -lm 
+	cc -o $(TARGET) $(OBJS) ${LDFLAGS}
 
 ifeq ($(PREFIX),)
   PREFIX := /usr/local
