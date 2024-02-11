@@ -523,6 +523,7 @@ static void card_destroy_callback(void *data) {
 
   // TODO: there is more to free
   free(card->device);
+  free(card->serial);
   free(card->name);
   free(card);
 
@@ -553,6 +554,108 @@ static void alsa_subscribe(struct alsa_card *card) {
   }
   snd_ctl_subscribe_events(card->handle, 1);
   snd_ctl_poll_descriptors(card->handle, &card->pfd, 1);
+}
+
+// get the bus and device numbers from /proc/asound/cardxx/usbbus
+// format is XXX/YYY
+static int alsa_get_usbbus(struct alsa_card *card, int *bus, int *dev) {
+  char path[256];
+  snprintf(path, 256, "/proc/asound/card%d/usbbus", card->num);
+  FILE *f = fopen(path, "r");
+  if (!f) {
+    fprintf(stderr, "can't open %s\n", path);
+    return 0;
+  }
+
+  int result = fscanf(f, "%d/%d", bus, dev);
+  fclose(f);
+
+  if (result != 2) {
+    fprintf(stderr, "can't read %s\n", path);
+    return 0;
+  }
+
+  return 1;
+}
+
+static void alsa_get_serial_number(struct alsa_card *card) {
+
+  int result, bus, dev;
+  if (!alsa_get_usbbus(card, &bus, &dev))
+    return;
+
+  // loop through each /sys/bus/usb/devices/usbBUS/BUS-PORT/devnum
+  // to find the device with the matching dev number
+  char bus_path[80];
+  snprintf(bus_path, 80, "/sys/bus/usb/devices/usb%d", bus);
+  DIR *dir = opendir(bus_path);
+  if (!dir) {
+    fprintf(stderr, "can't open %s\n", bus_path);
+    return;
+  }
+
+  // looking for d_name beginning with the bus number followed by a "-"
+  char prefix[20];
+  snprintf(prefix, 20, "%d-", bus);
+
+  char port_name[256] = "";
+
+  struct dirent *entry;
+  while ((entry = readdir(dir))) {
+    if (entry->d_type != DT_DIR)
+      continue;
+
+    if (strncmp(entry->d_name, prefix, strlen(prefix)) != 0)
+      continue;
+
+    char devnum_path[512];
+    snprintf(devnum_path, 512, "%s/%s/devnum", bus_path, entry->d_name);
+
+    FILE *f = fopen(devnum_path, "r");
+    if (!f)
+      continue;
+
+    int devnum;
+    result = fscanf(f, "%d", &devnum);
+    fclose(f);
+
+    if (result != 1) {
+      fprintf(stderr, "can't read %s\n", devnum_path);
+      continue;
+    }
+
+    if (devnum == dev) {
+      snprintf(port_name, 256, "%s", entry->d_name);
+      break;
+    }
+  }
+
+  closedir(dir);
+
+  if (strlen(port_name) == 0) {
+    fprintf(stderr, "can't find port name\n");
+    return;
+  }
+
+  // now read the serial number
+  char serial_path[512];
+  snprintf(serial_path, 512, "%s/%s/serial", bus_path, port_name);
+  FILE *f = fopen(serial_path, "r");
+  if (!f) {
+    fprintf(stderr, "can't open %s\n", serial_path);
+    return;
+  }
+
+  char serial[40];
+  result = fscanf(f, "%39s", serial);
+  fclose(f);
+
+  if (result != 1) {
+    fprintf(stderr, "can't read %s\n", serial_path);
+    return;
+  }
+
+  card->serial = strdup(serial);
 }
 
 void alsa_scan_cards(void) {
@@ -599,6 +702,7 @@ void alsa_scan_cards(void) {
 
     alsa_get_elem_list(card);
     alsa_subscribe(card);
+    alsa_get_serial_number(card);
 
     create_card_window(card);
     alsa_add_card_callback(card);

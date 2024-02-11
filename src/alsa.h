@@ -152,6 +152,7 @@ struct alsa_elem {
 struct alsa_card {
   int                 num;
   char               *device;
+  char               *serial;
   char               *name;
   snd_ctl_t          *handle;
   struct pollfd       pfd;
