@@ -21,7 +21,7 @@
 #define DIAL_MIN_WIDTH 50
 #define DIAL_MAX_WIDTH 70
 
-static void set_value(GtkDial *dial, double newval);
+static int set_value(GtkDial *dial, double newval);
 
 static void gtk_dial_set_property(
   GObject      *object,
@@ -291,7 +291,7 @@ static void cairo_add_stop_rgb_dim(
   cairo_pattern_add_color_stop_rgb(pat, offset, r * x, g * x, b * x);
 }
 
-static void update_dial_properties(GtkDial *dial) {
+static int update_dial_properties(GtkDial *dial) {
 
   // always update
   dial->dim = !gtk_widget_is_sensitive(GTK_WIDGET(dial)) && dial->can_control;
@@ -302,7 +302,7 @@ static void update_dial_properties(GtkDial *dial) {
   double height = gtk_widget_get_height(GTK_WIDGET(dial));
 
   if (dial->w == width && dial->h == height && !dial->properties_updated)
-    return;
+    return 0;
 
   dial->w = width;
   dial->h = height;
@@ -395,6 +395,8 @@ static void update_dial_properties(GtkDial *dial) {
         calc_val(valp, ANGLE_START, ANGLE_END);
     }
   }
+
+  return 1;
 }
 
 static void update_dial_values(GtkDial *dial) {
@@ -738,8 +740,8 @@ static void draw_slider(
 static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   GtkDial *dial = GTK_DIAL(widget);
 
-  update_dial_properties(dial);
-  update_dial_values(dial);
+  if (update_dial_properties(dial))
+    update_dial_values(dial);
 
   cairo_t *cr = gtk_snapshot_append_cairo(
     snapshot,
@@ -926,8 +928,8 @@ double gtk_dial_get_value(GtkDial *dial) {
 }
 
 void gtk_dial_set_value(GtkDial *dial, double value) {
-  set_value(dial, value);
-  gtk_widget_queue_draw(GTK_WIDGET(dial));
+  if (set_value(dial, value))
+    gtk_widget_queue_draw(GTK_WIDGET(dial));
 }
 
 void gtk_dial_set_round_digits(GtkDial *dial, int round_digits) {
@@ -1038,7 +1040,7 @@ GtkAdjustment *gtk_dial_get_adjustment(GtkDial *dial) {
   return dial->adj;
 }
 
-static void set_value(GtkDial *dial, double newval) {
+static int set_value(GtkDial *dial, double newval) {
   if (dial->round_digits >= 0) {
     double power;
     int i;
@@ -1051,8 +1053,23 @@ static void set_value(GtkDial *dial, double newval) {
     newval = floor((newval * power) + 0.5) / power;
   }
 
+  if (newval < gtk_adjustment_get_lower(dial->adj))
+    newval = gtk_adjustment_get_lower(dial->adj);
+  else if (newval > gtk_adjustment_get_upper(dial->adj))
+    newval = gtk_adjustment_get_upper(dial->adj);
+
+  double oldval = gtk_adjustment_get_value(dial->adj);
+
+  if (oldval == newval)
+    return 0;
+
   gtk_adjustment_set_value(dial->adj, newval);
   g_signal_emit(dial, signals[VALUE_CHANGED], 0);
+
+  double old_valp = dial->valp;
+  update_dial_values(dial);
+
+  return old_valp != dial->valp;
 }
 
 static void step_back(GtkDial *dial) {
