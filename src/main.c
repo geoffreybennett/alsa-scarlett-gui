@@ -32,12 +32,9 @@ static void load_css(void) {
 static void startup(GtkApplication *app, gpointer user_data) {
   gtk_application_set_menubar(app, G_MENU_MODEL(create_app_menu(app)));
 
-  alsa_inotify_init();
-  alsa_cards = g_array_new(FALSE, TRUE, sizeof(struct alsa_card *));
-
   load_css();
 
-  alsa_scan_cards();
+  alsa_init();
 
   create_no_card_window();
   create_hardware_window(app);
