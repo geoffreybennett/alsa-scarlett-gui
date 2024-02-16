@@ -26,7 +26,7 @@ CFLAGS += $(shell $(PKG_CONFIG) --cflags alsa)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs glib-2.0)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs gtk4)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs alsa)
-LDFLAGS += -lm
+LDFLAGS += -lm -lcrypto
 
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 

@@ -94,7 +94,7 @@ sudo zypper in git alsa-devel gtk4-devel
 On Ubuntu 22.04:
 
 ```
-sudo apt -y install git make gcc libgtk-4-dev libasound2-dev
+sudo apt -y install git make gcc libgtk-4-dev libasound2-dev libssl-dev
 ```
 
 To download from github:
