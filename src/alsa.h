@@ -193,9 +193,6 @@ struct alsa_card {
   double              drag_x, drag_y;
 };
 
-// global array of cards
-extern GArray *alsa_cards;
-
 // utility
 void fatal_alsa_error(const char *msg, int err);
 
@@ -226,6 +223,5 @@ char *alsa_get_item_name(struct alsa_elem *elem, int i);
 // add to alsa_cards array
 struct alsa_card *card_create(int card_num);
 
-// scan/rescan for cards
-void alsa_scan_cards(void);
-void alsa_inotify_init(void);
+// init
+void alsa_init(void);

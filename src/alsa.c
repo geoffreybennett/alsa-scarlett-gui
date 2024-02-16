@@ -18,7 +18,7 @@ const char *port_category_names[PC_COUNT] = {
 };
 
 // global array of cards
-GArray *alsa_cards;
+static GArray *alsa_cards;
 
 // static fd and wd for ALSA inotify
 static int inotify_fd, inotify_wd;
@@ -658,7 +658,7 @@ static void alsa_get_serial_number(struct alsa_card *card) {
   card->serial = strdup(serial);
 }
 
-void alsa_scan_cards(void) {
+static void alsa_scan_cards(void) {
   snd_ctl_card_info_t *info;
   snd_ctl_t           *ctl;
   int                  card_num = -1;
@@ -749,7 +749,7 @@ static gboolean inotify_callback(
   return TRUE;
 }
 
-void alsa_inotify_init(void) {
+static void alsa_inotify_init(void) {
   GIOChannel *io_channel;
 
   inotify_fd = inotify_init();
@@ -760,4 +760,10 @@ void alsa_inotify_init(void) {
     G_IO_IN | G_IO_ERR | G_IO_HUP,
     inotify_callback, NULL, NULL
   );
+}
+
+void alsa_init(void) {
+  alsa_cards = g_array_new(FALSE, TRUE, sizeof(struct alsa_card *));
+  alsa_inotify_init();
+  alsa_scan_cards();
 }
