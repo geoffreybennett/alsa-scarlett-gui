@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "device-reset-config.h"
+#include "device-update-firmware.h"
 #include "gtkhelper.h"
 #include "scarlett2.h"
+#include "scarlett2-firmware.h"
 #include "scarlett2-ioctls.h"
 #include "widget-boolean.h"
 #include "window-startup.h"
@@ -227,6 +229,39 @@ static void add_reset_actions(
     "factory default settings. The firmware will be left unchanged.",
     G_CALLBACK(create_reset_config_window)
   );
+
+  // Update Firmware
+  struct alsa_elem *firmware_elem =
+    get_elem_by_name(card->elems, "Firmware Version");
+
+  if (!firmware_elem)
+    return;
+
+  int firmware_version = alsa_get_elem_value(firmware_elem);
+  uint32_t best_firmware_version =
+    scarlett2_get_best_firmware_version(card->pid);
+
+  if (firmware_version >= best_firmware_version)
+    return;
+
+  char *s = g_strdup_printf(
+    "Updating the firmware will reset the interface to its "
+    "factory default settings and update the firmware from version "
+    "%d to %d.",
+    firmware_version,
+    best_firmware_version
+  );
+  add_reset_action(
+    card,
+    grid,
+    grid_y,
+    "Update Firmware",
+    "Update",
+    s,
+    G_CALLBACK(create_update_firmware_window)
+  );
+
+  g_free(s);
 }
 
 static void add_no_startup_controls_msg(GtkWidget *grid) {

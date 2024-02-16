@@ -7,6 +7,7 @@
 #include "iface-no-mixer.h"
 #include "iface-none.h"
 #include "iface-unknown.h"
+#include "iface-update.h"
 #include "main.h"
 #include "menu.h"
 #include "window-iface.h"
@@ -27,8 +28,25 @@ void create_card_window(struct alsa_card *card) {
   int has_startup = true;
   int has_mixer = true;
 
+  struct alsa_elem *firmware_elem =
+    get_elem_by_name(card->elems, "Firmware Version");
+  struct alsa_elem *min_firmware_elem =
+    get_elem_by_name(card->elems, "Minimum Firmware Version");
+  int firmware_version = 0;
+  int min_firmware_version = 0;
+  if (firmware_elem && min_firmware_elem) {
+    firmware_version = alsa_get_elem_value(firmware_elem);
+    min_firmware_version = alsa_get_elem_value(min_firmware_elem);
+  }
+
+  // Firmware update required
+  if (firmware_version < min_firmware_version) {
+    card->window_main_contents = create_iface_update_main(card);
+    has_startup = false;
+    has_mixer = false;
+
   // Gen 2 or Gen 3 4i4+
-  if (get_elem_by_prefix(card->elems, "Mixer")) {
+  } else if (get_elem_by_prefix(card->elems, "Mixer")) {
     card->window_main_contents = create_iface_mixer_main(card);
 
   // Gen 3 Solo or 2i2

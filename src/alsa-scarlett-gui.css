@@ -14,6 +14,16 @@
   border-radius: 20px;
 }
 
+/* Title of the window */
+.window-title {
+  font-size: large;
+}
+
+/* Links */
+.linktext {
+  color: #89CFF0;
+}
+
 /* Label above controls-content */
 .controls-label {
   font-size: smaller;
