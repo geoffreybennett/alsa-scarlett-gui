@@ -564,6 +564,33 @@ static void alsa_subscribe(struct alsa_card *card) {
   snd_ctl_poll_descriptors(card->handle, &card->pfd, 1);
 }
 
+static void alsa_get_usbid(struct alsa_card *card) {
+  char path[256];
+  snprintf(path, 256, "/proc/asound/card%d/usbid", card->num);
+
+  FILE *f = fopen(path, "r");
+  if (!f) {
+    fprintf(stderr, "can't open %s: %s\n", path, strerror(errno));
+    return;
+  }
+
+  int vid, pid;
+  int result = fscanf(f, "%04x:%04x", &vid, &pid);
+  fclose(f);
+
+  if (result != 2) {
+    fprintf(stderr, "can't read %s\n", path);
+    return;
+  }
+
+  if (vid != 0x1235) {
+    fprintf(stderr, "VID %04x != expected 0x1235 for Focusrite\n", vid);
+    return;
+  }
+
+  card->pid = pid;
+}
+
 // get the bus and device numbers from /proc/asound/cardxx/usbbus
 // format is XXX/YYY
 static int alsa_get_usbbus(struct alsa_card *card, int *bus, int *dev) {
@@ -710,6 +737,7 @@ static void alsa_scan_cards(void) {
 
     alsa_get_elem_list(card);
     alsa_subscribe(card);
+    alsa_get_usbid(card);
     alsa_get_serial_number(card);
 
     if (card->serial) {
