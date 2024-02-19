@@ -56,7 +56,6 @@ void create_modal_window(
     return;
   }
 
-  GtkWidget *parent = gtk_widget_get_ancestor(GTK_WIDGET(w), GTK_TYPE_WINDOW);
   GtkWidget *dialog = gtk_window_new();
 
   struct modal_data *modal_data = g_new0(struct modal_data, 1);
@@ -67,7 +66,6 @@ void create_modal_window(
   modal_data->callback = callback;
 
   gtk_window_set_title(GTK_WINDOW(dialog), title);
-  gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
   gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
   gtk_widget_add_css_class(dialog, "window-frame");
 
