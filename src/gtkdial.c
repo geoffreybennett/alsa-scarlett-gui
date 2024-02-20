@@ -817,10 +817,17 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
 
   // draw the circle
   cairo_set_source(cr, dial->outline_pattern[dial->dim]);
-
   cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI);
   cairo_set_line_width(cr, 2);
   cairo_stroke(cr);
+
+  // if focussed
+  if (has_focus) {
+    cairo_set_source_rgba(cr, 1, 0.125, 0.125, 0.5);
+    cairo_set_line_width(cr, 2);
+    cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius + 2, 0, 2 * M_PI);
+    cairo_stroke(cr);
+  }
 
   cairo_destroy(cr);
 }
