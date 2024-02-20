@@ -193,6 +193,7 @@ GtkWidget *make_gain_alsa_elem(
   gtk_dial_set_can_control(GTK_DIAL(data->dial), can_control);
 
   data->label = gtk_label_new(NULL);
+  gtk_widget_add_css_class(data->label, "gain");
   gtk_widget_set_vexpand(data->dial, TRUE);
 
   data->zero_is_off = zero_is_off;
