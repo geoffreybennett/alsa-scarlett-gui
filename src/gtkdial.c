@@ -584,6 +584,14 @@ static void gtk_dial_focus_change_cb(
   gtk_widget_queue_draw(GTK_WIDGET(dial));
 }
 
+static void gtk_dial_notify_sensitive_cb(
+  GObject    *object,
+  GParamSpec *pspec,
+  GtkDial    *dial
+) {
+  gtk_widget_queue_draw(GTK_WIDGET(dial));
+}
+
 static void gtk_dial_init(GtkDial *dial) {
   gtk_widget_set_focusable(GTK_WIDGET(dial), TRUE);
 
@@ -636,6 +644,10 @@ static void gtk_dial_init(GtkDial *dial) {
     controller, "leave", G_CALLBACK(gtk_dial_focus_change_cb), dial
   );
   gtk_widget_add_controller(GTK_WIDGET(dial), controller);
+
+  g_signal_connect(
+    dial, "notify::sensitive", G_CALLBACK(gtk_dial_notify_sensitive_cb), dial
+  );
 }
 
 static void dial_measure(
