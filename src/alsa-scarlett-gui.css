@@ -65,6 +65,10 @@
   background: #801010;
 }
 
+label.gain {
+  font-size: smaller;
+}
+
 /* Default button style */
 .window-frame button {
   border: 1px solid #303030;
