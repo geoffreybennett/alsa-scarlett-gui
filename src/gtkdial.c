@@ -375,8 +375,8 @@ static int update_dial_properties(GtkDial *dial) {
       dial->cx + dial->radius / 2,
       dial->cy + dial->radius / 2
     );
-    cairo_add_stop_rgb_dim(pat, 0, 0.9, 0.9, 0.9, dim, 1);
-    cairo_add_stop_rgb_dim(pat, 1, 0.3, 0.3, 0.3, dim, 1);
+    cairo_add_stop_rgb_dim(pat, 0, 0.6, 0.6, 0.6, dim, 1);
+    cairo_add_stop_rgb_dim(pat, 1, 0.2, 0.2, 0.2, dim, 1);
 
     dial->outline_pattern[dim] = pat;
   }
