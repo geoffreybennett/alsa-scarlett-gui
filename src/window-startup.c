@@ -118,7 +118,7 @@ static void add_phantom_persistence_control(
   *grid_y += 2;
 }
 
-static void add_msd_control(
+static int add_msd_control(
   GArray    *elems,
   GtkWidget *grid,
   int       *grid_y
@@ -128,7 +128,7 @@ static void add_msd_control(
   );
 
   if (!msd)
-    return;
+    return 0;
 
   add_sep(grid, grid_y);
 
@@ -153,6 +153,8 @@ static void add_msd_control(
   gtk_grid_attach(GTK_GRID(grid), w, 1, *grid_y, 1, 2);
 
   *grid_y += 2;
+
+  return 1;
 }
 
 static void add_reset_action(
@@ -181,10 +183,29 @@ static void add_reset_action(
   *grid_y += 2;
 }
 
+static void reboot_device(GtkWidget *button, struct alsa_card *card) {
+  snd_hwdep_t *hwdep;
+
+  int err = scarlett2_open_card(card->device, &hwdep);
+  if (err < 0) {
+    fprintf(stderr, "unable to open hwdep interface: %s\n", snd_strerror(err));
+    return;
+  }
+
+  err = scarlett2_reboot(hwdep);
+  if (err < 0) {
+    fprintf(stderr, "unable to reboot device: %s\n", snd_strerror(err));
+    return;
+  }
+
+  scarlett2_close(hwdep);
+}
+
 static void add_reset_actions(
   struct alsa_card *card,
   GtkWidget        *grid,
-  int              *grid_y
+  int              *grid_y,
+  int               has_msd
 ) {
   // simulated cards don't support hwdep
   if (!card->device)
@@ -217,6 +238,20 @@ static void add_reset_actions(
   }
 
   scarlett2_close(hwdep);
+
+  // Add reboot action if there is an MSD control
+  if (has_msd) {
+    add_reset_action(
+      card,
+      grid,
+      grid_y,
+      "Reboot Device",
+      "Reboot",
+      "After enabling or disabling MSD mode, the interface must be "
+      "rebooted for the change to take effect.",
+      G_CALLBACK(reboot_device)
+    );
+  }
 
   // Reset Configuration
   add_reset_action(
@@ -290,8 +325,8 @@ GtkWidget *create_startup_controls(struct alsa_card *card) {
 
   add_standalone_control(elems, grid, &grid_y);
   add_phantom_persistence_control(elems, grid, &grid_y);
-  add_msd_control(elems, grid, &grid_y);
-  add_reset_actions(card, grid, &grid_y);
+  int has_msd = add_msd_control(elems, grid, &grid_y);
+  add_reset_actions(card, grid, &grid_y, has_msd);
 
   if (!grid_y)
     add_no_startup_controls_msg(grid);
