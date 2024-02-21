@@ -100,12 +100,16 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
   }
 
   // go through the port categories
-  for (int i = 0; i < PC_COUNT; i++) {
+  for (int i = 0, row = 1; i < PC_COUNT; i++) {
+
+    if (card->routing_out_count[i] == 0)
+      continue;
+
     GtkWidget *l = gtk_label_new(port_category_names[i]);
     gtk_widget_set_halign(l, GTK_ALIGN_END);
 
     // add the label
-    gtk_grid_attach(GTK_GRID(grid), l, 0, i + 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), l, 0, row, 1, 1);
 
     // go through the ports in that category
     for (int j = 0; j < card->routing_out_count[i]; j++) {
@@ -132,8 +136,10 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
       gtk_dial_set_off_db(GTK_DIAL(meter), i == PC_HW ? -55 : -45);
 
       card->meters[meter_num++] = meter;
-      gtk_grid_attach(GTK_GRID(grid), meter, j + 1, i + 1, 1, 1);
+      gtk_grid_attach(GTK_GRID(grid), meter, j + 1, row, 1, 1);
     }
+
+    row++;
   }
 
   int elem_count = card->level_meter_elem->count;
