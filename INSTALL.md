@@ -82,7 +82,7 @@ On Fedora, the packages `alsa-lib-devel` and `gtk4-devel` need to be
 installed:
 
 ```
-sudo dnf -y install alsa-lib-devel gtk4-devel
+sudo dnf -y install alsa-lib-devel gtk4-devel openssl-devel
 ```
 
 On OpenSUSE:
