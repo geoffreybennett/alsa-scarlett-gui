@@ -15,6 +15,8 @@ struct scarlett2_device scarlett2_supported[] = {
   { 0x8213, "Scarlett 3rd Gen 8i6" },
   { 0x8214, "Scarlett 3rd Gen 18i8" },
   { 0x8215, "Scarlett 3rd Gen 18i20" },
+  { 0x8216, "Vocaster One" },
+  { 0x8217, "Vocaster Two" },
   { 0x8218, "Scarlett 4th Gen Solo" },
   { 0x8219, "Scarlett 4th Gen 2i2" },
   { 0x821a, "Scarlett 4th Gen 4i4" },
