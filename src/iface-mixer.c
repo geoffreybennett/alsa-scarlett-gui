@@ -360,6 +360,48 @@ static void create_input_air_enum_control(
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
+static void create_input_dsp_switch_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Enhance", NULL);
+  gtk_widget_add_css_class(w, "dsp");
+  gtk_widget_set_hexpand(w, TRUE);
+//  gtk_widget_set_tooltip_text(w, dsp_descr);
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+}
+
+static void create_input_dsp_preset_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_drop_down_alsa_elem(elem, NULL);
+  gtk_widget_add_css_class(w, "dsp-preset");
+  gtk_widget_set_hexpand(w, TRUE);
+//  gtk_widget_set_tooltip_text(w, dsp_descr);
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+}
+
+static void create_input_mute_switch_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Mute", NULL);
+  gtk_widget_add_css_class(w, "input-mute");
+  gtk_widget_set_hexpand(w, TRUE);
+//  gtk_widget_set_tooltip_text(w, dsp_descr);
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+}
+
 static void create_input_pad_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
@@ -513,6 +555,18 @@ static void create_input_controls(
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "Air Capture Enum", create_input_air_enum_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "DSP Capture Switch", create_input_dsp_switch_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "DSP Preset Capture Enum", create_input_dsp_preset_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Mute Capture Switch", create_input_mute_switch_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
@@ -749,6 +803,8 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
     gtk_widget_add_css_class(top, "scarlett");
   } else if (strstr(card->name, "Clarett")) {
     gtk_widget_add_css_class(top, "clarett");
+  } else if (strstr(card->name, "Vocaster")) {
+    gtk_widget_add_css_class(top, "vocaster");
   }
 
   gtk_grid_set_spacing(GTK_GRID(top), 15);

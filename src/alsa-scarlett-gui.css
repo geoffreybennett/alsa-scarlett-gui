@@ -146,6 +146,11 @@ button.toggle {
   text-shadow: 0 0 5px #0000ff, 0 0 15px #0000ff;
 }
 
+/* orange */
+.window-frame .vocaster button.autogain:checked {
+  text-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
+}
+
 .window-frame button.safe:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
@@ -210,6 +215,14 @@ button.toggle {
 
 .window-frame .gen4 button.phantom:checked:disabled {
   text-shadow: 0 0 5px #005000, 0 0 15px #005000;
+}
+
+.window-frame button.input-mute:checked {
+  text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
+}
+
+.window-frame button.dsp:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
 /* Direct Monitor Checked (Solo) */
