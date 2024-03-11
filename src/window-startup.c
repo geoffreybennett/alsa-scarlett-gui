@@ -5,7 +5,6 @@
 #include "device-update-firmware.h"
 #include "gtkhelper.h"
 #include "scarlett2.h"
-#include "scarlett2-firmware.h"
 #include "scarlett2-ioctls.h"
 #include "widget-boolean.h"
 #include "window-startup.h"
@@ -273,10 +272,8 @@ static void add_reset_actions(
     return;
 
   int firmware_version = alsa_get_elem_value(firmware_elem);
-  uint32_t best_firmware_version =
-    scarlett2_get_best_firmware_version(card->pid);
 
-  if (firmware_version >= best_firmware_version)
+  if (firmware_version >= card->best_firmware_version)
     return;
 
   char *s = g_strdup_printf(
@@ -284,7 +281,7 @@ static void add_reset_actions(
     "factory default settings and update the firmware from version "
     "%d to %d.",
     firmware_version,
-    best_firmware_version
+    card->best_firmware_version
   );
   add_reset_action(
     card,
