@@ -228,6 +228,31 @@ button.toggle {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
+/* Sample Rates */
+.window-frame button.sample-rate.sample-rate-44100 {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+.window-frame button.sample-rate.sample-rate-48000 {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+.window-frame button.sample-rate.sample-rate-88200 {
+  text-shadow: 0 0 5px #ff8000, 0 0 15px #ff8000;
+}
+
+.window-frame button.sample-rate.sample-rate-96000 {
+  text-shadow: 0 0 5px #ff8000, 0 0 15px #ff8000;
+}
+
+.window-frame button.sample-rate.sample-rate-176400 {
+  text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
+}
+
+.window-frame button.sample-rate.sample-rate-192000 {
+  text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
+}
+
 /* Button controls where checked is dimmer */
 
 /* Mute button */
