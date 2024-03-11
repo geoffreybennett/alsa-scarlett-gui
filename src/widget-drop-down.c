@@ -3,6 +3,7 @@
 
 #include <ctype.h>
 
+#include "gtkhelper.h"
 #include "widget-drop-down.h"
 
 struct drop_down {
@@ -13,16 +14,6 @@ struct drop_down {
   GtkSingleSelection *selection;
   int                 fixed_text;
 };
-
-static void remove_selected_classes(GtkWidget *widget) {
-  char **classes = gtk_widget_get_css_classes(widget);
-
-  for (char **i = classes; *i != NULL; i++)
-    if (strncmp(*i, "selected-", 9) == 0)
-      gtk_widget_remove_css_class(widget, *i);
-
-  g_strfreev(classes);
-}
 
 static void sanitise_class_name(char *s) {
   char *dst = s;
@@ -120,7 +111,7 @@ static void drop_down_updated(
   int value = alsa_get_elem_value(elem);
   gtk_single_selection_set_selected(data->selection, value);
 
-  remove_selected_classes(data->button);
+  gtk_widget_remove_css_classes_by_prefix(data->button, "selected-");
   add_class(data->button, alsa_get_item_name(elem, value));
 
   if (data->fixed_text)
