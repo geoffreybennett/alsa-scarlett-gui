@@ -4,6 +4,7 @@
 #include <sys/inotify.h>
 
 #include "alsa.h"
+#include "scarlett2-firmware.h"
 #include "stringhelper.h"
 #include "window-iface.h"
 
@@ -778,6 +779,7 @@ static void alsa_scan_cards(void) {
     alsa_subscribe(card);
     alsa_get_usbid(card);
     alsa_get_serial_number(card);
+    card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
 
     if (card->serial) {
 

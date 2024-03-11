@@ -25,10 +25,7 @@ GtkWidget *create_iface_update_main(struct alsa_card *card) {
   gtk_widget_add_css_class(w, "window-title");
   gtk_box_append(GTK_BOX(content), w);
 
-  uint32_t best_firmware_version =
-    scarlett2_get_best_firmware_version(card->pid);
-
-  if (!best_firmware_version) {
+  if (!card->best_firmware_version) {
     w = gtk_label_new(NULL);
     gtk_label_set_markup(
       GTK_LABEL(w),
