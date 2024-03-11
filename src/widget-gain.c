@@ -70,12 +70,12 @@ static void gain_updated(
       p += sprintf(p, "−");
     else if (value > 0)
       p += sprintf(p, "+");
-    if (data->scale < 1)
+    if (data->scale <= 0.5)
       p += sprintf(p, "%.1f", fabs(value));
     else
       p += sprintf(p, "%.0f", fabs(value));
   }
-  if (data->scale >= 1)
+  if (data->scale > 0.5)
     p += sprintf(p, "dB");
 
   gtk_label_set_text(GTK_LABEL(data->label), s);
