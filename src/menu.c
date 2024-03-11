@@ -123,7 +123,7 @@ static const struct menu_data menus[] = {
   {}
 };
 
-void populate_submenu(
+static void populate_submenu(
   GtkApplication         *app,
   GMenu                  *menu,
   const struct menu_data *data
