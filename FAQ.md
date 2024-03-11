@@ -4,11 +4,11 @@
 
 The Scarlett2 Protocol Driver (also known as the Scarlett2 Mixer
 Driver) is a part of the Linux kernel, enhancing the ALSA kernel
-driver with additional controls for Focusrite Scarlett and Clarett
-interfaces.
+driver with additional controls for Focusrite Scarlett, Clarett, and
+Vocaster interfaces.
 
-To check your current version or for upgrade instructions, see the
-[Control Panel Installation Prerequisites — Linux
+To check if your kernel is already up-to-date, and how to upgrade if
+not, see the [Control Panel Installation Prerequisites — Linux
 Kernel](https://github.com/geoffreybennett/alsa-scarlett-gui/blob/master/INSTALL.md).
 
 `alsa-scarlett-gui` is an easy-to-use application to adjust those
@@ -19,7 +19,7 @@ controls.
 In order to get audio working? No. Focusrite USB interfaces are
 “plug-and-play” — they are USB Audio Class Compliant, meaning they
 work out-of-the-box with the standard ALSA USB audio driver (to get
-full functionality on Scarlett 3rd/4th Gen interfaces, first
+full functionality on Scarlett 3rd/4th Gen/Vocaster interfaces, first
 deactivate MSD mode by holding down the 48V button while powering it
 on).
 
@@ -31,22 +31,22 @@ on).
 If MSD Mode is enabled, you need to disable it and restart your
 interface to get access to its full functionality.
 
-When you plug the interface in, there'll be a tiny read-only virtual
+When you plug the interface in, there’ll be a tiny read-only virtual
 disk that has a link to the Focusrite product registration page; until
 you turn off MSD Mode not all features of the interface will be
 available.
 
 You can turn off MSD Mode by holding down the 48V button while
 powering on the interface, or by clicking the button in
-`alsa-scarlett-gui`.
+`alsa-scarlett-gui` and rebooting it.
 
-## What is the purpose of the driver if it's not needed for audio?
+## What is the purpose of the driver if it’s not needed for audio?
 
 This driver is for users who want more control over their interface.
 It allows for detailed manipulation of internal audio routing and
-settings specific to Scarlett and Clarett devices, beyond the basic
-audio I/O functionality. Also, being able to monitor the audio levels
-seen by the interface is really useful.
+settings specific to Scarlett, Clarett, and Vocaster devices, beyond
+the basic audio I/O functionality. Also, being able to monitor the
+audio levels seen by the interface is really useful.
 
 ## What interfaces are supported?
 
@@ -56,7 +56,11 @@ seen by the interface is really useful.
 
 - All Scarlett 3rd Gen interfaces.
 
+- Scarlett 4th Gen Solo, 2i2, and 4i4.
+
 - All Clarett USB and Clarett+ interfaces.
+
+- Vocaster One and Vocaster Two.
 
 ## Where are the options to set the sample rate and buffer size?
 
@@ -71,10 +75,6 @@ sound server such as PulseAudio, JACK, or PipeWire.
 
 Note that not all features are available at higher sample rates; refer
 to the user manual of your interface for more information.
-
-## Scarlett Gen 4? Vocaster?
-
-Support coming soon. Email me if you want to help test.
 
 ## Help?!
 
