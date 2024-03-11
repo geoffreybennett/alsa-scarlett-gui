@@ -155,6 +155,7 @@ struct alsa_card {
   uint32_t            pid;
   char               *serial;
   char               *name;
+  int                 best_firmware_version;
   snd_ctl_t          *handle;
   struct pollfd       pfd;
   GArray             *elems;
