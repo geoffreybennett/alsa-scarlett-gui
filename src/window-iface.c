@@ -17,8 +17,6 @@ static GtkWidget *no_cards_window;
 static int window_count;
 
 void create_card_window(struct alsa_card *card) {
-  struct alsa_elem *msd_elem;
-
   if (no_cards_window) {
     gtk_window_destroy(GTK_WINDOW(no_cards_window));
     no_cards_window = NULL;
@@ -27,6 +25,10 @@ void create_card_window(struct alsa_card *card) {
 
   int has_startup = true;
   int has_mixer = true;
+
+  struct alsa_elem *msd_elem =
+    get_elem_by_name(card->elems, "MSD Mode Switch");
+  int in_msd_mode = msd_elem && alsa_get_elem_value(msd_elem);
 
   struct alsa_elem *firmware_elem =
     get_elem_by_name(card->elems, "Firmware Version");
@@ -40,22 +42,26 @@ void create_card_window(struct alsa_card *card) {
   }
 
   // Firmware update required
-  if (firmware_version < min_firmware_version) {
+  // or firmware version available and in MSD mode
+  // (updating will disable MSD mode)
+  if (firmware_version < min_firmware_version ||
+      (card->best_firmware_version > firmware_version &&
+         in_msd_mode)) {
     card->window_main_contents = create_iface_update_main(card);
     has_startup = false;
     has_mixer = false;
 
-  // Gen 2 or Gen 3 4i4+
+  // Scarlett Gen 2, Gen 3 4i4+, Gen 4, Clarett, or Vocaster
   } else if (get_elem_by_prefix(card->elems, "Mixer")) {
     card->window_main_contents = create_iface_mixer_main(card);
 
-  // Gen 3 Solo or 2i2
+  // Scarlett Gen 3 Solo or 2i2
   } else if (get_elem_by_prefix(card->elems, "Phantom")) {
     card->window_main_contents = create_iface_no_mixer_main(card);
     has_mixer = false;
 
-  // Gen 3 in MSD Mode
-  } else if ((msd_elem = get_elem_by_name(card->elems, "MSD Mode Switch"))) {
+  // Scarlett Gen 3+ or Vocaster in MSD Mode
+  } else if (msd_elem) {
     card->window_main_contents = create_startup_controls(card);
     has_startup = false;
     has_mixer = false;
