@@ -87,13 +87,13 @@ sudo dnf -y install alsa-lib-devel gtk4-devel openssl-devel
 On OpenSUSE:
 
 ```
-sudo zypper in git alsa-devel gtk4-devel
+sudo zypper in git alsa-devel gtk4-devel libopenssl-devel
 ```
 
-On Ubuntu 22.04:
+On Ubuntu:
 
 ```
-sudo apt -y install git make gcc libgtk-4-dev libasound2-dev
+sudo apt -y install git make gcc libgtk-4-dev libasound2-dev libssl-dev
 ```
 
 To download from github:
