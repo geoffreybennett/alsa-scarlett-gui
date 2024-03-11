@@ -348,23 +348,10 @@ menu option File → Interface Simulation to load.
 
 ## Known Bugs/Issues
 
-- The linear-dB scale of the volume controls doesn’t work well. Lower
-  volumes (e.g. below −30dB) don’t need as much fine control as higher
-  volumes.
-
-- Can’t select (focus) the gain/volume controls or use a keyboard to
-  adjust them.
-
-- Level meters don’t work if you're not running the driver from Linux
-  6.7.
-
 - Load/Save uses `alsactl` which will be confused if the ALSA
   interface name (e.g. `USB`) changes.
 
 - Load/Save is not implemented for simulated interfaces.
-
-- Lots of “couldn't find weak ref” warnings are emitted when loading a
-  state file for simulation.
 
 - The read-only status of controls in interface simulation mode does
   not change when the HW/SW button is clicked.
