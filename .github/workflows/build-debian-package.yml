@@ -19,7 +19,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt -y update
-          sudo apt -y install git make gcc libgtk-4-dev libasound2-dev
+          sudo apt -y install git make gcc libgtk-4-dev libasound2-dev libssl-devel
 
       - name: Build from sources
         run: |
