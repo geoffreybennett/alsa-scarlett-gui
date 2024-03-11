@@ -68,6 +68,8 @@ static void gain_updated(
   } else {
     if (value < 0)
       p += sprintf(p, "−");
+    else if (value > 0)
+      p += sprintf(p, "+");
     if (data->scale < 1)
       p += sprintf(p, "%.1f", fabs(value));
     else
