@@ -11,6 +11,7 @@
 #include "widget-gain.h"
 #include "widget-input-select.h"
 #include "widget-label.h"
+#include "widget-sample-rate.h"
 #include "window-helper.h"
 #include "window-levels.h"
 #include "window-mixer.h"
@@ -111,6 +112,30 @@ static void add_power_status_control(
   GtkWidget *w = make_drop_down_alsa_elem(power_status, NULL);
   gtk_widget_add_css_class(w, "power-status");
   gtk_widget_add_css_class(w, "fixed");
+  gtk_box_append(GTK_BOX(b), w);
+}
+
+static void add_sample_rate_control(
+  struct alsa_card *card,
+  GtkWidget        *global_controls
+) {
+  GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_tooltip_text(
+    b,
+    "The Sample Rate cannot be changed here because it is set by the "
+    "application which is using the interface, usually a sound "
+    "server like PulseAudio, JACK, or PipeWire. If this shows N/A, "
+    "no application is currently using the interface.\n\n"
+    "Note that not all features are available on all interfaces at "
+    "sample rates above 48kHz. Please refer to the user guide for "
+    "your interface for more information."
+  );
+  gtk_box_append(GTK_BOX(global_controls), b);
+
+  GtkWidget *l = gtk_label_new("Sample Rate");
+  gtk_box_append(GTK_BOX(b), l);
+  GtkWidget *w = make_sample_rate_widget(card);
+  gtk_widget_add_css_class(w, "sample-rate");
   gtk_box_append(GTK_BOX(b), w);
 }
 
@@ -690,21 +715,24 @@ static void create_global_controls(
     ? GTK_ORIENTATION_HORIZONTAL
     : GTK_ORIENTATION_VERTICAL;
   GtkWidget *global_controls = create_global_box(top, x, orient);
-  GtkWidget *left = global_controls;
-  GtkWidget *right = global_controls;
+  GtkWidget *column[3];
+
+  for (int i = 0; i < 3; i++)
+    column[i] = global_controls;
 
   if (card->has_speaker_switching) {
-    left = gtk_box_new(GTK_ORIENTATION_VERTICAL, 15);
-    right = gtk_box_new(GTK_ORIENTATION_VERTICAL, 15);
-    gtk_box_append(GTK_BOX(global_controls), left);
-    gtk_box_append(GTK_BOX(global_controls), right);
+    for (int i = 0; i < 3; i++) {
+      column[i] = gtk_box_new(GTK_ORIENTATION_VERTICAL, 15);
+      gtk_box_append(GTK_BOX(global_controls), column[i]);
+    }
   }
 
-  add_clock_source_control(card, left);
-  add_sync_status_control(card, right);
-  add_power_status_control(card, right);
-  add_speaker_switching_controls(card, left);
-  add_talkback_controls(card, right);
+  add_clock_source_control(card, column[0]);
+  add_sync_status_control(card, column[1]);
+  add_power_status_control(card, column[1]);
+  add_sample_rate_control(card, column[2]);
+  add_speaker_switching_controls(card, column[0]);
+  add_talkback_controls(card, column[1]);
 }
 
 static GtkWidget *create_main_window_controls(struct alsa_card *card) {
