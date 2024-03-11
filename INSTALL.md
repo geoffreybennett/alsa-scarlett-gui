@@ -76,6 +76,18 @@ snd_usb_audio vid=0x1235 pid=0x8215 device_setup=1 to enable and
 report any issues to g@b4.vu
 ```
 
+### Firmware
+
+As of Linux 6.8, firmware updates of all the supported interfaces can
+be done through Linux. This is mandatory for Scarlett 4th Gen and
+Vocaster interfaces (unless you've already updated it using the
+manufacturer's software), and optional for Scarlett 2nd and 3rd Gen,
+Clarett USB, and Clarett+ interfaces.
+
+Download the firmware from
+https://github.com/geoffreybennett/scarlett2-firmware and place in
+`/usr/lib/firmware/scarlett2` or use the RPM/deb package.
+
 ## Building and Running
 
 On Fedora, these packages need to be installed:
