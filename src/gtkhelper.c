@@ -24,3 +24,16 @@ void gtk_grid_set_spacing(GtkGrid *grid, int spacing) {
   gtk_grid_set_row_spacing(grid, spacing);
   gtk_grid_set_column_spacing(grid, spacing);
 }
+
+void gtk_widget_remove_css_classes_by_prefix(
+  GtkWidget  *w,
+  const char *prefix
+) {
+  char **classes = gtk_widget_get_css_classes(w);
+
+  for (char **i = classes; *i != NULL; i++)
+    if (strncmp(*i, prefix, strlen(prefix)) == 0)
+      gtk_widget_remove_css_class(w, *i);
+
+  g_strfreev(classes);
+}
