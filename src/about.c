@@ -11,7 +11,7 @@ void activate_about(
   GtkWindow *w = GTK_WINDOW(data);
 
   const char *authors[] = {
-    "Geoffrey D. Bennett",
+    "Geoffrey D. Bennett <g@b4.vu>",
     NULL
   };
 
@@ -19,7 +19,9 @@ void activate_about(
     w,
     "program-name", "ALSA Scarlett2 Control Panel",
     "version", "Version " VERSION,
-    "comments", "GTK4 interface to the ALSA Scarlett and Clarett Mixer controls",
+    "comments",
+      "Gtk4 GUI for the ALSA controls presented by the\n"
+      "Linux kernel Focusrite Scarlett2 Mixer Driver",
     "website", "https://github.com/geoffreybennett/alsa-scarlett-gui",
     "copyright", "Copyright 2022-2024 Geoffrey D. Bennett",
     "license-type", GTK_LICENSE_GPL_3_0,
