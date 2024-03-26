@@ -522,6 +522,25 @@ static void create_input_controls(
 
   int current_row = 1;
 
+  // 4th Gen Solo, put the Phantom Power control above the Air control
+  if (get_elem_by_name(elems, "Direct Monitor Playback Switch")) {
+    create_input_controls_by_type(
+      elems, input_grid, &current_row,
+      "Level Capture Enum", create_input_level_control
+    );
+    create_input_controls_by_type(
+      elems, input_grid, &current_row,
+      "Phantom Power Capture Switch", create_input_phantom_control
+    );
+    create_input_controls_by_type(
+      elems, input_grid, &current_row,
+      "Air Capture Enum", create_input_air_enum_control
+    );
+
+    (*x)++;
+    return;
+  }
+
   create_input_select_control(elems, input_grid, &current_row);
 
   create_input_controls_by_type(
