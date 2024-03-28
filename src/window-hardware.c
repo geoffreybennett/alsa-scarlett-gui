@@ -35,6 +35,13 @@ struct hw_info gen_3_big_info[] = {
   { }
 };
 
+struct hw_info gen_4_info[] = {
+  { "Scarlett Solo 4th Gen" },
+  { "Scarlett 2i2 4th Gen" },
+  { "Scarlett 4i4 4th Gen" },
+  { }
+};
+
 struct hw_info clarett_usb_info[] = {
   { "Clarett 2Pre USB" },
   { "Clarett 4Pre USB" },
@@ -58,6 +65,9 @@ struct hw_cat hw_cat[] = {
   },
   { "Big 3rd Gen",
     gen_3_big_info
+  },
+  { "4th Gen",
+    gen_4_info
   },
   { "Clarett USB",
     clarett_usb_info
