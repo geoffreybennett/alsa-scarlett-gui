@@ -42,6 +42,10 @@ static void toggle_button_updated(
   toggle_button_set_text(data->button, data->text[value]);
 }
 
+static void on_destroy(struct boolean *data) {
+  g_free(data);
+}
+
 GtkWidget *make_boolean_alsa_elem(
   struct alsa_elem *elem,
   const char       *disabled_text,
@@ -77,6 +81,8 @@ GtkWidget *make_boolean_alsa_elem(
   gtk_widget_set_size_request(data->button, max_width, max_height);
 
   toggle_button_updated(elem, data);
+
+  g_object_weak_ref(G_OBJECT(data->button), (GWeakNotify)on_destroy, data);
 
   return data->button;
 }
