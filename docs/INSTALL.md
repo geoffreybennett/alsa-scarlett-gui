@@ -79,6 +79,12 @@ On Ubuntu:
 sudo apt -y install git make gcc libgtk-4-dev libasound2-dev libssl-dev
 ```
 
+On Arch:
+
+```
+sudo pacman -S gtk4
+```
+
 To download from github:
 
 ```
