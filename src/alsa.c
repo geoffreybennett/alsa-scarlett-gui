@@ -262,7 +262,7 @@ void alsa_set_elem_value(struct alsa_elem *elem, long value) {
 // return whether the element can be modified (is writable)
 int alsa_get_elem_writable(struct alsa_elem *elem) {
   if (elem->card->num == SIMULATED_CARD_NUM)
-    return elem->writable;
+    return elem->is_writable;
 
   snd_ctl_elem_info_t *elem_info;
 
@@ -271,6 +271,21 @@ int alsa_get_elem_writable(struct alsa_elem *elem) {
   snd_ctl_elem_info(elem->card->handle, elem_info);
 
   return snd_ctl_elem_info_is_writable(elem_info);
+}
+
+// return whether the element is volatile (can change without
+// notification)
+int alsa_get_elem_volatile(struct alsa_elem *elem) {
+  if (elem->card->num == SIMULATED_CARD_NUM)
+    return elem->is_volatile;
+
+  snd_ctl_elem_info_t *elem_info;
+
+  snd_ctl_elem_info_alloca(&elem_info);
+  snd_ctl_elem_info_set_numid(elem_info, elem->numid);
+  snd_ctl_elem_info(elem->card->handle, elem_info);
+
+  return snd_ctl_elem_info_is_volatile(elem_info);
 }
 
 // get the number of values this element has

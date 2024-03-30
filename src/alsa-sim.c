@@ -133,7 +133,7 @@ static void alsa_parse_comment_node(
       if (err < 0)
         fatal_alsa_error("snd_config_get_string error", err);
       if (strstr(access, "write"))
-        elem->writable = 1;
+        elem->is_writable = 1;
     } else if (strcmp(key, "type") == 0) {
       if (type != SND_CONFIG_TYPE_STRING) {
         printf("type type not string\n");

@@ -6,6 +6,7 @@
 struct boolean {
   struct alsa_elem *elem;
   GtkWidget        *button;
+  guint             source;
   const char       *text[2];
 };
 
@@ -42,7 +43,16 @@ static void toggle_button_updated(
   toggle_button_set_text(data->button, data->text[value]);
 }
 
+static gboolean update_toggle_button(struct boolean *data) {
+  toggle_button_updated(data->elem, data);
+
+  return G_SOURCE_CONTINUE;
+}
+
 static void on_destroy(struct boolean *data) {
+  if (data->source)
+    g_source_remove(data->source);
+
   g_free(data);
 }
 
@@ -81,6 +91,11 @@ GtkWidget *make_boolean_alsa_elem(
   gtk_widget_set_size_request(data->button, max_width, max_height);
 
   toggle_button_updated(elem, data);
+
+  // periodically update volatile controls
+  if (alsa_get_elem_volatile(elem))
+    data->source =
+      g_timeout_add_seconds(1, (GSourceFunc)update_toggle_button, data);
 
   g_object_weak_ref(G_OBJECT(data->button), (GWeakNotify)on_destroy, data);
 

@@ -141,7 +141,8 @@ struct alsa_elem {
   GList *callbacks;
 
   // for simulated elements, the current state
-  int  writable;
+  int  is_writable;
+  int  is_volatile;
   long value;
 
   // for simulated enumerated elements, the items
@@ -219,6 +220,7 @@ long alsa_get_elem_value(struct alsa_elem *elem);
 int *alsa_get_elem_int_values(struct alsa_elem *elem);
 void alsa_set_elem_value(struct alsa_elem *elem, long value);
 int alsa_get_elem_writable(struct alsa_elem *elem);
+int alsa_get_elem_volatile(struct alsa_elem *elem);
 int alsa_get_elem_count(struct alsa_elem *elem);
 int alsa_get_item_count(struct alsa_elem *elem);
 char *alsa_get_item_name(struct alsa_elem *elem, int i);
