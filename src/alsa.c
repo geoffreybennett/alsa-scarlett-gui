@@ -76,6 +76,21 @@ struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix) {
   return NULL;
 }
 
+// return the first element with a name containing the given substring
+struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr) {
+  for (int i = 0; i < elems->len; i++) {
+    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+
+    if (!elem->card)
+      continue;
+
+    if (strstr(elem->name, substr))
+      return elem;
+  }
+
+  return NULL;
+}
+
 // find the maximum number in the matching elements
 // search by element name prefix and substring
 // e.g. get_max_elem_by_name(elems, "Line", "Pad Capture Switch")
