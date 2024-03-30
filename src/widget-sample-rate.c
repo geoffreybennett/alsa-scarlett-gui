@@ -103,6 +103,7 @@ GtkWidget *make_sample_rate_widget(
   data->button = gtk_toggle_button_new();
   data->sample_rate = -1;
 
+  gtk_widget_set_sensitive(data->button, FALSE);
   gtk_widget_add_css_class(data->button, "fixed");
   gtk_widget_add_css_class(data->button, "sample-rate");
 
