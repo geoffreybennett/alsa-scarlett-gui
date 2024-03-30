@@ -9,6 +9,7 @@ struct boolean {
   GtkWidget        *button;
   guint             source;
   const char       *text[2];
+  GtkWidget        *icons[2];
 };
 
 static void button_clicked(GtkWidget *widget, struct boolean *data) {
@@ -17,16 +18,16 @@ static void button_clicked(GtkWidget *widget, struct boolean *data) {
   alsa_set_elem_value(data->elem, value ^ data->backwards);
 }
 
-static void toggle_button_set_text(GtkWidget *button, const char *text) {
+static void toggle_button_set_text(struct boolean *data, int value) {
+  const char *text = data->text[value];
+
   if (!text)
     return;
 
-  if (*text == '*') {
-    GtkWidget *icon = gtk_image_new_from_icon_name(text + 1);
-    gtk_button_set_child(GTK_BUTTON(button), icon);
-  } else {
-    gtk_button_set_label(GTK_BUTTON(button), text);
-  }
+  if (*text == '*')
+    gtk_button_set_child(GTK_BUTTON(data->button), data->icons[value]);
+  else
+    gtk_button_set_label(GTK_BUTTON(data->button), text);
 }
 
 static void toggle_button_updated(
@@ -41,7 +42,7 @@ static void toggle_button_updated(
   int value = !!alsa_get_elem_value(elem) ^ data->backwards;
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->button), value);
 
-  toggle_button_set_text(data->button, data->text[value]);
+  toggle_button_set_text(data, value);
 }
 
 static gboolean update_toggle_button(struct boolean *data) {
@@ -54,7 +55,19 @@ static void on_destroy(struct boolean *data) {
   if (data->source)
     g_source_remove(data->source);
 
+  for (int i = 0; i < 2; i++)
+    if (data->icons[i])
+      g_object_unref(data->icons[i]);
+
   g_free(data);
+}
+
+static void load_icons(struct boolean *data) {
+  for (int i = 0; i < 2; i++)
+    if (data->text[i] && *data->text[i] == '*') {
+      data->icons[i] = gtk_image_new_from_icon_name(data->text[i] + 1);
+      g_object_ref(data->icons[i]);
+    }
 }
 
 GtkWidget *make_boolean_alsa_elem(
@@ -72,11 +85,12 @@ GtkWidget *make_boolean_alsa_elem(
   alsa_elem_add_callback(elem, toggle_button_updated, data);
   data->text[0] = disabled_text;
   data->text[1] = enabled_text;
+  load_icons(data);
 
   // find the maximum width and height of both possible labels
   int max_width = 0, max_height = 0;
   for (int i = 0; i < 2; i++) {
-    toggle_button_set_text(data->button, data->text[i]);
+    toggle_button_set_text(data, i);
 
     GtkRequisition *size = gtk_requisition_new();
     gtk_widget_get_preferred_size(data->button, size, NULL);
