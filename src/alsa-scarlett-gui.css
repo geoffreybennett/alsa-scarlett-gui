@@ -83,7 +83,7 @@ label.gain {
 }
 
 .window-frame button:focus:focus-visible {
-  outline-color: #801010;
+  outline: 2px solid #801010;
 }
 
 /* padding doesn't work when selected with .window-frame, so use
@@ -114,6 +114,11 @@ button.toggle {
 
 /* Button controls that are always disabled because they indicate status */
 .window-frame button.fixed {
+  color: #ffffff;
+  filter: none;
+}
+
+.window-frame button.fixed label {
   color: #ffffff;
   filter: none;
 }
