@@ -200,6 +200,7 @@ void fatal_alsa_error(const char *msg, int err);
 // locate elements or get information about them
 struct alsa_elem *get_elem_by_name(GArray *elems, const char *name);
 struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix);
+struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr);
 int get_max_elem_by_name(
   GArray *elems,
   const char *prefix,
