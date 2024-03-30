@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "gtkhelper.h"
 #include "widget-boolean.h"
 
 struct boolean {
@@ -65,8 +66,13 @@ static void on_destroy(struct boolean *data) {
 static void load_icons(struct boolean *data) {
   for (int i = 0; i < 2; i++)
     if (data->text[i] && *data->text[i] == '*') {
-      data->icons[i] = gtk_image_new_from_icon_name(data->text[i] + 1);
+      char *path = g_strdup_printf(
+        "/vu/b4/alsa-scarlett-gui/icons/%s.svg", data->text[i] + 1
+      );
+      data->icons[i] = gtk_image_new_from_resource(path);
+      gtk_widget_set_align(data->icons[i], GTK_ALIGN_CENTER, GTK_ALIGN_CENTER);
       g_object_ref(data->icons[i]);
+      g_free(path);
     }
 }
 
