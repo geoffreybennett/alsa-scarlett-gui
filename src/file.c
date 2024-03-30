@@ -14,9 +14,15 @@ static void run_alsactl(
 ) {
   GtkWindow *w = GTK_WINDOW(card->window_main);
 
+  gchar *alsactl_path = g_find_program_in_path("alsactl");
+
+  if (!alsactl_path)
+    alsactl_path = g_strdup("/usr/sbin/alsactl");
+
   gchar *argv[] = {
-    "/usr/sbin/alsactl", cmd, card->device, "-f", fn, NULL
+    alsactl_path, cmd, card->device, "-f", fn, NULL
   };
+
   gchar  *stdout;
   gchar  *stderr;
   gint    exit_status;
@@ -52,6 +58,7 @@ static void run_alsactl(
   g_free(error_message);
 
 done:
+  g_free(alsactl_path);
   g_free(stdout);
   g_free(stderr);
   if (error)
