@@ -5,15 +5,16 @@
 
 struct boolean {
   struct alsa_elem *elem;
+  int               backwards;
   GtkWidget        *button;
   guint             source;
   const char       *text[2];
 };
 
-static void button_clicked(GtkWidget *widget, struct alsa_elem *elem) {
+static void button_clicked(GtkWidget *widget, struct boolean *data) {
   int value = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 
-  alsa_set_elem_value(elem, value);
+  alsa_set_elem_value(data->elem, value ^ data->backwards);
 }
 
 static void toggle_button_set_text(GtkWidget *button, const char *text) {
@@ -37,7 +38,7 @@ static void toggle_button_updated(
   int is_writable = alsa_get_elem_writable(elem);
   gtk_widget_set_sensitive(data->button, is_writable);
 
-  int value = !!alsa_get_elem_value(elem);
+  int value = !!alsa_get_elem_value(elem) ^ data->backwards;
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->button), value);
 
   toggle_button_set_text(data->button, data->text[value]);
@@ -61,12 +62,12 @@ GtkWidget *make_boolean_alsa_elem(
   const char       *disabled_text,
   const char       *enabled_text
 ) {
-  struct boolean *data = g_malloc(sizeof(struct boolean));
+  struct boolean *data = g_malloc0(sizeof(struct boolean));
   data->elem = elem;
   data->button = gtk_toggle_button_new();
 
   g_signal_connect(
-    data->button, "clicked", G_CALLBACK(button_clicked), elem
+    data->button, "clicked", G_CALLBACK(button_clicked), data
   );
   alsa_elem_add_callback(elem, toggle_button_updated, data);
   data->text[0] = disabled_text;
