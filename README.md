@@ -13,7 +13,7 @@ Supported interfaces:
 
 ## About
 
-<img src="src/img/alsa-scarlett-gui-logo.png" align="right">
+<img src="img/alsa-scarlett-gui.png" align="right">
 
 The Focusrite USB audio interfaces are class compliant meaning that
 they work “out of the box” on Linux as audio and MIDI interfaces
