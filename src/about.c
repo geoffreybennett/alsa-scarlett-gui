@@ -3,6 +3,8 @@
 
 #include "about.h"
 
+static GdkTexture *logo = NULL;
+
 void activate_about(
   GSimpleAction *action,
   GVariant      *parameter,
@@ -15,6 +17,11 @@ void activate_about(
     NULL
   };
 
+  if (!logo)
+    logo = gdk_texture_new_from_resource(
+      "/vu/b4/alsa-scarlett-gui/icons/vu.b4.alsa-scarlett-gui.png"
+    );
+
   gtk_show_about_dialog(
     w,
     "program-name", "ALSA Scarlett2 Control Panel",
@@ -25,7 +32,7 @@ void activate_about(
     "website", "https://github.com/geoffreybennett/alsa-scarlett-gui",
     "copyright", "Copyright 2022-2024 Geoffrey D. Bennett",
     "license-type", GTK_LICENSE_GPL_3_0,
-    "logo-icon-name", "alsa-scarlett-gui-logo",
+    "logo", logo,
     "title", "About ALSA Scarlett2 Mixer Interface",
     "authors", authors,
     NULL

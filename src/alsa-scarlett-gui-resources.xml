@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/vu/b4/alsa-scarlett-gui/icons">
-    <file alias="alsa-scarlett-gui-logo.png">img/alsa-scarlett-gui-logo.png</file>
+    <file alias="vu.b4.alsa-scarlett-gui.png">img/vu.b4.alsa-scarlett-gui.png</file>
     <file alias="socket.svg">img/socket.svg</file>
     <file alias="audio-volume-high.svg">img/audio-volume-high.svg</file>
     <file alias="audio-volume-low.svg">img/audio-volume-low.svg</file>
