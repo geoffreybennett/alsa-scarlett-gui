@@ -114,10 +114,6 @@ void destroy_card_window(struct alsa_card *card) {
     gtk_window_destroy(GTK_WINDOW(card->window_modal));
   }
 
-  // disable the level meter timer source
-  if (card->meter_gsource_timer)
-    g_source_remove(card->meter_gsource_timer);
-
   // if last window, display the "no card found" blank window
   window_count--;
   create_no_card_window();

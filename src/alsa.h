@@ -161,7 +161,6 @@ struct alsa_card {
   struct pollfd       pfd;
   GArray             *elems;
   struct alsa_elem   *sample_capture_elem;
-  struct alsa_elem   *level_meter_elem;
   GArray             *routing_srcs;
   GArray             *routing_snks;
   GIOChannel         *io_channel;
@@ -183,8 +182,6 @@ struct alsa_card {
   GtkWidget          *routing_dsp_out_grid;
   GtkWidget          *routing_mixer_in_grid;
   GtkWidget          *routing_mixer_out_grid;
-  GtkWidget          *meters[MAX_METERS];
-  guint               meter_gsource_timer;
   int                 has_speaker_switching;
   int                 has_talkback;
   int                 routing_out_count[PC_COUNT];

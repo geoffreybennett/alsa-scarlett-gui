@@ -23,10 +23,18 @@ static const double level_colours[] = {
   1.00, 0.00, 0.00  //  -1/0
 };
 
-static int update_levels_controls(void *user_data) {
-  struct alsa_card *card = user_data;
+struct levels {
+  struct alsa_card *card;
+  struct alsa_elem *level_meter_elem;
+  GtkWidget        *meters[MAX_METERS];
+  guint             timer;
+};
 
-  struct alsa_elem *level_meter_elem = card->level_meter_elem;
+static int update_levels_controls(void *user_data) {
+  struct levels *data = user_data;
+  struct alsa_card *card = data->card;
+
+  struct alsa_elem *level_meter_elem = data->level_meter_elem;
 
   int *values = alsa_get_elem_int_values(level_meter_elem);
 
@@ -37,7 +45,7 @@ static int update_levels_controls(void *user_data) {
 
     // go through the ports in that category
     for (int j = 0; j < card->routing_out_count[i]; j++) {
-      GtkWidget *meter = card->meters[meter_num];
+      GtkWidget *meter = data->meters[meter_num];
       double value = 20 * log10(values[meter_num] / 4095.0);
 
       gtk_dial_set_value(GTK_DIAL(meter), value);
@@ -61,23 +69,18 @@ static GtkWidget *add_count_label(GtkGrid *grid, int count) {
   return l;
 }
 
-static struct alsa_elem *get_level_meter_elem(struct alsa_card *card) {
-  GArray *elems = card->elems;
+static void on_destroy(GtkWidget *widget, struct levels *data) {
+  if (data->timer)
+    g_source_remove(data->timer);
 
-  for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
-
-    if (!elem->card)
-      continue;
-
-    if (strcmp(elem->name, "Level Meter") == 0)
-      return elem;
-  }
-
-  return NULL;
+  g_free(data);
 }
 
 GtkWidget *create_levels_controls(struct alsa_card *card) {
+  struct levels *data = g_malloc0(sizeof(struct levels));
+
+  data->card = card;
+
   GtkWidget *top = gtk_frame_new(NULL);
   gtk_widget_add_css_class(top, "window-frame");
 
@@ -93,8 +96,8 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
 
   int meter_num = 0;
 
-  card->level_meter_elem = get_level_meter_elem(card);
-  if (!card->level_meter_elem) {
+  data->level_meter_elem = get_elem_by_name(card->elems, "Level Meter");
+  if (!data->level_meter_elem) {
     printf("Level Meter control not found\n");
     return NULL;
   }
@@ -135,21 +138,22 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
       // HW Output off_db is -55db; otherwise -45db
       gtk_dial_set_off_db(GTK_DIAL(meter), i == PC_HW ? -55 : -45);
 
-      card->meters[meter_num++] = meter;
+      data->meters[meter_num++] = meter;
       gtk_grid_attach(GTK_GRID(grid), meter, j + 1, row, 1, 1);
     }
 
     row++;
   }
 
-  int elem_count = card->level_meter_elem->count;
+  int elem_count = data->level_meter_elem->count;
   if (meter_num != elem_count) {
     printf("meter_num is %d but elem count is %d\n", meter_num, elem_count);
     return NULL;
   }
-  card->level_meter_elem->count = elem_count;
+  data->level_meter_elem->count = elem_count;
 
-  card->meter_gsource_timer = g_timeout_add(50, update_levels_controls, card);
+  data->timer = g_timeout_add(50, update_levels_controls, data);
+  g_object_weak_ref(G_OBJECT(levels_top), (GWeakNotify)on_destroy, data);
 
   return top;
 }
