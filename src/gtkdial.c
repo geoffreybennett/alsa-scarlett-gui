@@ -771,6 +771,30 @@ static void draw_peak(GtkDial *dial, cairo_t *cr, double radius) {
   cairo_stroke(cr);
 }
 
+static void show_peak_value(GtkDial *dial, cairo_t *cr) {
+  double value = round(dial->current_peak);
+
+  if (value <= gtk_adjustment_get_lower(dial->adj))
+    return;
+
+  char s[20];
+  char *p = s;
+  if (value < 0)
+    p += sprintf(p, "−");
+  snprintf(p, 10, "%.0f", fabs(value));
+
+  cairo_text_extents_t extents;
+  cairo_text_extents(cr, s, &extents);
+
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.5, dial->dim);
+  cairo_move_to(
+    cr,
+    dial->cx - extents.width / 2,
+    dial->cy + extents.height / 2
+  );
+  cairo_show_text(cr, s);
+}
+
 static void draw_slider(
   GtkDial *dial,
   cairo_t *cr,
@@ -909,6 +933,10 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI);
   cairo_set_line_width(cr, 2);
   cairo_stroke(cr);
+
+  // show the peak value
+  if (dial->peak_hold)
+    show_peak_value(dial, cr);
 
   // if focussed
   if (has_focus) {
