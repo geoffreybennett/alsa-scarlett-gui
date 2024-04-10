@@ -71,9 +71,9 @@ static void gain_updated(
     else if (value > 0)
       p += sprintf(p, "+");
     if (data->scale <= 0.5)
-      p += sprintf(p, "%.1f", fabs(value));
+      p += snprintf(p, 10, "%.1f", fabs(value));
     else
-      p += sprintf(p, "%.0f", fabs(value));
+      p += snprintf(p, 10, "%.0f", fabs(value));
   }
   if (data->scale > 0.5)
     p += sprintf(p, "dB");
