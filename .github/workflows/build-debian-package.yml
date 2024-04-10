@@ -42,6 +42,7 @@ jobs:
           package: ${{ env.APP_NAME }}
           package_root: ${{ github.workspace }}/deb-workspace
           maintainer: geoffreybennett
+          depends: 'libgtk-4-1, libasound2, alsa-utils'
           version: ${{ env.APP_VERSION }}
           desc: ${{ env.APP_NAME }} is a Gtk4 GUI for the ALSA controls presented by the Linux kernel Focusrite Scarlett Gen 2/3 Mixer Driver.
 
