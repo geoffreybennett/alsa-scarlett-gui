@@ -40,6 +40,8 @@ static int update_levels_controls(void *user_data) {
 
   int meter_num = 0;
 
+  gtk_dial_peak_tick();
+
   // go through the port categories
   for (int i = 0; i < PC_COUNT; i++) {
 
@@ -125,6 +127,7 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
       GtkWidget *meter = gtk_dial_new_with_range(-80, 0, 0, 0);
       gtk_dial_set_taper(GTK_DIAL(meter), GTK_DIAL_TAPER_LINEAR);
       gtk_dial_set_can_control(GTK_DIAL(meter), FALSE);
+      gtk_dial_set_peak_hold(GTK_DIAL(meter), 1000);
       gtk_dial_set_level_meter_colours(
         GTK_DIAL(meter),
         (i == PC_DSP || i == PC_PCM)
