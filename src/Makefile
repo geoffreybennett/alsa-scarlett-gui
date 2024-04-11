@@ -12,7 +12,7 @@ VERSION := $(shell \
 DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
-CFLAGS ?= -ggdb -fno-omit-frame-pointer -O2
+CFLAGS ?= -ggdb -fno-omit-frame-pointer -fPIE -O2
 CFLAGS += -Wall -Werror -D_FORTIFY_SOURCE=2
 CFLAGS += -DVERSION=\"$(VERSION)\"
 CFLAGS += -Wno-error=deprecated-declarations
@@ -26,7 +26,7 @@ CFLAGS += $(shell $(PKG_CONFIG) --cflags alsa)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs glib-2.0)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs gtk4)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs alsa)
-LDFLAGS += -lm -lcrypto
+LDFLAGS += -lm -lcrypto -pie
 
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 
