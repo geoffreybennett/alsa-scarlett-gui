@@ -59,9 +59,9 @@ Download the firmware from
 https://github.com/geoffreybennett/scarlett2-firmware and place it in
 `/usr/lib/firmware/scarlett2` or use the RPM/deb package.
 
-## Downloading via package manager
+## Installing via package manager
 
-On Arch, you can download the package from the extra pacman repository:
+On Arch, you can install the package from the extra pacman repository:
 
 ```
 sudo pacman -S alsa-scarlett-gui
