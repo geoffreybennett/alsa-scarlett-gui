@@ -265,7 +265,12 @@ static void enum_firmware_dir(const char *dir_name) {
 
 void scarlett2_enum_firmware(void) {
   init_best_firmware();
-  enum_firmware_dir(SCARLETT2_FIRMWARE_DIR);
+
+  const char *fw_dir = getenv("SCARLETT2_FIRMWARE_DIR");
+
+  if (!fw_dir)
+    fw_dir = SCARLETT2_FIRMWARE_DIR;
+  enum_firmware_dir(fw_dir);
 }
 
 uint32_t scarlett2_get_best_firmware_version(uint32_t pid) {
