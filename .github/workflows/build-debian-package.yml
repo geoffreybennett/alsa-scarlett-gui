@@ -34,7 +34,7 @@ jobs:
           cp src/alsa-scarlett-gui               ${{ github.workspace }}/deb-workspace/usr/bin/
           cp src/vu.b4.alsa-scarlett-gui.desktop ${{ github.workspace }}/deb-workspace/usr/share/applications/
           cp src/img/vu.b4.alsa-scarlett-gui.png ${{ github.workspace }}/deb-workspace/usr/share/icons/hicolor/256x256/apps/
-          cp -r *.md img demo                    ${{ github.workspace }}/deb-workspace/usr/share/doc/${{ env.APP_NAME }}-${{ env.APP_VERSION }}/
+          cp -r *.md demo docs img               ${{ github.workspace }}/deb-workspace/usr/share/doc/${{ env.APP_NAME }}-${{ env.APP_VERSION }}/
 
       - name: Build debian package
         uses: jiro4989/build-deb-action@v2
@@ -44,7 +44,7 @@ jobs:
           maintainer: geoffreybennett
           depends: 'libgtk-4-1, libasound2, alsa-utils'
           version: ${{ env.APP_VERSION }}
-          desc: ${{ env.APP_NAME }} is a Gtk4 GUI for the ALSA controls presented by the Linux kernel Focusrite Scarlett Gen 2/3 Mixer Driver.
+          desc: ${{ env.APP_NAME }} is a Gtk4 GUI for the ALSA controls presented by the Linux kernel Focusrite Scarlett2 Mixer Driver.
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1

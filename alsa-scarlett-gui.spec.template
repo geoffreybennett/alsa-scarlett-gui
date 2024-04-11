@@ -9,7 +9,7 @@ Source: %{name}-%{version}.tar.gz
 %description
 
 alsa-scarlett-gui is a Gtk4 GUI for the ALSA controls presented by the
-Linux kernel Focusrite Scarlett Gen 2/3 Mixer Driver.
+Linux kernel Focusrite Scarlett2 Mixer Driver.
 
 %prep
 %setup
@@ -22,9 +22,11 @@ make -C src -j4 VERSION=%{version} PREFIX=/usr
 DOCDIR=%{buildroot}/usr/share/doc/%{name}-%{version}
 mkdir -p $DOCDIR/img
 mkdir $DOCDIR/demo
+mkdir $DOCDIR/docs
 cp *.md $DOCDIR
 cp img/* $DOCDIR/img
 cp demo/* $DOCDIR/demo
+cp docs/* $DOCDIR/docs
 
 %files
 %doc /usr/share/doc/%{name}-%{version}
