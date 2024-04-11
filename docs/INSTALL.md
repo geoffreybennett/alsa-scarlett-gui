@@ -59,6 +59,14 @@ Download the firmware from
 https://github.com/geoffreybennett/scarlett2-firmware and place it in
 `/usr/lib/firmware/scarlett2` or use the RPM/deb package.
 
+## Downloading via package manager
+
+On Arch, you can download the package from the extra pacman repository:
+
+```
+sudo pacman -S alsa-scarlett-gui
+```
+
 ## Building and Running
 
 On Fedora, these packages need to be installed:
@@ -77,12 +85,6 @@ On Ubuntu:
 
 ```
 sudo apt -y install git make gcc libgtk-4-dev libasound2-dev libssl-dev
-```
-
-On Arch:
-
-```
-sudo pacman -S gtk4
 ```
 
 To download from github:
