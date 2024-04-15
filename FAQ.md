@@ -9,7 +9,7 @@ Vocaster interfaces.
 
 To check if your kernel is already up-to-date, and how to upgrade if
 not, see the [Control Panel Installation Prerequisites — Linux
-Kernel](https://github.com/geoffreybennett/alsa-scarlett-gui/blob/master/INSTALL.md).
+Kernel](docs/INSTALL.md).
 
 `alsa-scarlett-gui` is an easy-to-use application to adjust those
 controls.
