@@ -198,9 +198,13 @@ struct alsa_card {
 void fatal_alsa_error(const char *msg, int err);
 
 // locate elements or get information about them
-struct alsa_elem *get_elem_by_name(GArray *elems, char *name);
-struct alsa_elem *get_elem_by_prefix(GArray *elems, char *prefix);
-int get_max_elem_by_name(GArray *elems, char *prefix, char *needle);
+struct alsa_elem *get_elem_by_name(GArray *elems, const char *name);
+struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix);
+int get_max_elem_by_name(
+  GArray *elems,
+  const char *prefix,
+  const char *needle
+);
 int is_elem_routing_snk(struct alsa_elem *elem);
 
 // add callback to alsa_elem callback list

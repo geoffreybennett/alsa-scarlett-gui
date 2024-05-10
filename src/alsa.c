@@ -45,7 +45,7 @@ void fatal_alsa_error(const char *msg, int err) {
 //
 
 // return the element with the exact matching name
-struct alsa_elem *get_elem_by_name(GArray *elems, char *name) {
+struct alsa_elem *get_elem_by_name(GArray *elems, const char *name) {
   for (int i = 0; i < elems->len; i++) {
     struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
 
@@ -60,7 +60,7 @@ struct alsa_elem *get_elem_by_name(GArray *elems, char *name) {
 }
 
 // return the first element with a name starting with the given prefix
-struct alsa_elem *get_elem_by_prefix(GArray *elems, char *prefix) {
+struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix) {
   int prefix_len = strlen(prefix);
 
   for (int i = 0; i < elems->len; i++) {
@@ -81,7 +81,11 @@ struct alsa_elem *get_elem_by_prefix(GArray *elems, char *prefix) {
 // e.g. get_max_elem_by_name(elems, "Line", "Pad Capture Switch")
 // will return 8 when the last pad capture switch is
 // "Line In 8 Pad Capture Switch"
-int get_max_elem_by_name(GArray *elems, char *prefix, char *needle) {
+int get_max_elem_by_name(
+  GArray *elems,
+  const char *prefix,
+  const char *needle
+) {
   int max = 0;
   int l = strlen(prefix);
 
