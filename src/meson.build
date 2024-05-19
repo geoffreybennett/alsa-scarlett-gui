@@ -80,6 +80,7 @@ sources = ['about.c',
 executable( 'alsa-scarlett-gui' , sources ,
             dependencies: [ 
               m_dep,
+              crypto_dep,
               glib_dep, 
               gtk4_dep, 
               alsa_dep 
