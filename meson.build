@@ -9,6 +9,8 @@ add_project_arguments( '-DVERSION="@0@"'.format(meson.project_version()), langua
 
 cc = meson.get_compiler('c')
 
+m_dep = cc.find_library('m', required : false)
+
 prefix = get_option('prefix')
 
 bindir = join_paths(prefix, get_option('bindir'))
