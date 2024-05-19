@@ -4,7 +4,8 @@ project('alsa-scarlett-gui','c',
         meson_version: '>= 1.0.0',
   )
 
-add_global_arguments( '-DSOME_TOKEN=value', language : 'c')
+#add_global_arguments( '-DSOME_TOKEN=value', language : 'c')
+add_project_arguments( '-DVERSION="@0@"'.format(meson.project_version()), language : 'c')
 
 cc = meson.get_compiler('c')
 
