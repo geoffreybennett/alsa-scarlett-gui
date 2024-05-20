@@ -1,5 +1,5 @@
 project('alsa-scarlett-gui','c',
-        version: '0.4.0',
+        version: run_command('git', 'describe', '--abbrev=4', '--dirty', '--always', check: true).stdout().strip(),
         license: 'GPLv3, LGPLv3',
         meson_version: '>= 1.0.0',
   )
