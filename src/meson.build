@@ -85,6 +85,7 @@ executable( 'alsa-scarlett-gui' , sources ,
               gtk4_dep, 
               alsa_dep 
               ],
+            pie: true,
             install: true )
 
 #alsa-scarlett-gui-resources.xml
