@@ -7,6 +7,8 @@ project('alsa-scarlett-gui','c',
 #add_global_arguments( '-DSOME_TOKEN=value', language : 'c')
 add_project_arguments( '-DVERSION="@0@"'.format(meson.project_version()), language : 'c')
 
+gnome = import('gnome')
+
 cc = meson.get_compiler('c')
 
 prefix = get_option('prefix')

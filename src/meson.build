@@ -77,7 +77,13 @@ sources = ['about.c',
 'window-startup.c',
 'window-startup.h']
 
-executable( 'alsa-scarlett-gui' , sources ,
+
+resources = gnome.compile_resources('alsa-scarlett-gui-resources',
+  'alsa-scarlett-gui-resources.xml',
+  source_dir: '.',
+  c_name: 'alsa-scarlett-gui-resources')
+
+executable( 'alsa-scarlett-gui' , sources + resources ,
             dependencies: [ 
               m_dep,
               crypto_dep,
@@ -88,6 +94,5 @@ executable( 'alsa-scarlett-gui' , sources ,
             pie: true,
             install: true )
 
-#alsa-scarlett-gui-resources.xml
 #alsa-scarlett-gui.css
 #vu.b4.alsa-scarlett-gui.desktop.template
