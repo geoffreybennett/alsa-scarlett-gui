@@ -1,4 +1,4 @@
-images = ['demo.gif',
+images = files('demo.gif',
 'firmware-missing.png',
 'firmware-update-required.png',
 'firmware-updating.png',
@@ -21,5 +21,11 @@ images = ['demo.gif',
 'window-main.png',
 'window-mixer.png',
 'window-routing.png',
-'window-startup.png']
+'window-startup.png')
+
+install_data(
+  images ,
+  install_dir: datadir / 'alsa-scarlett-gui/img',
+)
+
 
