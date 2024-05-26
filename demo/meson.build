@@ -1,4 +1,4 @@
-state_files = ['Clarett\ Plus\ 2Pre.state',
+state_files = files('Clarett\ Plus\ 2Pre.state',
 'Clarett\ Plus\ 4Pre.state',
 'Clarett\ Plus\ 8Pre.state',
 'Scarlett\ Gen\ 2\ 18i20.state',
@@ -14,4 +14,10 @@ state_files = ['Clarett\ Plus\ 2Pre.state',
 'Scarlett\ Gen\ 4\ 4i4.state',
 'Scarlett\ Gen\ 4\ Solo.state',
 'Vocaster\ One.state',
-'Vocaster\ Two.state']
+'Vocaster\ Two.state')
+
+install_data(
+  state_files,
+  install_dir: datadir / 'alsa-scarlett-gui/demo',
+)
+
