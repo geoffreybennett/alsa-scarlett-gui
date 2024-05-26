@@ -81,7 +81,7 @@ sources = ['about.c',
 resources = gnome.compile_resources('alsa-scarlett-gui-resources',
   'alsa-scarlett-gui-resources.xml',
   source_dir: '.',
-  c_name: 'alsa-scarlett-gui-resources')
+  c_name: 'resources')
 
 executable( 'alsa-scarlett-gui' , sources + resources ,
             dependencies: [ 
