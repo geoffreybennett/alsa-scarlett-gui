@@ -154,6 +154,10 @@ struct _GtkDial {
   cairo_pattern_t *fill_pattern[2][2];
   cairo_pattern_t *outline_pattern[2];
 
+  // pango resources for displaying the peak value
+  PangoLayout *peak_layout;
+  PangoFontDescription *peak_font_desc;
+
   // variables derived from the dial value
   double valp;
   double angle;
@@ -404,6 +408,21 @@ static int update_dial_properties(GtkDial *dial) {
 
     dial->outline_pattern[dim] = pat;
   }
+
+  // init pango layout for peak value
+  if (dial->peak_layout)
+    g_object_unref(dial->peak_layout);
+  if (dial->peak_font_desc)
+    pango_font_description_free(dial->peak_font_desc);
+
+  PangoContext *context = gtk_widget_create_pango_context(GTK_WIDGET(dial));
+  dial->peak_layout = pango_layout_new(context);
+  dial->peak_font_desc = pango_context_get_font_description(context);
+  int size = pango_font_description_get_size(dial->peak_font_desc) * 0.6;
+  dial->peak_font_desc = pango_font_description_copy(dial->peak_font_desc);
+  pango_font_description_set_size(dial->peak_font_desc, size);
+  pango_layout_set_font_description(dial->peak_layout, dial->peak_font_desc);
+  g_object_unref(context);
 
   // calculate level meter breakpoint angles
   if (dial->level_breakpoint_angles)
@@ -783,16 +802,20 @@ static void show_peak_value(GtkDial *dial, cairo_t *cr) {
     p += sprintf(p, "−");
   snprintf(p, 10, "%.0f", fabs(value));
 
-  cairo_text_extents_t extents;
-  cairo_text_extents(cr, s, &extents);
+  pango_layout_set_text(dial->peak_layout, s, -1);
+
+  int width, height;
+  pango_layout_get_pixel_size(dial->peak_layout, &width, &height);
 
   cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.5, dial->dim);
+
   cairo_move_to(
     cr,
-    dial->cx - extents.width / 2,
-    dial->cy + extents.height / 2
+    dial->cx - width / 2 - 1,
+    dial->cy - height / 2
   );
-  cairo_show_text(cr, s);
+
+  pango_cairo_show_layout(cr, dial->peak_layout);
 }
 
 static void draw_slider(
@@ -1521,6 +1544,11 @@ void gtk_dial_dispose(GObject *o) {
   for (int dim = 0; dim <= 1; dim++)
     if (dial->outline_pattern[dim])
       cairo_pattern_destroy(dial->outline_pattern[dim]);
+
+  if (dial->peak_layout)
+    g_object_unref(dial->peak_layout);
+  if (dial->peak_font_desc)
+    pango_font_description_free(dial->peak_font_desc);
 
   g_object_unref(dial->adj);
   dial->adj = NULL;
