@@ -71,7 +71,7 @@ static GtkWidget *add_count_label(GtkGrid *grid, int count) {
   return l;
 }
 
-static void on_destroy(GtkWidget *widget, struct levels *data) {
+static void on_destroy(struct levels *data, GtkWidget *widget) {
   if (data->timer)
     g_source_remove(data->timer);
 
