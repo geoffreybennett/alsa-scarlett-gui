@@ -7,7 +7,7 @@
 #define MAX_MIX_OUT 12
 
 // maximum number of mux inputs
-#define MAX_MUX_IN 25
+#define MAX_MUX_IN 42
 
 // maximum number of meters
-#define MAX_METERS 65
+#define MAX_METERS 92
