@@ -253,8 +253,13 @@ static void create_input_link_control(
 
   int from, to;
   get_two_num_from_string(elem->name, &from, &to);
+
+  // skip even numbers
+  if (!(from % 2))
+    return;
+
   if (to == -1)
-    to = from;
+    to = from + 1;
 
   gtk_grid_attach(GTK_GRID(grid), w, from - 1, current_row, to - from + 1, 1);
 }
