@@ -104,6 +104,9 @@ struct routing_snk {
   // 0-based count within port_category
   int port_num;
 
+  // if the element is writable
+  int writable;
+
   // the mixer label widgets for this sink
   GtkWidget *mixer_label_top;
   GtkWidget *mixer_label_bottom;

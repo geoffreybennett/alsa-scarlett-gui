@@ -262,6 +262,9 @@ void draw_routing_lines(
       card->routing_snks, struct routing_snk, i
     );
 
+    if (!r_snk->writable)
+      continue;
+
     // if dragging and a routing sink is being reconnected then draw
     // it with dots
     int dragging_this = dragging && card->snk_drag == r_snk;
