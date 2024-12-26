@@ -55,7 +55,7 @@
   border-radius: 3px;
 }
 
-.route-label:hover {
+.route-label-hover {
   background: #801010;
   outline: 2px solid #801010;
 }

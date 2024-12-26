@@ -419,6 +419,101 @@ static GtkWidget *make_socket_widget(void) {
   return w;
 }
 
+static void routing_label_enter(
+  GtkEventControllerMotion *controller,
+  double x, double y,
+  gpointer user_data
+) {
+  GtkWidget *widget = GTK_WIDGET(user_data);
+
+  gtk_widget_add_css_class(widget, "route-label-hover");
+
+  struct routing_src *r_src = g_object_get_data(G_OBJECT(widget), "routing_src");
+  struct routing_snk *r_snk = g_object_get_data(G_OBJECT(widget), "routing_snk");
+
+  if (r_src) {
+    struct alsa_card *card = r_src->card;
+
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+
+      if (!r_snk->box_widget)
+        continue;
+
+      if (alsa_get_elem_value(r_snk->elem) == r_src->id)
+        gtk_widget_add_css_class(r_snk->box_widget, "route-label-hover");
+    }
+
+  } else if (r_snk) {
+    struct alsa_card *card = r_snk->elem->card;
+
+    int r_src_idx = alsa_get_elem_value(r_snk->elem);
+
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+
+      if (!r_src->widget)
+        continue;
+
+      if (r_src->id == r_src_idx)
+        gtk_widget_add_css_class(r_src->widget, "route-label-hover");
+    }
+  }
+}
+
+static void routing_label_leave(
+  GtkEventControllerMotion *controller,
+  gpointer user_data
+) {
+  GtkWidget *widget = GTK_WIDGET(user_data);
+
+  gtk_widget_remove_css_class(widget, "route-label-hover");
+
+  struct routing_src *r_src = g_object_get_data(G_OBJECT(widget), "routing_src");
+  struct routing_snk *r_snk = g_object_get_data(G_OBJECT(widget), "routing_snk");
+
+  if (r_src) {
+    struct alsa_card *card = r_src->card;
+
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+
+      if (!r_snk->box_widget)
+        continue;
+
+      gtk_widget_remove_css_class(r_snk->box_widget, "route-label-hover");
+    }
+
+  } else if (r_snk) {
+    struct alsa_card *card = r_snk->elem->card;
+
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+
+      if (!r_src->widget)
+        continue;
+
+      gtk_widget_remove_css_class(r_src->widget, "route-label-hover");
+    }
+  }
+}
+
+static void add_routing_hover_controller(GtkWidget *widget) {
+  GtkEventController *motion = gtk_event_controller_motion_new();
+
+  g_signal_connect(motion, "enter", G_CALLBACK(routing_label_enter), widget);
+  g_signal_connect(motion, "leave", G_CALLBACK(routing_label_leave), widget);
+  gtk_widget_add_controller(widget, motion);
+}
+
 // something was dropped on a routing source
 static gboolean dropped_on_src(
   GtkDropTarget *dest,
@@ -715,6 +810,8 @@ static void make_src_routing_widget(
   GtkWidget *box = r_src->widget = gtk_box_new(orientation, 5);
   GtkWidget *socket = r_src->widget2 = make_socket_widget();
 
+  g_object_set_data(G_OBJECT(box), "routing_src", r_src);
+
   // create label for mixer inputs (length > 1) and mixer outputs if
   // not talkback (talkback has a button outside the box instead of a
   // label inside the box)
@@ -748,6 +845,9 @@ static void make_src_routing_widget(
     GTK_WIDGET(box), GTK_EVENT_CONTROLLER(gesture)
   );
 
+  // handle hovering
+  add_routing_hover_controller(box);
+
   // handle dragging to or from the box
   setup_src_drag(r_src);
 }
@@ -780,6 +880,9 @@ static void make_snk_routing_widget(
   GtkWidget *label = gtk_label_new(name);
   gtk_box_append(GTK_BOX(box), label);
   GtkWidget *socket = r_snk->socket_widget = make_socket_widget();
+
+  g_object_set_data(G_OBJECT(box), "routing_snk", r_snk);
+
   if (orientation == GTK_ORIENTATION_VERTICAL) {
     gtk_box_append(GTK_BOX(box), socket);
     gtk_widget_set_margin_start(box, 5);
@@ -800,6 +903,9 @@ static void make_snk_routing_widget(
   gtk_widget_add_controller(
     GTK_WIDGET(box), GTK_EVENT_CONTROLLER(gesture)
   );
+
+  // handle hovering
+  add_routing_hover_controller(box);
 
   // handle dragging to or from the box
   setup_snk_drag(r_snk);
