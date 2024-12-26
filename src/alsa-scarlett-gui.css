@@ -65,6 +65,14 @@
   background: #801010;
 }
 
+.mixer-label {
+}
+
+.mixer-label-hover {
+  font-weight: bold;
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
 label.gain {
   font-size: smaller;
 }
