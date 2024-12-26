@@ -8,6 +8,54 @@
 #include "widget-gain.h"
 #include "window-mixer.h"
 
+static void mixer_gain_enter(
+  GtkEventControllerMotion *controller,
+  double x, double y,
+  gpointer user_data
+) {
+  GtkWidget *widget = GTK_WIDGET(user_data);
+  GtkWidget *mix_left = g_object_get_data(G_OBJECT(widget), "mix_label_left");
+  GtkWidget *mix_right = g_object_get_data(G_OBJECT(widget), "mix_label_right");
+  GtkWidget *source_top = g_object_get_data(G_OBJECT(widget), "source_label_top");
+  GtkWidget *source_bottom = g_object_get_data(G_OBJECT(widget), "source_label_bottom");
+
+  if (mix_left)
+    gtk_widget_add_css_class(mix_left, "mixer-label-hover");
+  if (mix_right)
+    gtk_widget_add_css_class(mix_right, "mixer-label-hover");
+  if (source_top)
+    gtk_widget_add_css_class(source_top, "mixer-label-hover");
+  if (source_bottom)
+    gtk_widget_add_css_class(source_bottom, "mixer-label-hover");
+}
+
+static void mixer_gain_leave(
+  GtkEventControllerMotion *controller,
+  gpointer user_data
+) {
+  GtkWidget *widget = GTK_WIDGET(user_data);
+  GtkWidget *mix_left = g_object_get_data(G_OBJECT(widget), "mix_label_left");
+  GtkWidget *mix_right = g_object_get_data(G_OBJECT(widget), "mix_label_right");
+  GtkWidget *source_top = g_object_get_data(G_OBJECT(widget), "source_label_top");
+  GtkWidget *source_bottom = g_object_get_data(G_OBJECT(widget), "source_label_bottom");
+
+  if (mix_left)
+    gtk_widget_remove_css_class(mix_left, "mixer-label-hover");
+  if (mix_right)
+    gtk_widget_remove_css_class(mix_right, "mixer-label-hover");
+  if (source_top)
+    gtk_widget_remove_css_class(source_top, "mixer-label-hover");
+  if (source_bottom)
+    gtk_widget_remove_css_class(source_bottom, "mixer-label-hover");
+}
+
+static void add_mixer_hover_controller(GtkWidget *widget) {
+  GtkEventController *motion = gtk_event_controller_motion_new();
+  g_signal_connect(motion, "enter", G_CALLBACK(mixer_gain_enter), widget);
+  g_signal_connect(motion, "leave", G_CALLBACK(mixer_gain_leave), widget);
+  gtk_widget_add_controller(widget, motion);
+}
+
 static struct routing_snk *get_mixer_r_snk(
   struct alsa_card *card,
   int               input_num
@@ -43,18 +91,21 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
   GArray *elems = card->elems;
 
+  GtkWidget *mix_labels_left[MAX_MIX_OUT];
+  GtkWidget *mix_labels_right[MAX_MIX_OUT];
+
   // create the Mix X labels on the left and right of the grid
   for (int i = 0; i < card->routing_in_count[PC_MIX]; i++) {
     char name[10];
     snprintf(name, 10, "Mix %c", i + 'A');
 
-    GtkWidget *l_left = gtk_label_new(name);
+    GtkWidget *l_left = mix_labels_left[i] = gtk_label_new(name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_left,
       0, i + 2, 1, 1
     );
 
-    GtkWidget *l_right = gtk_label_new(name);
+    GtkWidget *l_right = mix_labels_right[i] = gtk_label_new(name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_right,
       card->routing_out_count[PC_MIX] + 1, i + 2, 1, 1
@@ -109,6 +160,8 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     if (!l_top) {
       l_top = r_snk->mixer_label_top = gtk_label_new("");
       GtkWidget *l_bottom = r_snk->mixer_label_bottom = gtk_label_new("");
+      gtk_widget_add_css_class(l_top, "mixer-label");
+      gtk_widget_add_css_class(l_bottom, "mixer-label");
 
       gtk_grid_attach(
         GTK_GRID(mixer_top), l_top,
@@ -119,6 +172,15 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
         input_num, card->routing_in_count[PC_MIX] + input_num % 2 + 2, 3, 1
       );
     }
+
+    g_object_set_data(G_OBJECT(w), "mix_label_left", mix_labels_left[mix_num]);
+    g_object_set_data(G_OBJECT(w), "mix_label_right", mix_labels_right[mix_num]);
+    g_object_set_data(G_OBJECT(w), "source_label_top", r_snk->mixer_label_top);
+    g_object_set_data(G_OBJECT(w), "source_label_bottom", r_snk->mixer_label_bottom);
+
+    // add hover controller to the gain widget
+    add_mixer_hover_controller(w);
+
   }
 
   update_mixer_labels(card);
