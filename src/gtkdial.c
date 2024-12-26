@@ -17,6 +17,7 @@
 #include <math.h>
 
 #include "gtkdial.h"
+#include "db.h"
 
 #define DIAL_MIN_WIDTH 50
 #define DIAL_MAX_WIDTH 70
@@ -90,6 +91,7 @@ enum {
   PROP_ROUND_DIGITS,
   PROP_ZERO_DB,
   PROP_OFF_DB,
+  PROP_IS_LINEAR,
   PROP_TAPER,
   PROP_CAN_CONTROL,
   PROP_PEAK_HOLD,
@@ -118,6 +120,7 @@ struct _GtkDial {
   int round_digits;
   double zero_db;
   double off_db;
+  gboolean is_linear;
   int taper;
   gboolean can_control;
   int peak_hold;
@@ -254,6 +257,13 @@ static double calc_taper(GtkDial *dial, double val) {
   double mn = gtk_adjustment_get_lower(dial->adj);
   double mx = gtk_adjustment_get_upper(dial->adj);
   double off_db = gtk_dial_get_off_db(dial);
+  gboolean is_linear = gtk_dial_get_is_linear(dial);
+
+  if (is_linear) {
+    val = linear_value_to_cdb(val, mn, mx, -8000, 1200) / 100.0;
+    mn = -60;
+    mx = 12;
+  }
 
   // if off_db is set, then values below it are considered as
   // almost-silence, so we clamp them to 0.01
@@ -548,6 +558,19 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
     "Values up to this value will be considered as almost-silence",
     -G_MAXDOUBLE, G_MAXDOUBLE,
     -G_MAXDOUBLE,
+    G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+  );
+
+  /**
+   * GtkDial:is_linear: (attributes org.gtk.Method.get=gtk_dial_get_is_linear org.gtk.Method.set=gtk_dial_set_is_linear)
+   *
+   * Whether the dial values are linear or dB.
+   */
+  properties[PROP_IS_LINEAR] = g_param_spec_boolean(
+    "is_linear",
+    "IsLinear",
+    "Whether the dial values are linear or dB",
+    FALSE,
     G_PARAM_READWRITE | G_PARAM_CONSTRUCT
   );
 
@@ -1037,6 +1060,9 @@ static void gtk_dial_set_property(
     case PROP_OFF_DB:
       gtk_dial_set_off_db(dial, g_value_get_double(value));
       break;
+    case PROP_IS_LINEAR:
+      gtk_dial_set_is_linear(dial, g_value_get_boolean(value));
+      break;
     case PROP_TAPER:
       gtk_dial_set_taper(dial, g_value_get_int(value));
       break;
@@ -1072,6 +1098,9 @@ static void gtk_dial_get_property(
       break;
     case PROP_OFF_DB:
       g_value_set_double(value, dial->off_db);
+      break;
+    case PROP_IS_LINEAR:
+      g_value_set_boolean(value, dial->is_linear);
       break;
     case PROP_TAPER:
       g_value_set_int(value, dial->taper);
@@ -1122,6 +1151,15 @@ void gtk_dial_set_off_db(GtkDial *dial, double off_db) {
 
 double gtk_dial_get_off_db(GtkDial *dial) {
   return dial->off_db;
+}
+
+void gtk_dial_set_is_linear(GtkDial *dial, gboolean is_linear) {
+  dial->is_linear = is_linear;
+  dial->properties_updated = 1;
+}
+
+gboolean gtk_dial_get_is_linear(GtkDial *dial) {
+  return dial->is_linear;
 }
 
 void gtk_dial_set_taper(GtkDial *dial, int taper) {
@@ -1288,32 +1326,41 @@ static int set_value(GtkDial *dial, double newval) {
   return old_valp != dial->valp || old_peak != dial->current_peak;
 }
 
-static void step_back(GtkDial *dial) {
-  double newval;
+static double do_step(GtkDial *dial, double step_amount) {
+  double mn = gtk_adjustment_get_lower(dial->adj);
+  double mx = gtk_adjustment_get_upper(dial->adj);
+  double newval = gtk_adjustment_get_value(dial->adj);
+  double step = gtk_adjustment_get_step_increment(dial->adj);
 
-  newval = gtk_adjustment_get_value(dial->adj) - gtk_adjustment_get_step_increment(dial->adj);
-  set_value(dial, newval);
+  if (gtk_dial_get_is_linear(dial)) {
+    double db_val = linear_value_to_cdb(newval, mn, mx, -8000, 1200) / 100.0;
+    db_val = round(db_val / step) * step + step_amount;
+
+    newval = cdb_to_linear_value(db_val * 100.0, mn, mx, -8000, 1200);
+    if (newval == gtk_adjustment_get_value(dial->adj)) {
+      newval = CLAMP(newval + (step_amount > 0 ? 1 : -1), mn, mx);
+    }
+  } else {
+    newval += step_amount;
+  }
+
+  return newval;
+}
+
+static void step_back(GtkDial *dial) {
+  set_value(dial, do_step(dial, -gtk_adjustment_get_step_increment(dial->adj)));
 }
 
 static void step_forward(GtkDial *dial) {
-  double newval;
-
-  newval = gtk_adjustment_get_value(dial->adj) + gtk_adjustment_get_step_increment(dial->adj);
-  set_value(dial, newval);
+  set_value(dial, do_step(dial, gtk_adjustment_get_step_increment(dial->adj)));
 }
 
 static void page_back(GtkDial *dial) {
-  double newval;
-
-  newval = gtk_adjustment_get_value(dial->adj) - gtk_adjustment_get_page_increment(dial->adj);
-  set_value(dial, newval);
+  set_value(dial, do_step(dial, -gtk_adjustment_get_page_increment(dial->adj)));
 }
 
 static void page_forward(GtkDial *dial) {
-  double newval;
-
-  newval = gtk_adjustment_get_value(dial->adj) + gtk_adjustment_get_page_increment(dial->adj);
-  set_value(dial, newval);
+  set_value(dial, do_step(dial, gtk_adjustment_get_page_increment(dial->adj)));
 }
 
 static void scroll_begin(GtkDial *dial) {
@@ -1447,16 +1494,43 @@ static void gtk_dial_drag_gesture_update(
 
   gtk_gesture_drag_get_start_point(gesture, &start_x, &start_y);
 
-  double valp = dial->dvalp - DRAG_FACTOR * (offset_y / dial->h);
-  valp = CLAMP(valp, 0.0, 1.0);
+  double mn = gtk_adjustment_get_lower(dial->adj);
+  double mx = gtk_adjustment_get_upper(dial->adj);
+  gboolean is_linear = gtk_dial_get_is_linear(dial);
 
-  double val = calc_val(
-    valp,
-    gtk_adjustment_get_lower(dial->adj),
-    gtk_adjustment_get_upper(dial->adj)
-  );
+  double valp;
 
-  set_value(dial, val);
+  if (is_linear) {
+    double step = gtk_adjustment_get_step_increment(dial->adj);
+
+    // Convert initial value from linear to dB space
+    double db_val = linear_value_to_cdb(
+      calc_val(dial->dvalp, mn, mx),
+      mn, mx,
+      -8000, 1200
+    ) / 100.0;
+
+    // Adjust in dB space
+    db_val -= 30.0 * DRAG_FACTOR * (offset_y / dial->h);
+
+    // Round
+    db_val = round(db_val / step) * step;
+
+    // Convert back to linear space and normalise
+    double val = cdb_to_linear_value(
+      db_val * 100.0,
+      mn, mx,
+      -8000, 1200
+    );
+
+    valp = calc_valp(val, mn, mx);
+  } else {
+    valp = dial->dvalp - DRAG_FACTOR * (offset_y / dial->h);
+    valp = CLAMP(valp, 0.0, 1.0);
+  }
+
+  set_value(dial, calc_val(valp, mn, mx));
+
   gtk_widget_queue_draw(GTK_WIDGET(dial));
 }
 
@@ -1519,7 +1593,7 @@ static gboolean gtk_dial_scroll_controller_scroll(
 
   double step = -gtk_adjustment_get_step_increment(dial->adj) * delta;
 
-  set_value(dial, gtk_adjustment_get_value(dial->adj) + step);
+  set_value(dial, do_step(dial, step));
   gtk_widget_queue_draw(GTK_WIDGET(dial));
 
   return GDK_EVENT_STOP;
