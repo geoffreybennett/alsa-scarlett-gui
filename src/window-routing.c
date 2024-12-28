@@ -93,9 +93,10 @@ static void get_routing_snks(struct alsa_card *card) {
     r->idx = j;
     j++;
     r->elem = elem;
-    if (strncmp(elem->name, "Mixer Input", 11) == 0) {
+
+    if (strncmp(elem->name, "Mixer", 5) == 0) {
       r->port_category = PC_MIX;
-    } else if (strncmp(elem->name, "DSP Input", 9) == 0) {
+    } else if (strncmp(elem->name, "DSP", 3) == 0) {
       r->port_category = PC_DSP;
     } else if (strncmp(elem->name, "PCM", 3) == 0) {
       r->port_category = PC_PCM;
@@ -970,12 +971,15 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
     );
 
   // "* Output X Playback Enum" controls go along the right, in
+  // (new style "* X Playback Enum")
   // card->routing_hw_out_grid
   } else if (r_snk->port_category == PC_HW) {
 
     // Convert "Analogue 01 Output Playback Enum" to "Analogue 1"
     char *name = strdup(elem->name);
     char *name_end = strstr(name, " Output ");
+    if (!name_end)
+      name_end = strstr(name, " ");
 
     // in case the number is zero-padded
     if (name_end)
@@ -1101,8 +1105,11 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
   // check that we can find a routing control
   card->sample_capture_elem =
     get_elem_by_name(card->elems, "PCM 01 Capture Enum");
+  if (!card->sample_capture_elem)
+    card->sample_capture_elem =
+      get_elem_by_name(card->elems, "PCM 1 Capture Enum");
   if (!card->sample_capture_elem) {
-    printf("couldn't find PCM 01 Capture Enum control; can't create GUI\n");
+    printf("couldn't find first PCM Capture Enum control; can't create GUI\n");
     return NULL;
   }
 

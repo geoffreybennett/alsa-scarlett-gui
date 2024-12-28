@@ -703,6 +703,8 @@ static void create_output_controls(
   gtk_grid_attach(GTK_GRID(top), box, *x, y, x_span, 1);
 
   int output_count = get_max_elem_by_name(elems, "Line", "Playback Volume");
+  if (!output_count)
+    output_count = get_max_elem_by_name(elems, "Analogue", "Playback Volume");
 
   /* 4th Gen Solo/2i2 */
   if (get_elem_by_prefix(elems, "Direct Monitor Playback")) {
@@ -769,7 +771,8 @@ static void create_output_controls(
     int line_num = get_num_from_string(elem->name);
 
     // output controls
-    if (strncmp(elem->name, "Line", 4) == 0) {
+    if (strncmp(elem->name, "Line", 4) == 0 ||
+        strncmp(elem->name, "Analogue", 8) == 0) {
       if (strstr(elem->name, "Playback Volume")) {
         w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 1);
         gtk_grid_attach(
@@ -913,6 +916,8 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   );
   int output_count = get_max_elem_by_name(
     card->elems, "Line", "Playback Volume"
+  ) + get_max_elem_by_name(
+    card->elems, "Analogue", "Playback Volume"
   );
 
   create_global_controls(card, top, &x);
