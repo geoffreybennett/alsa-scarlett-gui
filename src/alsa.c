@@ -279,7 +279,8 @@ int alsa_get_elem_writable(struct alsa_elem *elem) {
   snd_ctl_elem_info_set_numid(elem_info, elem->numid);
   snd_ctl_elem_info(elem->card->handle, elem_info);
 
-  return snd_ctl_elem_info_is_writable(elem_info);
+  return snd_ctl_elem_info_is_writable(elem_info) &&
+         !snd_ctl_elem_info_is_locked(elem_info);
 }
 
 // return whether the element is volatile (can change without
