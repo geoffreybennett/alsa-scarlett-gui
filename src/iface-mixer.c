@@ -26,8 +26,12 @@ static void add_clock_source_control(
 
   struct alsa_elem *clock_source = get_elem_by_prefix(elems, "Clock Source");
 
-  if (!clock_source)
-    return;
+  if (!clock_source) {
+    clock_source = get_elem_by_substr(elems, "Sync Clock Source");
+
+    if (!clock_source)
+      return;
+  }
 
   GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_tooltip_text(
@@ -55,8 +59,11 @@ static void add_sync_status_control(
 
   struct alsa_elem *sync_status = get_elem_by_name(elems, "Sync Status");
 
-  if (!sync_status)
-    return;
+  if (!sync_status) {
+    sync_status = get_elem_by_name(elems, "Sample Clock Sync Status");
+    if (!sync_status)
+      return;
+  }
 
   GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   if (get_elem_by_prefix(elems, "Clock Source")) {
