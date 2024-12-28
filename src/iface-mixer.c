@@ -146,7 +146,7 @@ static void add_sample_rate_control(
   gtk_box_append(GTK_BOX(b), w);
 }
 
-static void add_speaker_switching_controls(
+static void add_speaker_switching_controls_enum(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
@@ -174,7 +174,43 @@ static void add_speaker_switching_controls(
   gtk_box_append(GTK_BOX(global_controls), w);
 }
 
-static void add_talkback_controls(
+static void add_speaker_switching_controls_switches(
+  struct alsa_card *card,
+  GtkWidget        *global_controls
+) {
+  GArray *elems = card->elems;
+
+  struct alsa_elem *enable = get_elem_by_name(
+    elems, "Speaker Switching Playback Switch"
+  );
+  struct alsa_elem *alt = get_elem_by_name(
+    elems, "Speaker Switching Alt Playback Switch"
+  );
+
+  if (!enable || !alt)
+    return;
+
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_tooltip_text(
+    box,
+    "Speaker Switching lets you swap between two pairs of "
+    "monitoring speakers very easily."
+  );
+
+  GtkWidget *l = gtk_label_new("Speaker Switching");
+  GtkWidget *w1 = make_boolean_alsa_elem(enable, "Off", "On");
+  GtkWidget *w2 = make_boolean_alsa_elem(alt, "Main", "Alt");
+
+  gtk_widget_add_css_class(w1, "speaker-switching-enable");
+  gtk_widget_add_css_class(w2, "speaker-switching-alt");
+
+  gtk_box_append(GTK_BOX(box), l);
+  gtk_box_append(GTK_BOX(box), w1);
+  gtk_box_append(GTK_BOX(box), w2);
+  gtk_box_append(GTK_BOX(global_controls), box);
+}
+
+static void add_talkback_controls_enum(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
@@ -201,6 +237,43 @@ static void add_talkback_controls(
   );
 
   gtk_box_append(GTK_BOX(global_controls), w);
+}
+
+static void add_talkback_controls_switches(
+  struct alsa_card *card,
+  GtkWidget        *global_controls
+) {
+  GArray *elems = card->elems;
+
+  struct alsa_elem *enable = get_elem_by_name(
+    elems, "Talkback Enable Playback Switch"
+  );
+  struct alsa_elem *talk = get_elem_by_name(
+    elems, "Talk Playback Switch"
+  );
+
+  if (!enable || !talk)
+    return;
+
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_tooltip_text(
+    box,
+    "Talkback lets you add another channel (usually the talkback "
+    "mic) to a mix with a button push, usually to talk to "
+    "musicians, and without using an additional mic channel."
+  );
+
+  GtkWidget *l = gtk_label_new("Talkback");
+  GtkWidget *w1 = make_boolean_alsa_elem(enable, "Disabled", "Enabled");
+  GtkWidget *w2 = make_boolean_alsa_elem(talk, "Talk", "Talk");
+
+  gtk_widget_add_css_class(w1, "talkback-enable");
+  gtk_widget_add_css_class(w2, "talk");
+
+  gtk_box_append(GTK_BOX(box), l);
+  gtk_box_append(GTK_BOX(box), w1);
+  gtk_box_append(GTK_BOX(box), w2);
+  gtk_box_append(GTK_BOX(global_controls), box);
 }
 
 static GtkWidget *create_global_box(GtkWidget *grid, int *x, int orient) {
@@ -854,8 +927,10 @@ static void create_global_controls(
   add_sync_status_control(card, column[1]);
   add_power_status_control(card, column[1]);
   add_sample_rate_control(card, column[2]);
-  add_speaker_switching_controls(card, column[0]);
-  add_talkback_controls(card, column[1]);
+  add_speaker_switching_controls_enum(card, column[0]);
+  add_speaker_switching_controls_switches(card, column[0]);
+  add_talkback_controls_enum(card, column[1]);
+  add_talkback_controls_switches(card, column[1]);
 }
 
 static GtkWidget *create_main_window_controls(struct alsa_card *card) {
@@ -956,9 +1031,12 @@ static void create_scrollable_window(GtkWidget *window, GtkWidget *controls) {
 
 GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   card->has_speaker_switching =
-    !!get_elem_by_name(card->elems, "Speaker Switching Playback Enum");
+    get_elem_by_name(card->elems, "Speaker Switching Playback Enum") ||
+    get_elem_by_name(card->elems, "Speaker Switching Playback Switch");
+
   card->has_talkback =
-    !!get_elem_by_name(card->elems, "Talkback Playback Enum");
+    get_elem_by_name(card->elems, "Talkback Playback Enum") ||
+    get_elem_by_name(card->elems, "Talkback Enable Playback Switch");
 
   GtkWidget *top = gtk_frame_new(NULL);
   gtk_widget_add_css_class(top, "window-frame");
