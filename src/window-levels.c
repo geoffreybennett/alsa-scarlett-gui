@@ -32,27 +32,16 @@ struct levels {
 
 static int update_levels_controls(void *user_data) {
   struct levels *data = user_data;
-  struct alsa_card *card = data->card;
 
   struct alsa_elem *level_meter_elem = data->level_meter_elem;
 
   int *values = alsa_get_elem_int_values(level_meter_elem);
 
-  int meter_num = 0;
-
   gtk_dial_peak_tick();
 
-  // go through the port categories
-  for (int i = 0; i < PC_COUNT; i++) {
-
-    // go through the ports in that category
-    for (int j = 0; j < card->routing_out_count[i]; j++) {
-      GtkWidget *meter = data->meters[meter_num];
-      double value = 20 * log10(values[meter_num] / 4095.0);
-
-      gtk_dial_set_value(GTK_DIAL(meter), value);
-      meter_num++;
-    }
+  for (int i = 0; i < level_meter_elem->count; i++) {
+    double value = 20 * log10(values[i] / 4095.0);
+    gtk_dial_set_value(GTK_DIAL(data->meters[i]), value);
   }
 
   free(values);
