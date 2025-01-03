@@ -137,6 +137,9 @@ struct alsa_elem {
   int min_cdB;
   int max_cdB;
 
+  // Level meter labels
+  char **meter_labels;
+
   // for the number (or translated letter; A = 1) in the item name
   // TODO: move this to struct routing_snk?
   int lr_num;
@@ -160,6 +163,7 @@ struct alsa_card {
   uint32_t            pid;
   char               *serial;
   char               *name;
+  char               *fcp_socket;
   int                 best_firmware_version;
   snd_ctl_t          *handle;
   struct pollfd       pfd;
