@@ -548,6 +548,27 @@ static void alsa_elem_change(struct alsa_elem *elem) {
   }
 }
 
+static void card_destroy_callback(void *data) {
+  struct alsa_card *card = data;
+
+  // close the windows associated with this card
+  destroy_card_window(card);
+
+  // TODO: there is more to free
+  free(card->device);
+  free(card->serial);
+  free(card->name);
+  free(card);
+
+  // go through the alsa_cards array and clear the entry for this card
+  for (int i = 0; i < alsa_cards->len; i++) {
+    struct alsa_card **card_ptr =
+      &g_array_index(alsa_cards, struct alsa_card *, i);
+    if (*card_ptr == card)
+      *card_ptr = NULL;
+  }
+}
+
 static gboolean alsa_card_callback(
   GIOChannel    *source,
   GIOCondition   condition,
@@ -633,27 +654,6 @@ struct alsa_card *card_create(int card_num) {
   card->elems = g_array_new(FALSE, TRUE, sizeof(struct alsa_elem));
 
   return card;
-}
-
-static void card_destroy_callback(void *data) {
-  struct alsa_card *card = data;
-
-  // close the windows associated with this card
-  destroy_card_window(card);
-
-  // TODO: there is more to free
-  free(card->device);
-  free(card->serial);
-  free(card->name);
-  free(card);
-
-  // go through the alsa_cards array and clear the entry for this card
-  for (int i = 0; i < alsa_cards->len; i++) {
-    struct alsa_card **card_ptr =
-      &g_array_index(alsa_cards, struct alsa_card *, i);
-    if (*card_ptr == card)
-      *card_ptr = NULL;
-  }
 }
 
 static void alsa_add_card_callback(struct alsa_card *card) {
