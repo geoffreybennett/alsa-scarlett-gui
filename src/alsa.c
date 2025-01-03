@@ -596,15 +596,21 @@ static gboolean alsa_card_callback(
     printf("card_callback_error %d\n", err);
     exit(1);
   }
+
   if (snd_ctl_event_get_type(event) != SND_CTL_EVENT_ELEM)
     return 1;
 
   numid = snd_ctl_event_elem_get_numid(event);
+  mask = snd_ctl_event_elem_get_mask(event);
+
   elem = &g_array_index(card->elems, struct alsa_elem, numid);
   if (elem->numid != numid)
     return 1;
 
-  mask = snd_ctl_event_elem_get_mask(event);
+  if (mask == SND_CTL_EVENT_MASK_REMOVE) {
+    card_destroy_callback(card);
+    return 0;
+  }
 
   if (mask & (SND_CTL_EVENT_MASK_VALUE | SND_CTL_EVENT_MASK_INFO))
     alsa_elem_change(elem);
