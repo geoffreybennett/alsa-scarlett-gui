@@ -371,6 +371,109 @@ char *alsa_get_item_name(struct alsa_elem *elem, int i) {
 // create/destroy alsa cards
 //
 
+// extract TLV info from the ALSA control element; either meter map,
+// FCP socket, or dB range
+static void alsa_get_elem_tlv(struct alsa_card *card, struct alsa_elem *elem) {
+  snd_ctl_elem_info_t *elem_info;
+
+  snd_ctl_elem_info_alloca(&elem_info);
+  snd_ctl_elem_info_set_numid(elem_info, elem->numid);
+  snd_ctl_elem_info(card->handle, elem_info);
+
+  if (!snd_ctl_elem_info_is_tlv_readable(elem_info))
+    return;
+
+  snd_ctl_elem_id_t *elem_id;
+  unsigned int tlv[MAX_TLV_RANGE_SIZE];
+  unsigned int *dbrec;
+  int ret;
+  long min_cdB, max_cdB;
+
+  snd_ctl_elem_id_alloca(&elem_id);
+  snd_ctl_elem_id_set_numid(elem_id, elem->numid);
+
+  ret = snd_ctl_elem_tlv_read(
+    card->handle, elem_id, tlv, sizeof(tlv)
+  );
+  if (ret < 0) {
+    fprintf(stderr, "sizeof(tlv) %ld\n", sizeof(tlv));
+    fprintf(stderr, "TLV read error: %s\n", snd_strerror(ret));
+    return;
+  }
+
+  /* meter map */
+  if (tlv[SNDRV_CTL_TLVO_TYPE] == SNDRV_CTL_TLVT_FCP_CHANNEL_LABELS) {
+    int label_data_size = tlv[SNDRV_CTL_TLVO_LEN];
+    char *label_data = (char *)&tlv[SNDRV_CTL_TLVO_LEN + 1];
+
+    /* check that there are at least elem->count labels in the
+     * data
+     */
+    int label_count = 0;
+    for (int i = 0; i < label_data_size; i++) {
+      if (label_data[i] == '\0')
+        label_count++;
+    }
+
+    if (label_count < elem->count) {
+      fprintf(
+        stderr,
+        "TLV label count %d < %d\n",
+        label_count,
+        elem->count
+      );
+      return;
+    }
+
+    if (elem->count < 0 || elem->count > 255) {
+      fprintf(stderr, "TLV label count %d out of range\n", elem->count);
+      exit(1);
+    }
+
+    elem->meter_labels = calloc(elem->count, sizeof(char *));
+
+    char *cur_label = label_data;
+    for (int i = 0; i < elem->count; i++) {
+      elem->meter_labels[i] = strdup(cur_label);
+      if (!elem->meter_labels[i]) {
+        fprintf(stderr, "strdup failed\n");
+        exit(1);
+      }
+
+      cur_label += strlen(cur_label) + 1;
+    }
+
+  /* firmware version TLV contains socket location */
+  } else if (tlv[SNDRV_CTL_TLVO_TYPE] == 0x53434B54) {
+    card->fcp_socket = strdup((char *)&tlv[SNDRV_CTL_TLVO_LEN + 1]);
+
+  /* dB range */
+  } else {
+    ret = snd_tlv_parse_dB_info(tlv, sizeof(tlv), &dbrec);
+    if (ret <= 0) {
+      fprintf(stderr, "TLV parse error: %s\n", snd_strerror(ret));
+      return;
+    }
+
+    int min_val = snd_ctl_elem_info_get_min(elem_info);
+    int max_val = snd_ctl_elem_info_get_max(elem_info);
+
+    ret = snd_tlv_get_dB_range(
+      dbrec, min_val, max_val, &min_cdB, &max_cdB
+    );
+    if (ret != 0) {
+      fprintf(stderr, "TLV range error: %s\n", snd_strerror(ret));
+      return;
+    }
+
+    elem->min_val = min_val;
+    elem->max_val = max_val;
+    elem->dB_type = dbrec[SNDRV_CTL_TLVO_TYPE];
+    elem->min_cdB = min_cdB;
+    elem->max_cdB = max_cdB;
+  }
+}
+
 // scan the ALSA ctl element list container and put the useful
 // elements into the cards->elems array of struct alsa_elem
 static void alsa_get_elem_list(struct alsa_card *card) {
@@ -418,105 +521,8 @@ static void alsa_get_elem_list(struct alsa_card *card) {
       continue;
 
     // get TLV info
-    if (alsa_elem.type == SND_CTL_ELEM_TYPE_INTEGER) {
-      snd_ctl_elem_info_t *elem_info;
-
-      snd_ctl_elem_info_alloca(&elem_info);
-      snd_ctl_elem_info_set_numid(elem_info, alsa_elem.numid);
-      snd_ctl_elem_info(card->handle, elem_info);
-
-      if (snd_ctl_elem_info_is_tlv_readable(elem_info)) {
-        snd_ctl_elem_id_t *elem_id;
-        unsigned int tlv[MAX_TLV_RANGE_SIZE];
-        unsigned int *dbrec;
-        int ret;
-        long min_cdB, max_cdB;
-
-        snd_ctl_elem_id_alloca(&elem_id);
-        snd_ctl_elem_id_set_numid(elem_id, alsa_elem.numid);
-
-        ret = snd_ctl_elem_tlv_read(
-          card->handle, elem_id, tlv, sizeof(tlv)
-        );
-        if (ret < 0) {
-          fprintf(stderr, "sizeof(tlv) %ld\n", sizeof(tlv));
-          fprintf(stderr, "TLV read error: %s\n", snd_strerror(ret));
-          continue;
-        }
-
-        /* meter map */
-        if (tlv[SNDRV_CTL_TLVO_TYPE] == SNDRV_CTL_TLVT_FCP_CHANNEL_LABELS) {
-          int label_data_size = tlv[SNDRV_CTL_TLVO_LEN];
-          char *label_data = (char *)&tlv[SNDRV_CTL_TLVO_LEN + 1];
-
-          /* check that there are at least alsa_elem.count labels in the
-           * data
-           */
-          int label_count = 0;
-          for (int i = 0; i < label_data_size; i++) {
-            if (label_data[i] == '\0')
-              label_count++;
-          }
-
-          if (label_count < alsa_elem.count) {
-            fprintf(
-              stderr,
-              "TLV label count %d < %d\n",
-              label_count,
-              alsa_elem.count
-            );
-            continue;
-          }
-
-          if (alsa_elem.count < 0 || alsa_elem.count > 255) {
-            fprintf(stderr, "TLV label count %d out of range\n", alsa_elem.count);
-            exit(1);
-          }
-
-          alsa_elem.meter_labels = calloc(alsa_elem.count, sizeof(char *));
-
-          char *cur_label = label_data;
-          for (int i = 0; i < alsa_elem.count; i++) {
-            alsa_elem.meter_labels[i] = strdup(cur_label);
-            if (!alsa_elem.meter_labels[i]) {
-              fprintf(stderr, "strdup failed\n");
-              exit(1);
-            }
-
-            cur_label += strlen(cur_label) + 1;
-          }
-
-        /* firmware version TLV contains socket location */
-        } else if (tlv[SNDRV_CTL_TLVO_TYPE] == 0x53434B54) {
-          card->fcp_socket = strdup((char *)&tlv[SNDRV_CTL_TLVO_LEN + 1]);
-
-        /* dB range */
-        } else {
-          ret = snd_tlv_parse_dB_info(tlv, sizeof(tlv), &dbrec);
-          if (ret <= 0) {
-            fprintf(stderr, "TLV parse error: %s\n", snd_strerror(ret));
-            continue;
-          }
-
-          int min_val = snd_ctl_elem_info_get_min(elem_info);
-          int max_val = snd_ctl_elem_info_get_max(elem_info);
-
-          ret = snd_tlv_get_dB_range(
-            dbrec, min_val, max_val, &min_cdB, &max_cdB
-          );
-          if (ret != 0) {
-            fprintf(stderr, "TLV range error: %s\n", snd_strerror(ret));
-            continue;
-          }
-
-          alsa_elem.min_val = min_val;
-          alsa_elem.max_val = max_val;
-          alsa_elem.dB_type = dbrec[SNDRV_CTL_TLVO_TYPE];
-          alsa_elem.min_cdB = min_cdB;
-          alsa_elem.max_cdB = max_cdB;
-        }
-      }
-    }
+    if (alsa_elem.type == SND_CTL_ELEM_TYPE_INTEGER)
+      alsa_get_elem_tlv(card, &alsa_elem);
 
     if (card->elems->len <= alsa_elem.numid)
       g_array_set_size(card->elems, alsa_elem.numid + 1);
