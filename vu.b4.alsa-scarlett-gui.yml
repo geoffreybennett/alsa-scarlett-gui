@@ -1,6 +1,6 @@
 app-id: vu.b4.alsa-scarlett-gui
 runtime: org.gnome.Platform
-runtime-version: "45"
+runtime-version: "47"
 sdk: org.gnome.Sdk
 command: alsa-scarlett-gui
 build-options:
