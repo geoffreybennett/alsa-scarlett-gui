@@ -14,6 +14,15 @@ struct hw_cat {
   struct hw_info *info;
 };
 
+struct hw_info gen_1_info[] = {
+  { "Scarlett 6i6 1st Gen" },
+  { "Scarlett 8i6 1st Gen" },
+  { "Scarlett 18i6 1st Gen" },
+  { "Scarlett 18i8 1st Gen" },
+  { "Scarlett 18i20 1st Gen" },
+  { }
+};
+
 struct hw_info gen_2_info[] = {
   { "Scarlett 6i6 2nd Gen" },
   { "Scarlett 18i8 2nd Gen" },
@@ -57,6 +66,9 @@ struct hw_info clarett_plus_info[] = {
 };
 
 struct hw_cat hw_cat[] = {
+  { "1st Gen",
+    gen_1_info
+  },
   { "2nd Gen",
     gen_2_info
   },
