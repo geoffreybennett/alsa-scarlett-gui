@@ -149,6 +149,14 @@ static void alsa_parse_comment_node(
         elem->type = SND_CTL_ELEM_TYPE_ENUMERATED;
       else if (strcmp(type, "INTEGER") == 0)
         elem->type = SND_CTL_ELEM_TYPE_INTEGER;
+    } else if (strcmp(key, "count") == 0) {
+      long count;
+
+      err = snd_config_get_integer(node, &count);
+      if (err < 0)
+        fatal_alsa_error("snd_config_get_integer error", err);
+
+      elem->count = count;
     } else if (strcmp(key, "item") == 0) {
       alsa_parse_enum_items(node, elem);
     } else if (strcmp(key, "range") == 0) {
