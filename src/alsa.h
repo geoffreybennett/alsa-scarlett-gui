@@ -22,20 +22,12 @@ typedef void (AlsaElemCallback)(struct alsa_elem *, void *);
 // port categories for routing_src and routing_snk entries
 // must match the level meter ordering from the driver
 enum {
-  // Hardware inputs/outputs
-  PC_HW    = 0,
-
-  // Mixer inputs/outputs
-  PC_MIX   = 1,
-
-  // DSP inputs/outputs
-  PC_DSP   = 2,
-
-  // PCM inputs/outputs
-  PC_PCM   = 3,
-
-  // number of port categories
-  PC_COUNT = 4
+  PC_OFF,  // Off (the source when a sink is not connected)
+  PC_HW,   // Hardware inputs/outputs
+  PC_MIX,  // Mixer inputs/outputs
+  PC_DSP,  // DSP inputs/outputs
+  PC_PCM,  // PCM inputs/outputs
+  PC_COUNT // number of port categories
 };
 
 // names for the port categories

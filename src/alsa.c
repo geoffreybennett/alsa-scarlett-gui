@@ -12,6 +12,7 @@
 
 // names for the port categories
 const char *port_category_names[PC_COUNT] = {
+  NULL,
   "Hardware Outputs",
   "Mixer Inputs",
   "DSP Inputs",
