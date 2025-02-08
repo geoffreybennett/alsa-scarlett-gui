@@ -279,6 +279,10 @@ static int alsa_config_to_new_elem(
     // comment node?
     } else if (strcmp(key, "comment") == 0) {
       alsa_parse_comment_node(node, elem);
+
+    // this isn't needed
+    } else if (strcmp(key, "index") == 0) {
+
     } else {
       printf("skipping unknown node %s for %d\n", key, id);
       goto fail;
