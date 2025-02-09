@@ -200,8 +200,8 @@ static void alsa_parse_comment_node(
 }
 
 static int alsa_config_to_new_elem(
-  snd_config_t     *config,
-  struct alsa_elem *elem
+  struct alsa_card *card,
+  snd_config_t     *config
 ) {
   const char *s;
   int id;
@@ -211,6 +211,8 @@ static int alsa_config_to_new_elem(
   char *string_value = NULL;
   long int_value;
   int err;
+
+  struct alsa_elem elem = {};
 
   err = snd_config_get_id(config, &s);
   if (err < 0)
@@ -268,7 +270,8 @@ static int alsa_config_to_new_elem(
           fatal_alsa_error("snd_config_get_string error", err);
         string_value = strdup(s);
       } else if (type == SND_CONFIG_TYPE_COMPOUND) {
-        elem->count = snd_config_is_array(node);
+        elem.count = snd_config_is_array(node);
+
         if (strcmp(name, "Level Meter") == 0) {
           seen_value = 1;
           value_type = SND_CONFIG_TYPE_INTEGER;
@@ -286,7 +289,7 @@ static int alsa_config_to_new_elem(
 
     // comment node?
     } else if (strcmp(key, "comment") == 0) {
-      alsa_parse_comment_node(node, elem);
+      alsa_parse_comment_node(node, &elem);
 
     // this isn't needed
     } else if (strcmp(key, "index") == 0) {
@@ -321,21 +324,21 @@ static int alsa_config_to_new_elem(
 
   // integer in config
   if (value_type == SND_CONFIG_TYPE_INTEGER) {
-    elem->value = int_value;
+    elem.value = int_value;
 
   // string in config
   } else if (value_type == SND_CONFIG_TYPE_STRING) {
 
     // translate boolean true/false
-    if (elem->type == SND_CTL_ELEM_TYPE_BOOLEAN) {
+    if (elem.type == SND_CTL_ELEM_TYPE_BOOLEAN) {
       if (strcmp(string_value, "true") == 0)
-        elem->value = 1;
+        elem.value = 1;
 
     // translate enum string value to integer
-    } else if (elem->type == SND_CTL_ELEM_TYPE_ENUMERATED) {
-      for (int i = 0; i < elem->item_count; i++) {
-        if (strcmp(string_value, elem->item_names[i]) == 0) {
-          elem->value = i;
+    } else if (elem.type == SND_CTL_ELEM_TYPE_ENUMERATED) {
+      for (int i = 0; i < elem.item_count; i++) {
+        if (strcmp(string_value, elem.item_names[i]) == 0) {
+          elem.value = i;
           break;
         }
       }
@@ -346,8 +349,9 @@ static int alsa_config_to_new_elem(
     }
   }
 
-  elem->numid = id;
-  elem->name = name;
+  elem.card = card;
+  elem.numid = id;
+  elem.name = name;
 
   free(iface);
   free(string_value);
@@ -382,18 +386,8 @@ static void alsa_config_to_new_card(
     if (snd_config_get_type(config) != SND_CONFIG_TYPE_COMPOUND)
       continue;
 
-    struct alsa_elem elem = {};
-    elem.card = card;
-
     // create the element
-    int err = alsa_config_to_new_elem(node, &elem);
-
-    if (err)
-      continue;
-
-    if (card->elems->len <= elem.numid)
-      g_array_set_size(card->elems, elem.numid + 1);
-    g_array_index(card->elems, struct alsa_elem, elem.numid) = elem;
+    alsa_config_to_new_elem(card, node);
   }
 }
 
