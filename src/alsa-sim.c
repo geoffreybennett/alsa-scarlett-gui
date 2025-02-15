@@ -99,6 +99,53 @@ static void alsa_parse_enum_items(
   }
 }
 
+static void alsa_parse_int_array(
+  snd_config_t *node,
+  long        **int_values
+) {
+  int count = snd_config_is_array(node);
+  if (count < 0) {
+    printf("error: parse int array value %d\n", count);
+    return;
+  }
+
+  *int_values = calloc(count, sizeof(long));
+
+  int item_num = 0;
+
+  snd_config_iterator_t i, next;
+  snd_config_for_each(i, next, node) {
+    snd_config_t *node = snd_config_iterator_entry(i);
+
+    const char *key;
+
+    int err = snd_config_get_id(node, &key);
+    if (err < 0)
+      fatal_alsa_error("snd_config_get_id error", err);
+
+    int type = snd_config_get_type(node);
+
+    if (type == SND_CONFIG_TYPE_STRING) {
+      const char *string_value;
+
+      err = snd_config_get_string(node, &string_value);
+      if (err < 0)
+        fatal_alsa_error("snd_config_get_string error", err);
+
+      if (strcmp(string_value, "true") == 0)
+        (*int_values)[item_num++] = 1;
+
+    } else if (type == SND_CONFIG_TYPE_INTEGER) {
+      long int_value;
+      err = snd_config_get_integer(node, &int_value);
+      if (err < 0)
+        fatal_alsa_error("snd_config_get_integer error", err);
+
+      (*int_values)[item_num++] = int_value;
+    }
+  }
+}
+
 // parse a comment node and update elem, e.g.:
 //
 // comment {
@@ -210,6 +257,7 @@ static int alsa_config_to_new_elem(
   int value_type = -1;
   char *string_value = NULL;
   long int_value;
+  long *int_values = NULL;
   int err;
 
   struct alsa_elem elem = {};
@@ -276,6 +324,8 @@ static int alsa_config_to_new_elem(
           seen_value = 1;
           value_type = SND_CONFIG_TYPE_INTEGER;
           int_value = 0;
+        } else if (elem.count == 2 && strncmp(name, "Master", 6) == 0) {
+          alsa_parse_int_array(node, &int_values);
         } else {
           goto fail;
         }
@@ -353,8 +403,26 @@ static int alsa_config_to_new_elem(
   elem.numid = id;
   elem.name = name;
 
+  // duplicate the element for each channel except for the Level Meter
+  int count = elem.count;
+
+  if (strcmp(elem.name, "Level Meter") == 0)
+    count = 1;
+
+  // for each channel, create a new element and add it to the card
+  // incrementing the index each time
+  for (int i = 0; i < count; i++, elem.index++) {
+    if (count > 1)
+      elem.value = int_values[i];
+
+    int array_len = card->elems->len;
+    g_array_set_size(card->elems, array_len + 1);
+    g_array_index(card->elems, struct alsa_elem, array_len) = elem;
+  }
+
   free(iface);
   free(string_value);
+  free(int_values);
 
   return 0;
 
@@ -362,6 +430,7 @@ fail:
   free(iface);
   free(name);
   free(string_value);
+  free(int_values);
 
   return -1;
 }
