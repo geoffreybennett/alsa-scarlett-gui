@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023-2024 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2023-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <glib.h>
