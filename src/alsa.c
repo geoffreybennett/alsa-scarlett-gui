@@ -19,6 +19,13 @@ const char *port_category_names[PC_COUNT] = {
   "PCM Inputs"
 };
 
+// names for the hardware types
+const char *hw_type_names[HW_TYPE_COUNT] = {
+  "Analogue",
+  "S/PDIF",
+  "ADAT"
+};
+
 // global array of cards
 static GArray *alsa_cards;
 
@@ -126,25 +133,6 @@ int get_max_elem_by_name(
   return max;
 }
 
-// return true if the element is an routing sink enum, e.g.:
-// PCM xx Capture Enum
-// Mixer Input xx Capture Enum
-// Analogue Output xx Playback Enum
-// S/PDIF Output xx Playback Enum
-// ADAT Output xx Playback Enum
-int is_elem_routing_snk(struct alsa_elem *elem) {
-  if (strstr(elem->name, "Capture Enum") && (
-       strncmp(elem->name, "PCM ", 4) == 0 ||
-       strncmp(elem->name, "Mixer Input ", 12) == 0 ||
-       strncmp(elem->name, "DSP Input ", 10) == 0
-     ))
-    return 1;
-  if (strstr(elem->name, "Output") &&
-      strstr(elem->name, "Playback Enum"))
-    return 1;
-  return 0;
-}
-
 // add a callback to the list of callbacks for this element
 void alsa_elem_add_callback(
   struct alsa_elem *elem,
@@ -202,11 +190,11 @@ long alsa_get_elem_value(struct alsa_elem *elem) {
 
   int type = elem->type;
   if (type == SND_CTL_ELEM_TYPE_BOOLEAN) {
-    return snd_ctl_elem_value_get_boolean(elem_value, 0);
+    return snd_ctl_elem_value_get_boolean(elem_value, elem->index);
   } else if (type == SND_CTL_ELEM_TYPE_ENUMERATED) {
-    return snd_ctl_elem_value_get_enumerated(elem_value, 0);
+    return snd_ctl_elem_value_get_enumerated(elem_value, elem->index);
   } else if (type == SND_CTL_ELEM_TYPE_INTEGER) {
-    return snd_ctl_elem_value_get_integer(elem_value, 0);
+    return snd_ctl_elem_value_get_integer(elem_value, elem->index);
   } else {
     fprintf(
       stderr,
@@ -257,14 +245,15 @@ void alsa_set_elem_value(struct alsa_elem *elem, long value) {
 
   snd_ctl_elem_value_alloca(&elem_value);
   snd_ctl_elem_value_set_numid(elem_value, elem->numid);
+  snd_ctl_elem_read(elem->card->handle, elem_value);
 
   int type = elem->type;
   if (type == SND_CTL_ELEM_TYPE_BOOLEAN) {
-    snd_ctl_elem_value_set_boolean(elem_value, 0, value);
+    snd_ctl_elem_value_set_boolean(elem_value, elem->index, value);
   } else if (type == SND_CTL_ELEM_TYPE_ENUMERATED) {
-    snd_ctl_elem_value_set_enumerated(elem_value, 0, value);
+    snd_ctl_elem_value_set_enumerated(elem_value, elem->index, value);
   } else if (type == SND_CTL_ELEM_TYPE_INTEGER) {
-    snd_ctl_elem_value_set_integer(elem_value, 0, value);
+    snd_ctl_elem_value_set_integer(elem_value, elem->index, value);
   } else {
     fprintf(
       stderr,
@@ -354,6 +343,111 @@ char *alsa_get_item_name(struct alsa_elem *elem, int i) {
 // create/destroy alsa cards
 //
 
+static void alsa_get_elem_tlv(struct alsa_elem *elem) {
+  if (elem->type != SND_CTL_ELEM_TYPE_INTEGER)
+    return;
+
+  snd_ctl_elem_info_t *elem_info;
+
+  snd_ctl_elem_info_alloca(&elem_info);
+  snd_ctl_elem_info_set_numid(elem_info, elem->numid);
+  snd_ctl_elem_info(elem->card->handle, elem_info);
+
+  if (!snd_ctl_elem_info_is_tlv_readable(elem_info))
+    return;
+
+  snd_ctl_elem_id_t *elem_id;
+  unsigned int tlv[MAX_TLV_RANGE_SIZE];
+  unsigned int *dbrec;
+  int ret;
+  long min_dB, max_dB;
+
+  snd_ctl_elem_id_alloca(&elem_id);
+  snd_ctl_elem_id_set_numid(elem_id, elem->numid);
+
+  ret = snd_ctl_elem_tlv_read(
+    elem->card->handle, elem_id, tlv, sizeof(tlv)
+  );
+  if (ret < 0) {
+    fprintf(stderr, "TLV read error %d\n", ret);
+    return;
+  }
+
+  ret = snd_tlv_parse_dB_info(tlv, sizeof(tlv), &dbrec);
+  if (ret <= 0) {
+    fprintf(stderr, "TLV parse error %d\n", ret);
+    return;
+  }
+
+  int min_val = snd_ctl_elem_info_get_min(elem_info);
+  int max_val = snd_ctl_elem_info_get_max(elem_info);
+
+  ret = snd_tlv_get_dB_range(tlv, min_val, max_val, &min_dB, &max_dB);
+  if (ret != 0) {
+    fprintf(stderr, "TLV range error %d\n", ret);
+    return;
+  }
+
+  elem->min_val = min_val;
+  elem->max_val = max_val;
+  elem->min_dB = min_dB / 100;
+  elem->max_dB = max_dB / 100;
+}
+
+static void alsa_get_elem(struct alsa_card *card, int numid) {
+  // allocate a temporary struct alsa_elem (will be copied later if
+  // we want to keep it)
+  struct alsa_elem alsa_elem = {};
+
+  // keep a reference to the card in the element
+  alsa_elem.card = card;
+
+  // get the control's numeric identifier (different to the index
+  // into this array)
+  alsa_elem.numid = numid;
+
+  // get the control's info
+  alsa_elem.type = alsa_get_elem_type(&alsa_elem);
+  alsa_elem.name = alsa_get_elem_name(&alsa_elem);
+  alsa_elem.count = alsa_get_elem_count(&alsa_elem);
+
+  switch (alsa_elem.type) {
+    case SND_CTL_ELEM_TYPE_BOOLEAN:
+    case SND_CTL_ELEM_TYPE_ENUMERATED:
+    case SND_CTL_ELEM_TYPE_INTEGER:
+      break;
+    default:
+      return;
+  }
+
+  if (strstr(alsa_elem.name, "Validity"))
+    return;
+  if (strstr(alsa_elem.name, "Channel Map"))
+    return;
+
+  alsa_get_elem_tlv(&alsa_elem);
+
+  // Scarlett 1st Gen driver puts two volume controls/mutes in the
+  // same element, so split them out to match the other series
+  int count = alsa_elem.count;
+
+  if (strcmp(alsa_elem.name, "Level Meter") == 0)
+    count = 1;
+
+  if (count > 2) {
+    fprintf(stderr, "element %s has count %d\n", alsa_elem.name, count);
+    count = 1;
+  }
+
+  for (int i = 0; i < count; i++, alsa_elem.lr_num++) {
+    alsa_elem.index = i;
+
+    int array_len = card->elems->len;
+    g_array_set_size(card->elems, array_len + 1);
+    g_array_index(card->elems, struct alsa_elem, array_len) = alsa_elem;
+  }
+}
+
 // scan the ALSA ctl element list container and put the useful
 // elements into the cards->elems array of struct alsa_elem
 static void alsa_get_elem_list(struct alsa_card *card) {
@@ -369,93 +463,217 @@ static void alsa_get_elem_list(struct alsa_card *card) {
 
   // for each element in the list
   for (int i = 0; i < count; i++) {
-
-    // allocate a temporary struct alsa_elem (will be copied later if
-    // we want to keep it)
-    struct alsa_elem alsa_elem = {};
-
-    // keep a reference to the card in the element
-    alsa_elem.card = card;
-
-    // get the control's numeric identifier (different to the index
-    // into this array)
-    alsa_elem.numid = snd_ctl_elem_list_get_numid(list, i);
-
-    // get the control's info
-    alsa_elem.type = alsa_get_elem_type(&alsa_elem);
-    alsa_elem.name = alsa_get_elem_name(&alsa_elem);
-    alsa_elem.count = alsa_get_elem_count(&alsa_elem);
-
-    switch (alsa_elem.type) {
-      case SND_CTL_ELEM_TYPE_BOOLEAN:
-      case SND_CTL_ELEM_TYPE_ENUMERATED:
-      case SND_CTL_ELEM_TYPE_INTEGER:
-        break;
-      default:
-        continue;
-    }
-
-    if (strstr(alsa_elem.name, "Validity"))
-      continue;
-    if (strstr(alsa_elem.name, "Channel Map"))
-      continue;
-
-    // get TLV info if it's a volume control
-    if (alsa_elem.type == SND_CTL_ELEM_TYPE_INTEGER) {
-      snd_ctl_elem_info_t *elem_info;
-
-      snd_ctl_elem_info_alloca(&elem_info);
-      snd_ctl_elem_info_set_numid(elem_info, alsa_elem.numid);
-      snd_ctl_elem_info(card->handle, elem_info);
-
-      if (snd_ctl_elem_info_is_tlv_readable(elem_info)) {
-        snd_ctl_elem_id_t *elem_id;
-        unsigned int tlv[MAX_TLV_RANGE_SIZE];
-        unsigned int *dbrec;
-        int ret;
-        long min_dB, max_dB;
-
-        snd_ctl_elem_id_alloca(&elem_id);
-        snd_ctl_elem_id_set_numid(elem_id, alsa_elem.numid);
-
-        ret = snd_ctl_elem_tlv_read(
-          card->handle, elem_id, tlv, sizeof(tlv)
-        );
-        if (ret < 0) {
-          fprintf(stderr, "TLV read error %d\n", ret);
-          continue;
-        }
-
-        ret = snd_tlv_parse_dB_info(tlv, sizeof(tlv), &dbrec);
-        if (ret <= 0) {
-          fprintf(stderr, "TLV parse error %d\n", ret);
-          continue;
-        }
-
-        int min_val = snd_ctl_elem_info_get_min(elem_info);
-        int max_val = snd_ctl_elem_info_get_max(elem_info);
-
-        ret = snd_tlv_get_dB_range(tlv, min_val, max_val, &min_dB, &max_dB);
-        if (ret != 0) {
-          fprintf(stderr, "TLV range error %d\n", ret);
-          continue;
-        }
-
-        alsa_elem.min_val = min_val;
-        alsa_elem.max_val = max_val;
-        alsa_elem.min_dB = min_dB / 100;
-        alsa_elem.max_dB = max_dB / 100;
-      }
-    }
-
-    if (card->elems->len <= alsa_elem.numid)
-      g_array_set_size(card->elems, alsa_elem.numid + 1);
-    g_array_index(card->elems, struct alsa_elem, alsa_elem.numid) = alsa_elem;
+    int numid = snd_ctl_elem_list_get_numid(list, i);
+    alsa_get_elem(card, numid);
   }
 
   // free the ALSA list
   snd_ctl_elem_list_free_space(list);
   snd_ctl_elem_list_free(list);
+}
+
+static void alsa_set_elem_lr_num(struct alsa_elem *elem) {
+  const char *name = elem->name;
+  char side;
+
+  if (strncmp(name, "Master Playback", 15) == 0 ||
+      strncmp(name, "Master HW Playback", 18) == 0)
+    elem->lr_num = 0;
+
+  else if (strncmp(name, "Master", 6) == 0)
+    if (sscanf(name, "Master %d%c", &elem->lr_num, &side) != 2)
+      printf("can't parse Master '%s'\n", name);
+    else
+      elem->lr_num = elem->lr_num * 2
+                     - (side == 'L' || side == ' ')
+                     + elem->index;
+
+  else
+    elem->lr_num = get_num_from_string(name);
+}
+
+void alsa_set_lr_nums(struct alsa_card *card) {
+  for (int i = 0; i < card->elems->len; i++) {
+    struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+
+    alsa_set_elem_lr_num(elem);
+  }
+}
+
+static void get_routing_srcs(struct alsa_card *card) {
+  struct alsa_elem *elem = card->sample_capture_elem;
+
+  int count = alsa_get_item_count(elem);
+  card->routing_srcs = g_array_new(
+    FALSE, TRUE, sizeof(struct routing_src)
+  );
+  g_array_set_size(card->routing_srcs, count);
+
+  for (int i = 0; i < count; i++) {
+    char *name = alsa_get_item_name(elem, i);
+
+    struct routing_src *r = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    r->card = card;
+    r->id = i;
+
+    if (strcmp(name, "Off") == 0)
+      r->port_category = PC_OFF;
+    else if (strncmp(name, "Mix", 3) == 0)
+      r->port_category = PC_MIX;
+    else if (strncmp(name, "DSP", 3) == 0)
+      r->port_category = PC_DSP;
+    else if (strncmp(name, "PCM", 3) == 0)
+      r->port_category = PC_PCM;
+    else {
+      r->port_category = PC_HW;
+
+      if (strncmp(name, "Analog", 6) == 0)
+        r->hw_type = HW_TYPE_ANALOGUE;
+      else if (strncmp(name, "S/PDIF", 6) == 0)
+        r->hw_type = HW_TYPE_SPDIF;
+      else if (strncmp(name, "SPDIF", 5) == 0)
+        r->hw_type = HW_TYPE_SPDIF;
+      else if (strncmp(name, "ADAT", 4) == 0)
+        r->hw_type = HW_TYPE_ADAT;
+    }
+
+    r->name = name;
+    r->lr_num =
+      r->port_category == PC_MIX
+        ? name[4] - 'A' + 1
+        : get_num_from_string(name);
+
+    r->port_num = card->routing_in_count[r->port_category]++;
+  }
+
+  assert(card->routing_in_count[PC_MIX] <= MAX_MIX_OUT);
+}
+
+// return true if the element is an routing sink enum, e.g.:
+// PCM xx Capture Enum
+// Mixer Input xx Capture Enum
+// Analogue Output xx Playback Enum
+// S/PDIF Output xx Playback Enum
+// ADAT Output xx Playback Enum
+static int is_elem_routing_snk(struct alsa_elem *elem) {
+  if (strstr(elem->name, "Capture Route") ||
+      strstr(elem->name, "Input Playback Route") ||
+      strstr(elem->name, "Source Playback Enu"))
+    return 1;
+
+  if (strstr(elem->name, "Capture Enum") && (
+       strncmp(elem->name, "PCM ", 4) == 0 ||
+       strncmp(elem->name, "Mixer Input ", 12) == 0 ||
+       strncmp(elem->name, "DSP Input ", 10) == 0
+     ))
+    return 1;
+
+  if (strstr(elem->name, "Output") &&
+      strstr(elem->name, "Playback Enum"))
+    return 1;
+
+  return 0;
+}
+
+static void get_routing_snks(struct alsa_card *card) {
+  GArray *elems = card->elems;
+
+  int count = 0;
+
+  // count and label routing snks
+  for (int i = 0; i < elems->len; i++) {
+    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+
+    if (!elem->card)
+      continue;
+
+    if (!is_elem_routing_snk(elem))
+      continue;
+
+    elem->is_routing_snk = 1;
+
+    if (strncmp(elem->name, "Mixer Input", 11) == 0 ||
+        strncmp(elem->name, "Matrix", 6) == 0) {
+      elem->port_category = PC_MIX;
+    } else if (strncmp(elem->name, "DSP Input", 9) == 0) {
+      elem->port_category = PC_DSP;
+    } else if (strncmp(elem->name, "PCM", 3) == 0 ||
+               strncmp(elem->name, "Input Source", 12) == 0) {
+      elem->port_category = PC_PCM;
+    } else if (strstr(elem->name, "Playback Enu")) {
+      elem->port_category = PC_HW;
+
+      if (strncmp(elem->name, "Analog", 6) == 0)
+        elem->hw_type = HW_TYPE_ANALOGUE;
+      else if (strncmp(elem->name, "S/PDIF", 6) == 0 ||
+               strstr(elem->name, "SPDIF"))
+        elem->hw_type = HW_TYPE_SPDIF;
+      else if (strstr(elem->name, "ADAT"))
+        elem->hw_type = HW_TYPE_ADAT;
+    } else {
+      printf("unknown mixer routing elem %s\n", elem->name);
+      continue;
+    }
+
+    if (elem->lr_num <= 0) {
+      fprintf(stderr, "routing sink %s had no number\n", elem->name);
+      continue;
+    }
+
+    count++;
+  }
+
+  // create an array of routing snks pointing to those elements
+  card->routing_snks = g_array_new(
+    FALSE, TRUE, sizeof(struct routing_snk)
+  );
+  g_array_set_size(card->routing_snks, count);
+
+  // count through card->routing_snks
+  int j = 0;
+
+  for (int i = 0; i < elems->len; i++) {
+    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+
+    if (!elem->is_routing_snk)
+      continue;
+
+    struct routing_snk *r = &g_array_index(
+      card->routing_snks, struct routing_snk, j
+    );
+    r->idx = j;
+    j++;
+    r->elem = elem;
+    elem->port_num = card->routing_out_count[elem->port_category]++;
+  }
+
+  assert(j == count);
+}
+
+void alsa_get_routing_controls(struct alsa_card *card) {
+
+  // check that we can find a routing control
+  card->sample_capture_elem =
+    get_elem_by_name(card->elems, "PCM 01 Capture Enum");
+  if (!card->sample_capture_elem) {
+    card->sample_capture_elem =
+      get_elem_by_name(card->elems, "Input Source 01 Capture Route");
+  }
+
+  if (!card->sample_capture_elem) {
+    fprintf(
+      stderr,
+      "can't find routing control PCM 01 Capture Enum or "
+      "Input Source 01 Capture Route\n"
+    );
+
+    return;
+  }
+
+  get_routing_srcs(card);
+  get_routing_snks(card);
 }
 
 static void alsa_elem_change(struct alsa_elem *elem) {
@@ -479,16 +697,13 @@ static gboolean alsa_card_callback(
 ) {
   struct alsa_card *card = data;
   snd_ctl_event_t *event;
-  unsigned int mask;
-  int err, numid;
-  struct alsa_elem *elem;
 
   snd_ctl_event_alloca(&event);
   if (!card->handle) {
     printf("oops, no card handle??\n");
     return 0;
   }
-  err = snd_ctl_read(card->handle, event);
+  int err = snd_ctl_read(card->handle, event);
   if (err == 0) {
     printf("alsa_card_callback nothing to read??\n");
     return 0;
@@ -502,15 +717,18 @@ static gboolean alsa_card_callback(
   if (snd_ctl_event_get_type(event) != SND_CTL_EVENT_ELEM)
     return 1;
 
-  numid = snd_ctl_event_elem_get_numid(event);
-  elem = &g_array_index(card->elems, struct alsa_elem, numid);
-  if (elem->numid != numid)
+  int numid = snd_ctl_event_elem_get_numid(event);
+  unsigned int mask = snd_ctl_event_elem_get_mask(event);
+
+  if (!(mask & (SND_CTL_EVENT_MASK_VALUE | SND_CTL_EVENT_MASK_INFO)))
     return 1;
 
-  mask = snd_ctl_event_elem_get_mask(event);
+  for (int i = 0; i < card->elems->len; i++) {
+    struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
 
-  if (mask & (SND_CTL_EVENT_MASK_VALUE | SND_CTL_EVENT_MASK_INFO))
-    alsa_elem_change(elem);
+    if (elem->numid == numid)
+      alsa_elem_change(elem);
+  }
 
   return 1;
 }
@@ -811,6 +1029,9 @@ static void alsa_scan_cards(void) {
     card->handle = ctl;
 
     alsa_get_elem_list(card);
+    alsa_set_lr_nums(card);
+    alsa_get_routing_controls(card);
+
     alsa_subscribe(card);
     alsa_get_usbid(card);
     alsa_get_serial_number(card);

@@ -508,5 +508,8 @@ void create_sim_from_file(GtkWindow *w, char *fn) {
 
   snd_config_delete(config);
 
+  alsa_set_lr_nums(card);
+  alsa_get_routing_controls(card);
+
   create_card_window(card);
 }

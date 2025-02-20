@@ -237,7 +237,7 @@ static void get_snk_center(
   double             *y
 ) {
   get_widget_center(r_snk->socket_widget, parent, x, y);
-  if (IS_MIXER(r_snk->port_category))
+  if (IS_MIXER(r_snk->elem->port_category))
     (*y)++;
 }
 
@@ -300,7 +300,7 @@ void draw_routing_lines(
     draw_connection(
       cr,
       x1, y1, r_src->port_category,
-      x2, y2, r_snk->port_category,
+      x2, y2, r_snk->elem->port_category,
       r, g, b, 2
     );
   }
@@ -362,7 +362,7 @@ void draw_drag_line(
     draw_connection(
       cr,
       x1, y1, card->src_drag->port_category,
-      x2, y2, card->snk_drag->port_category,
+      x2, y2, card->snk_drag->elem->port_category,
       1, 1, 1, 2
     );
 

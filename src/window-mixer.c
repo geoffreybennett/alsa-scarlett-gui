@@ -16,9 +16,12 @@ static struct routing_snk *get_mixer_r_snk(
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
     );
-    if (r_snk->port_category != PC_MIX)
+    struct alsa_elem *elem = r_snk->elem;
+
+    if (elem->port_category != PC_MIX)
       continue;
-    if (r_snk->elem->lr_num == input_num)
+
+    if (elem->lr_num == input_num)
       return r_snk;
   }
   return NULL;
@@ -122,11 +125,10 @@ void update_mixer_labels(struct alsa_card *card) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
     );
-
-    if (r_snk->port_category != PC_MIX)
-      continue;
-
     struct alsa_elem *elem = r_snk->elem;
+
+    if (elem->port_category != PC_MIX)
+      continue;
 
     int routing_src_idx = alsa_get_elem_value(elem);
 

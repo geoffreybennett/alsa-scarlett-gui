@@ -33,6 +33,17 @@ enum {
 // names for the port categories
 extern const char *port_category_names[PC_COUNT];
 
+// hardware types
+enum {
+  HW_TYPE_ANALOGUE,
+  HW_TYPE_SPDIF,
+  HW_TYPE_ADAT,
+  HW_TYPE_COUNT
+};
+
+// names for the hardware types
+extern const char *hw_type_names[HW_TYPE_COUNT];
+
 // is a drag active, and whether dragging from a routing source or a
 // routing sink
 enum {
@@ -51,7 +62,7 @@ struct routing_src {
   // the enum id of the alsa item
   int id;
 
-  // PC_DSP, PC_MIX, PC_PCM, or PC_HW
+  // PC_OFF, PC_DSP, PC_MIX, PC_PCM, or PC_HW
   int port_category;
 
   // 0-based count within port_category
@@ -59,6 +70,9 @@ struct routing_src {
 
   // the alsa item name
   char *name;
+
+  // for PC_HW, the hardware type
+  int hw_type;
 
   // the number (or translated letter; A = 1) in the item name
   int lr_num;
@@ -74,8 +88,6 @@ struct routing_src {
 // entry in alsa_card routing_snks (routing sinks) array for alsa
 // elements that are routing sinks like Analogue Output 01 Playback
 // Enum
-// port_category is set to PC_DSP, PC_MIX, PC_PCM, PC_HW
-// port_num is a count (0-based) within that category
 struct routing_snk {
 
   // location within the array
@@ -89,12 +101,6 @@ struct routing_snk {
 
   // socket widget on the routing page
   GtkWidget *socket_widget;
-
-  // PC_DSP, PC_MIX, PC_PCM, or PC_HW
-  int port_category;
-
-  // 0-based count within port_category
-  int port_num;
 
   // the mixer label widgets for this sink
   GtkWidget *mixer_label_top;
@@ -118,6 +124,7 @@ struct alsa_elem {
   const char *name;
   int         type;
   int         count;
+  int         index;
 
   // for gain/volume elements, the dB range and step
   int min_val;
@@ -125,8 +132,11 @@ struct alsa_elem {
   int min_dB;
   int max_dB;
 
-  // for the number (or translated letter; A = 1) in the item name
-  // TODO: move this to struct routing_snk?
+  // for routing sinks
+  int is_routing_snk;
+  int port_category;
+  int port_num;
+  int hw_type;
   int lr_num;
 
   // the callback functions for this ALSA control element
@@ -198,7 +208,6 @@ int get_max_elem_by_name(
   const char *prefix,
   const char *needle
 );
-int is_elem_routing_snk(struct alsa_elem *elem);
 
 // add callback to alsa_elem callback list
 void alsa_elem_add_callback(
@@ -221,6 +230,10 @@ char *alsa_get_item_name(struct alsa_elem *elem, int i);
 
 // add to alsa_cards array
 struct alsa_card *card_create(int card_num);
+
+// parse elements (used by alsa-sim.c)
+void alsa_set_lr_nums(struct alsa_card *card);
+void alsa_get_routing_controls(struct alsa_card *card);
 
 // init
 void alsa_init(void);
