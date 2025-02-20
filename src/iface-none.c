@@ -19,7 +19,7 @@ GtkWidget *create_window_iface_none(GtkApplication *app) {
 
   GtkWidget *w = gtk_application_window_new(app);
   gtk_window_set_resizable(GTK_WINDOW(w), FALSE);
-  gtk_window_set_title(GTK_WINDOW(w), "ALSA Scarlett2 Control Panel");
+  gtk_window_set_title(GTK_WINDOW(w), "ALSA Scarlett Control Panel");
   gtk_window_set_child(GTK_WINDOW(w), box);
   gtk_application_window_set_show_menubar(
     GTK_APPLICATION_WINDOW(w), TRUE

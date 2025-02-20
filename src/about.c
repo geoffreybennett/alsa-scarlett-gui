@@ -24,16 +24,16 @@ void activate_about(
 
   gtk_show_about_dialog(
     w,
-    "program-name", "ALSA Scarlett2 Control Panel",
+    "program-name", "ALSA Scarlett Control Panel",
     "version", "Version " VERSION,
     "comments",
       "Gtk4 GUI for the ALSA controls presented by the\n"
-      "Linux kernel Focusrite Scarlett2 Mixer Driver",
+      "Linux kernel Focusrite USB drivers",
     "website", "https://github.com/geoffreybennett/alsa-scarlett-gui",
     "copyright", "Copyright 2022-2025 Geoffrey D. Bennett",
     "license-type", GTK_LICENSE_GPL_3_0,
     "logo", logo,
-    "title", "About ALSA Scarlett2 Mixer Interface",
+    "title", "About ALSA Scarlett Mixer Interface",
     "authors", authors,
     NULL
   );

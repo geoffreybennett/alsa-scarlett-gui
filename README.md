@@ -1,12 +1,17 @@
-# ALSA Scarlett2 Control Panel (`alsa-scarlett-gui`)
+# ALSA Scarlett Control Panel (`alsa-scarlett-gui`)
 
 `alsa-scarlett-gui` is a Gtk4 GUI for the ALSA controls presented by
-the Linux kernel Focusrite Scarlett2 USB Protocol Mixer Driver.
+the three Linux kernel Focusrite USB drivers:
+
+- Scarlett 1st Gen Driver for ALSA
+- Scarlett2 USB Protocol Mixer Driver
+- FCP (Focusrite Control Protocol) Driver
 
 Supported interfaces:
+- Scarlett 1st Gen 6i6, 8i6, 18i6, 18i8, 18i20
 - Scarlett 2nd Gen 6i6, 18i8, 18i20
 - Scarlett 3rd Gen Solo, 2i2, 4i4, 8i6, 18i8, 18i20
-- Scarlett 4th Gen Solo, 2i2, 4i4
+- Scarlett 4th Gen Solo, 2i2, 4i4, 16i16, 18i16, 18i20
 - Clarett 2Pre, 4Pre, 8Pre USB
 - Clarett+ 2Pre, 4Pre, 8Pre
 - Vocaster One and Vocaster Two
@@ -15,7 +20,7 @@ Supported interfaces:
 
 <img src="img/alsa-scarlett-gui.png" align="right">
 
-The Focusrite USB audio interfaces are class compliant meaning that
+All Focusrite USB audio interfaces are class compliant meaning that
 they work “out of the box” on Linux as audio and MIDI interfaces
 (although on Gen 3/4/Vocaster you need to disable MSD mode first for
 full functionality). However, except for some of the smallest models,
@@ -28,8 +33,8 @@ awful experience. The existing applications like `alsamixer` and
 controls presented for the Gen 3 18i20. Even the smallest Gen 3 4i4
 interface at last count had 84 ALSA controls.
 
-Announcing the ALSA Scarlett2 Control Panel, now supporting Scarlett
-Gen 2, 3, 4, Clarett, and Vocaster!
+Announcing the ALSA Scarlett Control Panel, now supporting all
+Scarlett Gen 1, 2, 3, 4, Clarett, and Vocaster USB interfaces!
 
 ![Demonstration](img/demo.gif)
 
@@ -43,12 +48,16 @@ known issues.
 
 Information specific to various models:
 
+- [Scarlett 1st Gen](docs/iface-1st-gen.md)
+
 - [Scarlett 3rd Gen Solo and 2i2](docs/iface-small.md)
 
 - [Scarlett 2nd Gen 6i6+, 3rd Gen 4i4+, Clarett USB, and
   Clarett+](docs/iface-large.md)
 
-- [Scarlett 4th Gen](docs/iface-4th-gen.md)
+- [Scarlett Small 4th Gen](docs/iface-4th-gen-small.md)
+
+- [Scarlett Big 4th Gen](docs/iface-4th-gen-big.md)
 
 ## Donations
 

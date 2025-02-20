@@ -1,8 +1,8 @@
-# ALSA Scarlett2 Control Panel
+# ALSA Scarlett Control Panel
 
 ## Large Scarlett 2nd and 3rd Gen and Clarett Interfaces
 
-This document describes how to use the ALSA Scarlett2 Control Panel
+This document describes how to use the ALSA Scarlett Control Panel
 with the larger Scarlett 2nd Gen, 3rd Gen, and Clarett USB interfaces:
 
 - Scarlett 2nd Gen 6i6, 18i8, 18i20

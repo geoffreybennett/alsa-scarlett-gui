@@ -1,9 +1,9 @@
-# ALSA Scarlett2 Control Panel
+# ALSA Scarlett Control Panel
 
-## Scarlett 4th Gen Interfaces
+## Scarlett Small 4th Gen Interfaces
 
-This document describes how to use the ALSA Scarlett2 Control Panel
-with the Scarlett 4th Gen interfaces:
+This document describes how to use the ALSA Scarlett Control Panel
+with the small Scarlett 4th Gen interfaces:
 
 - Scarlett 4th Gen Solo, 2i2, and 4i4
 
@@ -39,7 +39,7 @@ The main window for the Solo and 2i2 interfaces is shown below; the
 Monitor control, and can show the position of the front panel volume
 knobs.
 
-![Main Window](../img/iface-4th-gen.png)
+![Main Window](../img/iface-4th-gen-small.png)
 
 ### Global Controls
 
@@ -204,10 +204,7 @@ Important Notes:
 - The Focusrite Control 2 software can’t control most of this routing,
   so if you make changes here and then want to use Focusrite Control
   2, you’ll probably need to reset the routing back to the factory
-  default settings. There’s currently no way to reset to factory
-  default settings from the Focusrite Control 2 software; you’ll need
-  to use the [Reset Configuration](USAGE.md#startup-controls) option
-  in this software, or the `scarlett2` utility.
+  default settings.
 
 To adjust the routing:
 
@@ -338,7 +335,7 @@ sink: Hardware Outputs, Mixer Inputs, DSP Inputs, and PCM Inputs. Open
 this window by selecting the View → Levels menu option or pressing
 Ctrl-L.
 
-![Levels](../img/window-levels-4th-gen.gif)
+![Levels](../img/window-levels-4th-gen-small.gif)
 
 Look at this in conjunction with the routing window to understand
 which meter corresponds to which source or sink.

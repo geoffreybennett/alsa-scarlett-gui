@@ -1,4 +1,4 @@
-# ALSA Scarlett2 Control Panel
+# ALSA Scarlett Control Panel
 
 ## Small Scarlett 3rd Gen Interfaces
 
