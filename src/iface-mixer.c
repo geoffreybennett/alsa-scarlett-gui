@@ -640,7 +640,8 @@ static void create_output_controls(
   GtkWidget        *top,
   int              *x,
   int              y,
-  int              x_span
+  int              x_span,
+  int              output_count
 ) {
   GArray *elems = card->elems;
 
@@ -659,8 +660,6 @@ static void create_output_controls(
   gtk_box_append(GTK_BOX(box), output_grid);
 
   gtk_grid_attach(GTK_GRID(top), box, *x, y, x_span, 1);
-
-  int output_count = get_max_elem_by_name(elems, "Line", "Playback Volume");
 
   /* 4th Gen Solo/2i2 */
   if (get_elem_by_prefix(elems, "Direct Monitor Playback")) {
@@ -706,7 +705,8 @@ static void create_output_controls(
     return;
   }
 
-  int has_hw_vol = !!get_elem_by_name(elems, "Master HW Playback Volume");
+  int has_hw_vol = !!get_elem_by_name(elems, "Master HW Playback Volume") ||
+                   !!get_elem_by_name(elems, "Master Playback Volume");
   int line_1_col = has_hw_vol;
 
   for (int i = 0; i < output_count; i++) {
@@ -724,16 +724,25 @@ static void create_output_controls(
     if (!elem->card)
       continue;
 
-    int line_num = get_num_from_string(elem->name);
-
     // output controls
-    if (strncmp(elem->name, "Line", 4) == 0) {
+
+    // Gen 1 master output control
+    if (strcmp(elem->name, "Master Playback Volume") == 0) {
+      GtkWidget *l = gtk_label_new("Master");
+      gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
+      w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0);
+      gtk_widget_set_tooltip_text(w, "Master Volume Control");
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
+
+    } else if (strncmp(elem->name, "Line", 4) == 0 ||
+               strncmp(elem->name, "Master", 4) == 0) {
+
       if (strstr(elem->name, "Playback Volume")) {
         w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 1);
         gtk_grid_attach(
-          GTK_GRID(output_grid), w, line_num - 1 + line_1_col, 1, 1, 1
+          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 1, 1, 1
         );
-      } else if (strstr(elem->name, "Mute Playback Switch")) {
+      } else if (strstr(elem->name, "Playback Switch")) {
         w = make_boolean_alsa_elem(
           elem, "*audio-volume-high", "*audio-volume-muted"
         );
@@ -747,7 +756,7 @@ static void create_output_controls(
           gtk_widget_set_tooltip_text(w, "Mute");
         }
         gtk_grid_attach(
-          GTK_GRID(output_grid), w, line_num - 1 + line_1_col, 2, 1, 1
+          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 2, 1, 1
         );
       } else if (strstr(elem->name, "Volume Control Playback Enum")) {
         w = make_boolean_alsa_elem(elem, "SW", "HW");
@@ -758,7 +767,7 @@ static void create_output_controls(
           "volume for this analogue output."
         );
         gtk_grid_attach(
-          GTK_GRID(output_grid), w, line_num - 1 + line_1_col, 3, 1, 1
+          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 3, 1, 1
         );
       }
 
@@ -874,15 +883,18 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   int output_count = get_max_elem_by_name(
     card->elems, "Line", "Playback Volume"
   );
+  if (!output_count)
+    output_count =
+      get_max_elem_by_name(card->elems, "Master", "Playback Volume") * 2;
 
   create_global_controls(card, top, &x);
   create_input_controls(card, top, &x, input_count);
 
   if (input_count + output_count >= 12) {
     x = 0;
-    create_output_controls(card, top, &x, 1, 2);
+    create_output_controls(card, top, &x, 1, 2, output_count);
   } else {
-    create_output_controls(card, top, &x, 0, 1);
+    create_output_controls(card, top, &x, 0, 1, output_count);
   }
 
   return top;
