@@ -133,6 +133,9 @@ struct alsa_elem {
   int min_cdB;
   int max_cdB;
 
+  // level meter labels
+  char **meter_labels;
+
   // for routing sinks
   int is_routing_snk;
   int port_category;
@@ -159,6 +162,7 @@ struct alsa_card {
   uint32_t            pid;
   char               *serial;
   char               *name;
+  char               *fcp_socket;
   int                 best_firmware_version;
   snd_ctl_t          *handle;
   struct pollfd       pfd;
