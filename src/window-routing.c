@@ -241,11 +241,12 @@ static void create_routing_grid(struct alsa_card *card) {
       GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
     );
   }
-  card->routing_mixer_in_grid = create_routing_group_grid(
-    card, "routing_mixer_in_grid", "Mixer\nInputs",
-    "Mixer Inputs are used to mix multiple audio channels together",
-    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
-  );
+  if (!card->has_fixed_mixer_inputs)
+    card->routing_mixer_in_grid = create_routing_group_grid(
+      card, "routing_mixer_in_grid", "Mixer\nInputs",
+      "Mixer Inputs are used to mix multiple audio channels together",
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+    );
   card->routing_mixer_out_grid = create_routing_group_grid(
     card, "routing_mixer_out_grid",
     card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
@@ -290,7 +291,9 @@ static void create_routing_grid(struct alsa_card *card) {
   gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(routing_grid, src_label, left_col_num, 3, 1, 1);
 
-  GtkWidget *snk_label = gtk_label_new("← Sinks\n↓");
+  GtkWidget *snk_label = gtk_label_new(
+    card->has_fixed_mixer_inputs ? "Sinks\n↓" : "← Sinks\n↓"
+  );
   gtk_label_set_justify(GTK_LABEL(snk_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(routing_grid, snk_label, right_col_num, 0, 1, 1);
 }
@@ -719,6 +722,9 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
   // "Mixer Input X Capture Enum" controls (Mixer Inputs) go along
   // the top, in card->routing_mixer_in_grid after the DSP Inputs
   } else if (elem->port_category == PC_MIX) {
+
+    if (card->has_fixed_mixer_inputs)
+      return;
 
     char name[10];
 

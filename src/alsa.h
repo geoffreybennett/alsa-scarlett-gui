@@ -186,6 +186,7 @@ struct alsa_card {
   GtkWidget          *routing_mixer_out_grid;
   int                 has_speaker_switching;
   int                 has_talkback;
+  int                 has_fixed_mixer_inputs;
   int                 routing_out_count[PC_COUNT];
   int                 routing_in_count[PC_COUNT];
   GMenu              *routing_src_menu;

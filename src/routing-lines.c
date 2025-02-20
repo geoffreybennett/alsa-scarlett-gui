@@ -261,6 +261,12 @@ void draw_routing_lines(
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
     );
+    struct alsa_elem *elem = r_snk->elem;
+
+    // don't draw lines to read-only mixer sinks
+    if (elem->port_category == PC_MIX &&
+        card->has_fixed_mixer_inputs)
+      continue;
 
     // if dragging and a routing sink is being reconnected then draw
     // it with dots
@@ -271,7 +277,7 @@ void draw_routing_lines(
       cairo_set_dash(cr, NULL, 0, 0);
 
     // get the sink and skip if it's "Off"
-    int r_src_idx = alsa_get_elem_value(r_snk->elem);
+    int r_src_idx = alsa_get_elem_value(elem);
     if (!r_src_idx)
       continue;
 
@@ -300,7 +306,7 @@ void draw_routing_lines(
     draw_connection(
       cr,
       x1, y1, r_src->port_category,
-      x2, y2, r_snk->elem->port_category,
+      x2, y2, elem->port_category,
       r, g, b, 2
     );
   }

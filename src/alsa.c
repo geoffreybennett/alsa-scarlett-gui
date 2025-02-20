@@ -598,6 +598,10 @@ static void get_routing_snks(struct alsa_card *card) {
     if (strncmp(elem->name, "Mixer Input", 11) == 0 ||
         strncmp(elem->name, "Matrix", 6) == 0) {
       elem->port_category = PC_MIX;
+
+      if (!alsa_get_elem_writable(elem))
+        card->has_fixed_mixer_inputs = 1;
+
     } else if (strncmp(elem->name, "DSP Input", 9) == 0) {
       elem->port_category = PC_DSP;
     } else if (strncmp(elem->name, "PCM", 3) == 0 ||
