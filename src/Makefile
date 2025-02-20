@@ -13,7 +13,8 @@ DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 CFLAGS ?= -ggdb -fno-omit-frame-pointer -fPIE -O2
-CFLAGS += -Wall -Werror -D_FORTIFY_SOURCE=3
+CFLAGS += -Wall -Werror
+CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 CFLAGS += -DVERSION=\"$(VERSION)\"
 CFLAGS += -Wno-error=deprecated-declarations
 
