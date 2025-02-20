@@ -813,7 +813,8 @@ static void create_output_controls(
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
 
     } else if (strncmp(elem->name, "Line", 4) == 0 ||
-               strncmp(elem->name, "Master", 4) == 0) {
+               strncmp(elem->name, "Master", 4) == 0 ||
+               strncmp(elem->name, "Analogue", 8) == 0) {
 
       if (strstr(elem->name, "Playback Volume")) {
         w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 1);
@@ -966,6 +967,9 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   if (!output_count)
     output_count =
       get_max_elem_by_name(card->elems, "Master", "Playback Volume") * 2;
+  if (!output_count)
+    output_count =
+      get_max_elem_by_name(card->elems, "Analogue", "Playback Volume");
 
   create_global_controls(card, top, &x);
   create_input_controls(card, top, &x, input_count);

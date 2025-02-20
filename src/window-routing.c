@@ -853,7 +853,7 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
       0, elem->port_num + 1, 1, 1
     );
 
-  // "* Output X Playback Enum" controls go along the right, in
+  // "* X Playback Enum" controls go along the right, in
   // card->routing_hw_out_grid
   } else if (elem->port_category == PC_HW) {
 

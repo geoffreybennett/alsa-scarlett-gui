@@ -597,14 +597,14 @@ static void get_routing_snks(struct alsa_card *card) {
 
     elem->is_routing_snk = 1;
 
-    if (strncmp(elem->name, "Mixer Input", 11) == 0 ||
+    if (strncmp(elem->name, "Mixer", 5) == 0 ||
         strncmp(elem->name, "Matrix", 6) == 0) {
       elem->port_category = PC_MIX;
 
       if (!alsa_get_elem_writable(elem))
         card->has_fixed_mixer_inputs = 1;
 
-    } else if (strncmp(elem->name, "DSP Input", 9) == 0) {
+    } else if (strncmp(elem->name, "DSP", 3) == 0) {
       elem->port_category = PC_DSP;
     } else if (strncmp(elem->name, "PCM", 3) == 0 ||
                strncmp(elem->name, "Input Source", 12) == 0) {
@@ -664,10 +664,12 @@ void alsa_get_routing_controls(struct alsa_card *card) {
   // check that we can find a routing control
   card->sample_capture_elem =
     get_elem_by_name(card->elems, "PCM 01 Capture Enum");
-  if (!card->sample_capture_elem) {
+  if (!card->sample_capture_elem)
+    card->sample_capture_elem =
+      get_elem_by_name(card->elems, "PCM 1 Capture Enum");
+  if (!card->sample_capture_elem)
     card->sample_capture_elem =
       get_elem_by_name(card->elems, "Input Source 01 Capture Route");
-  }
 
   if (!card->sample_capture_elem) {
     fprintf(
