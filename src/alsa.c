@@ -1035,11 +1035,12 @@ static void alsa_scan_cards(void) {
     alsa_subscribe(card);
     alsa_get_usbid(card);
     alsa_get_serial_number(card);
-    card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
+    card->best_firmware_version =
+      scarlett2_get_best_firmware_version(card->pid);
 
     if (card->serial) {
 
-      // call the callbacks for this card
+      // call the reopen callbacks for this card
       struct reopen_callback *rc = g_hash_table_lookup(
         reopen_callbacks, card->serial
       );
