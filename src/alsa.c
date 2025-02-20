@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <sys/inotify.h>
+#include <alsa/sound/uapi/tlv.h>
 
 #include "alsa.h"
 #include "scarlett2-firmware.h"
@@ -361,7 +362,7 @@ static void alsa_get_elem_tlv(struct alsa_elem *elem) {
   unsigned int tlv[MAX_TLV_RANGE_SIZE];
   unsigned int *dbrec;
   int ret;
-  long min_dB, max_dB;
+  long min_cdB, max_cdB;
 
   snd_ctl_elem_id_alloca(&elem_id);
   snd_ctl_elem_id_set_numid(elem_id, elem->numid);
@@ -370,29 +371,30 @@ static void alsa_get_elem_tlv(struct alsa_elem *elem) {
     elem->card->handle, elem_id, tlv, sizeof(tlv)
   );
   if (ret < 0) {
-    fprintf(stderr, "TLV read error %d\n", ret);
+    fprintf(stderr, "TLV read error: %s\n", snd_strerror(ret));
     return;
   }
 
   ret = snd_tlv_parse_dB_info(tlv, sizeof(tlv), &dbrec);
   if (ret <= 0) {
-    fprintf(stderr, "TLV parse error %d\n", ret);
+    fprintf(stderr, "TLV parse error: %s\n", snd_strerror(ret));
     return;
   }
 
   int min_val = snd_ctl_elem_info_get_min(elem_info);
   int max_val = snd_ctl_elem_info_get_max(elem_info);
 
-  ret = snd_tlv_get_dB_range(tlv, min_val, max_val, &min_dB, &max_dB);
+  ret = snd_tlv_get_dB_range(dbrec, min_val, max_val, &min_cdB, &max_cdB);
   if (ret != 0) {
-    fprintf(stderr, "TLV range error %d\n", ret);
+    fprintf(stderr, "TLV range error: %s\n", snd_strerror(ret));
     return;
   }
 
   elem->min_val = min_val;
   elem->max_val = max_val;
-  elem->min_dB = min_dB / 100;
-  elem->max_dB = max_dB / 100;
+  elem->dB_type = dbrec[SNDRV_CTL_TLVO_TYPE];
+  elem->min_cdB = min_cdB;
+  elem->max_cdB = max_cdB;
 }
 
 static void alsa_get_elem(struct alsa_card *card, int numid) {

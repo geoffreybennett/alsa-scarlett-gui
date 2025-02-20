@@ -231,7 +231,7 @@ static void alsa_parse_comment_node(
       err = snd_config_get_integer(node, &dbmin);
       if (err < 0)
         fatal_alsa_error("snd_config_get_integer error", err);
-      elem->min_dB = dbmin / 100;
+      elem->min_cdB = dbmin;
     } else if (strcmp(key, "dbmax") == 0) {
       if (type != SND_CONFIG_TYPE_INTEGER) {
         printf("dbmax type not integer\n");
@@ -241,7 +241,7 @@ static void alsa_parse_comment_node(
       err = snd_config_get_integer(node, &dbmax);
       if (err < 0)
         fatal_alsa_error("snd_config_get_integer error", err);
-      elem->max_dB = dbmax / 100;
+      elem->max_cdB = dbmax;
     }
   }
 }

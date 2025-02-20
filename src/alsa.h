@@ -126,11 +126,12 @@ struct alsa_elem {
   int         count;
   int         index;
 
-  // for gain/volume elements, the dB range and step
+  // for gain/volume elements, the value range, dB type, and dB range
   int min_val;
   int max_val;
-  int min_dB;
-  int max_dB;
+  int dB_type;
+  int min_cdB;
+  int max_cdB;
 
   // for routing sinks
   int is_routing_snk;
