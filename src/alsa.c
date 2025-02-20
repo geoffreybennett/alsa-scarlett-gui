@@ -616,6 +616,14 @@ static void get_routing_srcs(struct alsa_card *card) {
 // Analogue Output xx Playback Enum
 // S/PDIF Output xx Playback Enum
 // ADAT Output xx Playback Enum
+//
+// or new style:
+// PCM xx Capture Enum
+// Mixer xx Capture Enum
+// Analogue xx Playback Enum
+// S/PDIF xx Playback Enum
+// ADAT xx Playback Enum
+
 static int is_elem_routing_snk(struct alsa_elem *elem) {
   if (strstr(elem->name, "Capture Route") ||
       strstr(elem->name, "Input Playback Route") ||
@@ -624,13 +632,16 @@ static int is_elem_routing_snk(struct alsa_elem *elem) {
 
   if (strstr(elem->name, "Capture Enum") && (
        strncmp(elem->name, "PCM ", 4) == 0 ||
-       strncmp(elem->name, "Mixer Input ", 12) == 0 ||
-       strncmp(elem->name, "DSP Input ", 10) == 0
+       strncmp(elem->name, "Mixer ", 6) == 0 ||
+       strncmp(elem->name, "DSP ", 4) == 0
      ))
     return 1;
 
-  if (strstr(elem->name, "Output") &&
-      strstr(elem->name, "Playback Enum"))
+  if (strstr(elem->name, "Playback Enum") && (
+       strncmp(elem->name, "Analogue ", 9) == 0 ||
+       strncmp(elem->name, "S/PDIF ", 7) == 0 ||
+       strncmp(elem->name, "ADAT ", 5) == 0
+     ))
     return 1;
 
   return 0;
