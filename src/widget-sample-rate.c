@@ -46,7 +46,7 @@ static int get_sample_rate(struct sample_rate *data) {
 
   FILE *file = fopen(data->path, "r");
   if (!file) {
-    perror("fopen");
+    perror("fopen /proc/asound/cardN/stream0");
     return 0;
   }
 

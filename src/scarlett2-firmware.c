@@ -72,7 +72,7 @@ struct scarlett2_firmware_header *scarlett2_read_firmware_header(
 ) {
   FILE *file = fopen(fn, "rb");
   if (!file) {
-    perror("fopen");
+    perror("fopen firmware header");
     fprintf(stderr, "Unable to open %s\n", fn);
     return NULL;
   }
@@ -91,7 +91,7 @@ struct scarlett2_firmware_header *scarlett2_read_firmware_header(
 struct scarlett2_firmware_file *scarlett2_read_firmware_file(const char *fn) {
   FILE *file = fopen(fn, "rb");
   if (!file) {
-    perror("fopen");
+    perror("fopen firmware file");
     fprintf(stderr, "Unable to open %s\n", fn);
     return NULL;
   }
