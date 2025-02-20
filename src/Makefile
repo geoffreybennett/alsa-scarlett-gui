@@ -52,7 +52,7 @@ GLIB_COMPILE_RESOURCES := $(shell $(PKG_CONFIG) --variable=glib_compile_resource
 
 all: $(TARGET) $(DESKTOP_FILE)
 
-clean:
+clean: depclean
 	rm -f $(TARGET) $(DESKTOP_FILE) $(OBJS) $(XML_OBJ)
 
 depclean:
