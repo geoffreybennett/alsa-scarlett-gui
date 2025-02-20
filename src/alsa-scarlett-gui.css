@@ -210,6 +210,10 @@ button.toggle {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
+.window-frame button.gain-switch:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
 .window-frame button.phantom:checked {
   text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
 }

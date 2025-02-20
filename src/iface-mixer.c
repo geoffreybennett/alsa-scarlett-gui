@@ -427,6 +427,25 @@ static void create_input_pad_control(
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
+static void create_input_gain_switch_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Gain", NULL);
+  gtk_widget_add_css_class(w, "gain-switch");
+  gtk_widget_set_hexpand(w, TRUE);
+  gtk_widget_set_tooltip_text(
+    w,
+    "Enabling Gain switches from Low gain input (0dBFS = +16dBu)\n"
+    "to High gain input (0dBFS = −10dBV, approx −6dBu)."
+  );
+
+  // ignore current_row, always put it in the first row
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, 1, 1, 1);
+}
+
 static void create_input_phantom_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
@@ -483,12 +502,10 @@ static void create_input_controls_by_type(
 static void create_input_controls(
   struct alsa_card *card,
   GtkWidget        *top,
-  int              *x
+  int              *x,
+  int              input_count
 ) {
   GArray *elems = card->elems;
-
-  // find how many inputs have switches
-  int input_count = get_max_elem_by_name(elems, "Line", "Capture Switch");
 
   // Only the 18i20 Gen 2 has no input controls
   if (!input_count)
@@ -576,6 +593,10 @@ static void create_input_controls(
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
+    "Impedance Switch", create_input_level_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
     "Air Capture Switch", create_input_air_switch_control
   );
   create_input_controls_by_type(
@@ -597,6 +618,14 @@ static void create_input_controls(
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "Pad Capture Switch", create_input_pad_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Pad Switch", create_input_pad_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Gain Switch", create_input_gain_switch_control
   );
   create_input_controls_by_type(
     elems, input_grid, &current_row,
@@ -838,12 +867,16 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   int input_count = get_max_elem_by_name(
     card->elems, "Line", "Capture Switch"
   );
+  if (!input_count)
+    input_count =
+      get_max_elem_by_name(card->elems, "Input", "Switch");
+
   int output_count = get_max_elem_by_name(
     card->elems, "Line", "Playback Volume"
   );
 
   create_global_controls(card, top, &x);
-  create_input_controls(card, top, &x);
+  create_input_controls(card, top, &x, input_count);
 
   if (input_count + output_count >= 12) {
     x = 0;
