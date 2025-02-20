@@ -783,9 +783,12 @@ static void create_output_controls(
     return;
   }
 
-  int has_hw_vol = !!get_elem_by_name(elems, "Master HW Playback Volume") ||
-                   !!get_elem_by_name(elems, "Master Playback Volume");
-  int line_1_col = has_hw_vol;
+  int has_sw_hw_ctrls =
+    !!get_elem_by_substr(elems, "Volume Control Playback Enum");
+  int line_1_col =
+    has_sw_hw_ctrls ||
+    get_elem_by_name(elems, "Mute Playback Switch") ||
+    get_elem_by_name(elems, "Master Playback Switch");
 
   for (int i = 0; i < output_count; i++) {
     char s[20];
@@ -826,7 +829,7 @@ static void create_output_controls(
           elem, "*audio-volume-high", "*audio-volume-muted"
         );
         gtk_widget_add_css_class(w, "mute");
-        if (has_hw_vol) {
+        if (has_sw_hw_ctrls) {
           gtk_widget_set_tooltip_text(
             w,
             "Mute (only available when under software control)"
