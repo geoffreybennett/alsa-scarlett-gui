@@ -1067,6 +1067,32 @@ static void alsa_get_serial_number(struct alsa_card *card) {
   card->serial = strdup(serial);
 }
 
+static void card_init(struct alsa_card *card) {
+  alsa_get_elem_list(card);
+  alsa_set_lr_nums(card);
+  alsa_get_routing_controls(card);
+
+  alsa_subscribe(card);
+  alsa_get_usbid(card);
+  alsa_get_serial_number(card);
+  card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
+
+  if (card->serial) {
+
+    // call the reopen callbacks for this card
+    struct reopen_callback *rc = g_hash_table_lookup(
+      reopen_callbacks, card->serial
+    );
+    if (rc)
+      rc->callback(rc->data);
+
+    g_hash_table_remove(reopen_callbacks, card->serial);
+  }
+
+  create_card_window(card);
+  alsa_add_card_callback(card);
+}
+
 static void alsa_scan_cards(void) {
   snd_ctl_card_info_t *info;
   snd_ctl_t           *ctl;
@@ -1110,30 +1136,7 @@ static void alsa_scan_cards(void) {
     card->name = strdup(snd_ctl_card_info_get_name(info));
     card->handle = ctl;
 
-    alsa_get_elem_list(card);
-    alsa_set_lr_nums(card);
-    alsa_get_routing_controls(card);
-
-    alsa_subscribe(card);
-    alsa_get_usbid(card);
-    alsa_get_serial_number(card);
-    card->best_firmware_version =
-      scarlett2_get_best_firmware_version(card->pid);
-
-    if (card->serial) {
-
-      // call the reopen callbacks for this card
-      struct reopen_callback *rc = g_hash_table_lookup(
-        reopen_callbacks, card->serial
-      );
-      if (rc)
-        rc->callback(rc->data);
-
-      g_hash_table_remove(reopen_callbacks, card->serial);
-    }
-
-    create_card_window(card);
-    alsa_add_card_callback(card);
+    card_init(card);
 
     continue;
 
