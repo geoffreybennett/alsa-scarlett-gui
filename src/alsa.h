@@ -41,6 +41,19 @@ enum {
   HW_TYPE_COUNT
 };
 
+// driver types
+// NONE is 1st Gen or Scarlett2 before hwdep support was added
+// (no erase config or firmware update support)
+// HWDEP is the Scarlett2 driver after hwdep support was added
+// SOCKET is the FCP driver
+enum {
+  DRIVER_TYPE_NONE,
+  DRIVER_TYPE_HWDEP,
+  DRIVER_TYPE_SOCKET,
+  DRIVER_TYPE_SOCKET_UNINIT,
+  DRIVER_TYPE_COUNT
+};
+
 // names for the hardware types
 extern const char *hw_type_names[HW_TYPE_COUNT];
 
@@ -162,6 +175,7 @@ struct alsa_card {
   uint32_t            pid;
   char               *serial;
   char               *name;
+  int                 driver_type;
   char               *fcp_socket;
   int                 best_firmware_version;
   snd_ctl_t          *handle;
