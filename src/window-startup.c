@@ -354,8 +354,7 @@ static void add_reset_actions(
 
 static void add_no_startup_controls_msg(GtkWidget *grid) {
   GtkWidget *w = big_label(
-    "It appears that there are no startup controls. You probably "
-    "need to upgrade your kernel to see something here."
+    "This device/driver combo appears to have no startup controls."
   );
   gtk_grid_attach(GTK_GRID(grid), w, 0, 0, 1, 1);
 }
