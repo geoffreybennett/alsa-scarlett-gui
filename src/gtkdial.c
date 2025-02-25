@@ -1490,10 +1490,6 @@ static void gtk_dial_drag_gesture_update(
   double          offset_y,
   GtkDial        *dial
 ) {
-  double start_x, start_y;
-
-  gtk_gesture_drag_get_start_point(gesture, &start_x, &start_y);
-
   double mn = gtk_adjustment_get_lower(dial->adj);
   double mx = gtk_adjustment_get_upper(dial->adj);
   gboolean is_linear = gtk_dial_get_is_linear(dial);
