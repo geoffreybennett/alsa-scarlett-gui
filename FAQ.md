@@ -92,6 +92,16 @@ to the user manual of your interface for more information.
 
 ## Help?!
 
+Have you read the User Guide for your interface? It’s available
+online: https://downloads.focusrite.com/focusrite and contains a lot
+of helpful/useful/important information about your device.
+
+You can skip the “Easy Start” and “Setting up your DAW” sections, but
+the rest is well worth reading. Even the information about Focusrite
+Control is useful, although not directly applicable, because it will
+help you understand more about the possibilities of what you can do
+with your device.
+
 For help with the Scarlett2 and FCP kernel drivers:
 https://github.com/geoffreybennett/linux-fcp/issues
 
