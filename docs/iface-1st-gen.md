@@ -28,6 +28,11 @@ ALSA driver implementation that you should be aware of:
    incorrectly believes a control is already in the desired state, it
    won't actually update the control.
 
+3. **Level Meters**: The driver does not support reading the level
+   meters from the hardware.
+
+4. **Startup Controls**: The driver has no startup controls.
+
 ### Recommended Workaround
 
 To ensure your settings are properly applied:
