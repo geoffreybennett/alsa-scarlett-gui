@@ -24,7 +24,7 @@ deactivate MSD mode by holding down the 48V button while powering it
 on).
 
 However, to access the mixer, routing, and hardware-specific features,
-you'll need the appropriate driver for your interface model.
+you’ll need the appropriate driver for your interface model.
 
 ## MSD Mode?
 
@@ -34,7 +34,7 @@ you'll need the appropriate driver for your interface model.
 If MSD Mode is enabled, you need to disable it and restart your
 interface to get access to its full functionality.
 
-When you plug the interface in, there'll be a tiny read-only virtual
+When you plug the interface in, there’ll be a tiny read-only virtual
 disk that has a link to the Focusrite product registration page; until
 you turn off MSD Mode not all features of the interface will be
 available.
@@ -46,7 +46,7 @@ powering on the interface, or by clicking the button in
 If you do the recommended/required (depending on the model) firmware
 update, MSD Mode will automatically be turned off.
 
-## What is the purpose of these drivers if they're not needed for basic audio?
+## What is the purpose of these drivers if they’re not needed for basic audio?
 
 These drivers are for users who want more control over their
 interface. They allow for detailed manipulation of:
@@ -72,13 +72,13 @@ The ALSA Scarlett Control Panel supports:
 - **Vocaster**: One, Two
 
 Note: The Scarlett 1st and 2nd Gen small interfaces (Solo, 2i2, 2i4)
-don't have any software controls. All the controls are available from
-the front panel, so they don't require the specialised drivers or this
+don’t have any software controls. All the controls are available from
+the front panel, so they don’t require the specialised drivers or this
 GUI.
 
 ## Where are the options to set the sample rate and buffer size?
 
-The ALSA Scarlett Control Panel doesn't handle audio input/output
+The ALSA Scarlett Control Panel doesn’t handle audio input/output
 settings like sample rate and buffer size. These settings are managed
 by the application using the soundcard, typically a sound server such
 as PulseAudio, JACK, or PipeWire.

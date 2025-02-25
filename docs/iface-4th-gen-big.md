@@ -10,7 +10,7 @@ with the big Scarlett 4th Gen interfaces:
 ### FCP Driver
 
 The big 4th Gen interfaces are supported by a new “FCP” (Focusrite
-Control Protocol) driver introduced in Linux 6.14. If you haven't
+Control Protocol) driver introduced in Linux 6.14. If you haven’t
 installed
 [fcp-support](https://github.com/geoffreybennett/fcp-support) yet, you
 need to do that (and update the firmware) before you can use

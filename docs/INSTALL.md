@@ -30,7 +30,7 @@ is not needed, useful, or supported for these models.
 
 If your distribution doesn’t include a recent-enough kernel for your
 interface, you can get the latest driver from here and build it for
-your current kernel if it's not too old (the Scarlett2 and FCP drivers
+your current kernel if it’s not too old (the Scarlett2 and FCP drivers
 are both maintained in the same tree here):
 https://github.com/geoffreybennett/linux-fcp/releases
 
