@@ -15,7 +15,7 @@ Linux kernel Focusrite USB drivers.
 %setup
 
 %build
-make -C src -j4 VERSION=%{version} PREFIX=/usr
+make -C src %{?_smp_mflags} VERSION=%{version} PREFIX=/usr
 
 %install
 %make_install -C src PREFIX=/usr

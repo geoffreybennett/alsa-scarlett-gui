@@ -23,7 +23,7 @@ jobs:
 
       - name: Build from sources
         run: |
-          make -C src -j4 PREFIX=/usr
+          make -C src -j$(nproc) PREFIX=/usr
 
       - name: Prepare package workspace
         run: |

@@ -124,7 +124,7 @@ To build:
 
 ```
 cd src
-make -j4
+make -j$(nproc)
 ```
 
 To run:
