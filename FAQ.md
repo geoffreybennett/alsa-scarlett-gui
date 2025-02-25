@@ -90,6 +90,28 @@ displays the current rate being used by applications. If it shows
 Note that not all features are available at higher sample rates; refer
 to the user manual of your interface for more information.
 
+## Why do my settings keep resetting?
+
+The settings in the ALSA Scarlett Control Panel are automatically
+saved in the interface itself (all series except 1st Gen), so they
+“should” persist across reboots and even across different computers.
+
+If you find that the opposite is happening — that every time you plug
+your interface in, the settings get reverted, try disabling the
+`alsa-state` and `alsa-restore` systemd services:
+
+```sh
+sudo systemctl mask alsa-state
+sudo systemctl mask alsa-restore
+```
+
+These services save the state of ALSA controls on system shutdown to
+`/var/lib/alsa/asound.state` and then restore it each time the device
+is plugged in. It can be rather annoying, wondering why your device is
+unusable every time you plug it in, only to find that it’s because you
+once shut down your computer with the Clock Source set to “ADAT” or
+some such thing.
+
 ## Help?!
 
 Have you read the User Guide for your interface? It’s available
