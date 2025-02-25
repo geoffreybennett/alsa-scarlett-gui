@@ -1496,6 +1496,19 @@ static void gtk_dial_drag_gesture_update(
 
   double valp;
 
+  // add a 1px deadband to prevent double-click with zero mouse
+  // movement from changing the value from the toggled -inf/0dB value
+  // (sometimes we see an offset_y value that rounds to +/- 1 which
+  // causes the value to change after the double-click has set the
+  // value)
+  if (offset_y < -1) {
+    offset_y += 1;
+  } else if (offset_y < 1) {
+    offset_y = 0;
+  } else {
+    offset_y -= 1;
+  }
+
   if (is_linear) {
     double step = gtk_adjustment_get_step_increment(dial->adj);
 
