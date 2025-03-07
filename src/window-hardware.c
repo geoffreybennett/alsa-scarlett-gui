@@ -30,13 +30,9 @@ struct hw_info gen_2_info[] = {
   { }
 };
 
-struct hw_info gen_3_small_info[] = {
+struct hw_info gen_3_info[] = {
   { "Scarlett Solo 3rd Gen" },
   { "Scarlett 2i2 3rd Gen" },
-  { }
-};
-
-struct hw_info gen_3_big_info[] = {
   { "Scarlett 4i4 3rd Gen" },
   { "Scarlett 8i6 3rd Gen" },
   { "Scarlett 18i8 3rd Gen" },
@@ -48,6 +44,9 @@ struct hw_info gen_4_info[] = {
   { "Scarlett Solo 4th Gen" },
   { "Scarlett 2i2 4th Gen" },
   { "Scarlett 4i4 4th Gen" },
+  { "Scarlett 16i16 4th Gen" },
+  { "Scarlett 18i16 4th Gen" },
+  { "Scarlett 18i20 4th Gen" },
   { }
 };
 
@@ -65,6 +64,12 @@ struct hw_info clarett_plus_info[] = {
   { }
 };
 
+struct hw_info vocaster_info[] = {
+  { "Vocaster One" },
+  { "Vocaster Two" },
+  { }
+};
+
 struct hw_cat hw_cat[] = {
   { "1st Gen",
     gen_1_info
@@ -72,11 +77,8 @@ struct hw_cat hw_cat[] = {
   { "2nd Gen",
     gen_2_info
   },
-  { "Small 3rd Gen",
-    gen_3_small_info
-  },
-  { "Big 3rd Gen",
-    gen_3_big_info
+  { "3rd Gen",
+    gen_3_info
   },
   { "4th Gen",
     gen_4_info
@@ -86,6 +88,9 @@ struct hw_cat hw_cat[] = {
   },
   { "Clarett+",
     clarett_plus_info
+  },
+  { "Vocaster",
+    vocaster_info
   },
   { }
 };
