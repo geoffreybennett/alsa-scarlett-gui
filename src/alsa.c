@@ -792,6 +792,77 @@ static void card_destroy_callback(void *data) {
   }
 }
 
+// Complete card initialisation after the driver is ready
+static void complete_card_init(struct alsa_card *card) {
+
+  // Get full element list and create main window
+  alsa_get_elem_list(card);
+  alsa_set_lr_nums(card);
+  alsa_get_routing_controls(card);
+  card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
+
+  if (card->serial) {
+    // Call the reopen callbacks for this card
+    struct reopen_callback *rc = g_hash_table_lookup(
+      reopen_callbacks, card->serial
+    );
+    if (rc)
+      rc->callback(rc->data);
+
+    g_hash_table_remove(reopen_callbacks, card->serial);
+  }
+
+  create_card_window(card);
+}
+
+// Check if the Firmware Version control has a TLV and is locked,
+// indicating the driver is ready
+static int check_driver_ready(snd_ctl_elem_info_t *info) {
+  return snd_ctl_elem_info_is_tlv_readable(info) &&
+         snd_ctl_elem_info_is_locked(info);
+}
+
+// Check if the FCP driver is initialised
+static void check_driver_init(
+  struct alsa_card *card, int numid, unsigned int mask
+) {
+
+  // Ignore controls going away
+  if (mask == SND_CTL_EVENT_MASK_REMOVE)
+    return;
+
+  // Get the control's info
+  snd_ctl_elem_id_t *id;
+  snd_ctl_elem_info_t *info;
+
+  snd_ctl_elem_id_alloca(&id);
+  snd_ctl_elem_info_alloca(&info);
+
+  snd_ctl_elem_id_set_numid(id, numid);
+  snd_ctl_elem_info_set_id(info, id);
+
+  if (snd_ctl_elem_info(card->handle, info) < 0) {
+    fprintf(stderr, "error getting elem info %d\n", numid);
+    return;
+  }
+
+  const char *name = snd_ctl_elem_info_get_name(info);
+
+  // Check if it's the Firmware Version control being updated
+  if (strcmp(name, "Firmware Version"))
+    return;
+
+  // Check if the driver is ready
+  if (!check_driver_ready(info))
+    return;
+
+  // The driver is initialised; update the card's driver type
+  card->driver_type = DRIVER_TYPE_SOCKET;
+
+  // Complete the card initialisation
+  complete_card_init(card);
+}
+
 static gboolean alsa_card_callback(
   GIOChannel    *source,
   GIOCondition   condition,
@@ -822,6 +893,13 @@ static gboolean alsa_card_callback(
 
   int numid = snd_ctl_event_elem_get_numid(event);
   unsigned int mask = snd_ctl_event_elem_get_mask(event);
+
+  // Check if we're waiting for FCP driver to initialise and check if
+  // it's now ready
+  if (card->driver_type == DRIVER_TYPE_SOCKET_UNINIT) {
+    check_driver_init(card, numid, mask);
+    return 1;
+  }
 
   if (mask == SND_CTL_EVENT_MASK_REMOVE) {
     card_destroy_callback(card);
@@ -1091,8 +1169,7 @@ static int check_firmware_version_locked(struct alsa_card *card) {
   if (err < 0)
     return 0;
 
-  return snd_ctl_elem_info_is_writable(info) &&
-         snd_ctl_elem_info_is_locked(info);
+  return check_driver_ready(info);
 }
 
 // return the driver type for this card
@@ -1145,31 +1222,20 @@ static int get_driver_type(struct alsa_card *card) {
 }
 
 static void card_init(struct alsa_card *card) {
-  card->driver_type = get_driver_type(card);
-
-  alsa_get_elem_list(card);
-  alsa_set_lr_nums(card);
-  alsa_get_routing_controls(card);
-
-  alsa_subscribe(card);
   alsa_get_usbid(card);
   alsa_get_serial_number(card);
-  card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
+  alsa_subscribe(card);
+  alsa_add_card_callback(card);
 
-  if (card->serial) {
+  card->driver_type = get_driver_type(card);
 
-    // call the reopen callbacks for this card
-    struct reopen_callback *rc = g_hash_table_lookup(
-      reopen_callbacks, card->serial
-    );
-    if (rc)
-      rc->callback(rc->data);
-
-    g_hash_table_remove(reopen_callbacks, card->serial);
+  // Driver not ready? Create the iface-waiting window
+  if (card->driver_type == DRIVER_TYPE_SOCKET_UNINIT) {
+    create_card_window(card);
+    return;
   }
 
-  create_card_window(card);
-  alsa_add_card_callback(card);
+  complete_card_init(card);
 }
 
 static void alsa_scan_cards(void) {
