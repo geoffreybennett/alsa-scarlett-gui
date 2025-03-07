@@ -10,8 +10,6 @@
 #include "widget-drop-down.h"
 #include "window-startup.h"
 
-#define REQUIRED_HWDEP_VERSION_MAJOR 1
-
 static GtkWidget *small_label(const char *text) {
   GtkWidget *w = gtk_label_new(NULL);
 
@@ -261,37 +259,8 @@ static void add_reset_actions(
   int              *grid_y,
   int               show_reboot_option
 ) {
-  // simulated cards don't support hwdep
-  if (!card->device)
+  if (card->driver_type != DRIVER_TYPE_HWDEP)
     return;
-
-  snd_hwdep_t *hwdep;
-
-  int err = scarlett2_open_card(card->device, &hwdep);
-  if (err < 0) {
-    fprintf(stderr, "unable to open hwdep interface: %s\n", snd_strerror(err));
-    return;
-  }
-
-  int ver = scarlett2_get_protocol_version(hwdep);
-  if (ver < 0) {
-    fprintf(stderr, "unable to get protocol version: %s\n", snd_strerror(ver));
-    return;
-  }
-
-  if (SCARLETT2_HWDEP_VERSION_MAJOR(ver) != REQUIRED_HWDEP_VERSION_MAJOR) {
-    fprintf(
-      stderr,
-      "Unsupported hwdep protocol version %d.%d.%d on card %s\n",
-      SCARLETT2_HWDEP_VERSION_MAJOR(ver),
-      SCARLETT2_HWDEP_VERSION_MINOR(ver),
-      SCARLETT2_HWDEP_VERSION_SUBMINOR(ver),
-      card->device
-    );
-    return;
-  }
-
-  scarlett2_close(hwdep);
 
   // Add reboot action if there is a control that requires a reboot
   // to take effect
