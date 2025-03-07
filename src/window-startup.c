@@ -3,6 +3,7 @@
 
 #include "device-reset-config.h"
 #include "device-update-firmware.h"
+#include "fcp-socket.h"
 #include "gtkhelper.h"
 #include "scarlett2.h"
 #include "scarlett2-ioctls.h"
@@ -236,21 +237,32 @@ static void add_reset_action(
 }
 
 static void reboot_device(GtkWidget *button, struct alsa_card *card) {
-  snd_hwdep_t *hwdep;
+  int err = 0;
 
-  int err = scarlett2_open_card(card->device, &hwdep);
-  if (err < 0) {
-    fprintf(stderr, "unable to open hwdep interface: %s\n", snd_strerror(err));
-    return;
+  // HWDEP (Scarlett2) driver type
+  if (card->driver_type == DRIVER_TYPE_HWDEP) {
+    snd_hwdep_t *hwdep;
+
+    err = scarlett2_open_card(card->device, &hwdep);
+    if (err < 0) {
+      fprintf(stderr, "unable to open hwdep interface: %s\n", snd_strerror(err));
+      return;
+    }
+
+    err = scarlett2_reboot(hwdep);
+    if (err < 0) {
+      fprintf(stderr, "unable to reboot device: %s\n", snd_strerror(err));
+      return;
+    }
+
+    scarlett2_close(hwdep);
+
+  // Socket (FCP) driver type
+  } else if (card->driver_type == DRIVER_TYPE_SOCKET) {
+    err = fcp_socket_reboot_device(card);
+    if (err < 0)
+      fprintf(stderr, "unable to reboot device via socket\n");
   }
-
-  err = scarlett2_reboot(hwdep);
-  if (err < 0) {
-    fprintf(stderr, "unable to reboot device: %s\n", snd_strerror(err));
-    return;
-  }
-
-  scarlett2_close(hwdep);
 }
 
 static void add_reset_actions(
@@ -259,7 +271,8 @@ static void add_reset_actions(
   int              *grid_y,
   int               show_reboot_option
 ) {
-  if (card->driver_type != DRIVER_TYPE_HWDEP)
+  if (card->driver_type != DRIVER_TYPE_HWDEP &&
+      card->driver_type != DRIVER_TYPE_SOCKET)
     return;
 
   // Add reboot action if there is a control that requires a reboot
