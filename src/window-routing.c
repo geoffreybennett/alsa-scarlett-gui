@@ -279,9 +279,10 @@ static void create_routing_grid(struct alsa_card *card) {
       routing_grid, card->routing_dsp_out_grid, dsp_col_num, 3, 1, 1
     );
   }
-  gtk_grid_attach(
-    routing_grid, card->routing_mixer_in_grid, mix_col_num, 0, 1, 1
-  );
+  if (!card->has_fixed_mixer_inputs)
+    gtk_grid_attach(
+      routing_grid, card->routing_mixer_in_grid, mix_col_num, 0, 1, 1
+    );
   gtk_grid_attach(
     routing_grid, card->routing_mixer_out_grid, mix_col_num, 3, 1, 1
   );
