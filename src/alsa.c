@@ -220,8 +220,8 @@ long alsa_get_elem_value(struct alsa_elem *elem) {
 
 // for elements with multiple int values, return all the values
 // the int array returned needs to be freed by the caller
-int *alsa_get_elem_int_values(struct alsa_elem *elem) {
-  int *values = calloc(elem->count, sizeof(int));
+long *alsa_get_elem_int_values(struct alsa_elem *elem) {
+  long *values = calloc(elem->count, sizeof(long));
 
   if (elem->card->num == SIMULATED_CARD_NUM) {
     for (int i = 0; i < elem->count; i++)
