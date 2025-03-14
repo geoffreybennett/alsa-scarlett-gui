@@ -240,7 +240,7 @@ void alsa_elem_add_callback(
 int alsa_get_elem_type(struct alsa_elem *elem);
 char *alsa_get_elem_name(struct alsa_elem *elem);
 long alsa_get_elem_value(struct alsa_elem *elem);
-int *alsa_get_elem_int_values(struct alsa_elem *elem);
+long *alsa_get_elem_int_values(struct alsa_elem *elem);
 void alsa_set_elem_value(struct alsa_elem *elem, long value);
 int alsa_get_elem_writable(struct alsa_elem *elem);
 int alsa_get_elem_volatile(struct alsa_elem *elem);

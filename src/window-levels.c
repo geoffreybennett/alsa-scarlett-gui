@@ -38,7 +38,7 @@ static int update_levels_controls(void *user_data) {
 
   struct alsa_elem *level_meter_elem = data->level_meter_elem;
 
-  int *values = alsa_get_elem_int_values(level_meter_elem);
+  long *values = alsa_get_elem_int_values(level_meter_elem);
 
   gtk_dial_peak_tick();
 
