@@ -66,7 +66,9 @@ modules:
       # - type: git
       #   url: https://github.com/geoffreybennett/alsa-scarlett-gui.git
       #   tag: "0.2"
-
+    cleanup:
+      - /lib/debug
+      - /lib/source
   - name: scarlett2-firmware
     buildsystem: simple
     build-commands:
