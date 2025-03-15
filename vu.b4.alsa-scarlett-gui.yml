@@ -56,9 +56,6 @@ modules:
       - /share/runtime
       - /share/sounds
   - name: alsa-scarlett-gui
-    buildsystem: simple
-    build-commands:
-      - make -j8 install PREFIX=$FLATPAK_DEST
     sources:
       - type: dir
         path: ./src
@@ -66,15 +63,18 @@ modules:
       # - type: git
       #   url: https://github.com/geoffreybennett/alsa-scarlett-gui.git
       #   tag: "0.2"
+    buildsystem: simple
+    build-commands:
+      - make -j8 install PREFIX=$FLATPAK_DEST
     cleanup:
       - /lib/debug
       - /lib/source
   - name: scarlett2-firmware
-    buildsystem: simple
-    build-commands:
-      - mkdir -p $FLATPAK_DEST/lib/firmware/scarlett2
-      - cp -a LICENSE.Focusrite firmware/* $FLATPAK_DEST/lib/firmware/scarlett2
     sources:
       - type: archive
         url: https://github.com/geoffreybennett/scarlett2-firmware/archive/refs/tags/2128b.tar.gz
         sha256: 4a17fdbe2110855c2f7f6cfc5ea1894943a6e58770f3dff5ef283961f8ae2a03
+    buildsystem: simple
+    build-commands:
+      - mkdir -p $FLATPAK_DEST/lib/firmware/scarlett2
+      - cp -a LICENSE.Focusrite firmware/* $FLATPAK_DEST/lib/firmware/scarlett2
