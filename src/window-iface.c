@@ -54,6 +54,7 @@ void create_card_window(struct alsa_card *card) {
   // Scarlett Gen 1
   } else if (get_elem_by_prefix(card->elems, "Matrix")) {
     card->window_main_contents = create_iface_mixer_main(card);
+    has_startup = false;
 
   // Scarlett Gen 2, Gen 3 4i4+, Gen 4, Clarett, or Vocaster
   } else if (get_elem_by_prefix(card->elems, "Mixer")) {
