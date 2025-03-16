@@ -31,7 +31,11 @@ ALSA driver implementation that you should be aware of:
 3. **Level Meters**: The driver does not support reading the level
    meters from the hardware.
 
-4. **Startup Controls**: The driver has no startup controls.
+4. **Startup Configuration**: The driver is not able to save the
+   current configuration to the non-volatile memory of the device, so
+   you’ll need to reapply the desired configuration each time you
+   restart it (or write your preferred configuration using MixControl
+   on Windows or Mac).
 
 ### Recommended Workaround
 
