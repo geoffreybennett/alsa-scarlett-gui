@@ -301,25 +301,80 @@ static void add_reset_actions(
     "factory default settings. The firmware will be left unchanged.",
     G_CALLBACK(create_reset_config_window)
   );
+}
 
-  // Update Firmware
+static void add_firmware_update_action(
+  struct alsa_card *card,
+  GtkWidget        *grid,
+  int              *grid_y
+) {
   struct alsa_elem *firmware_elem =
     get_elem_by_name(card->elems, "Firmware Version");
+  long *firmware_version = NULL;
+
+  // Can only update firmware with HWDEP and SOCKET driver types
+  if (card->driver_type != DRIVER_TYPE_HWDEP &&
+      card->driver_type != DRIVER_TYPE_SOCKET)
+    return;
 
   if (!firmware_elem)
     return;
 
-  int firmware_version = alsa_get_elem_value(firmware_elem);
+  // No firmware version control
+  if (!firmware_elem)
+    goto done;
 
-  if (firmware_version >= card->best_firmware_version)
-    return;
+  // Check if there's a best firmware version
+  if (!card->best_firmware_version[0])
+    goto done;
+
+  // Validate firmware version count
+  if (card->firmware_version_count != 1 &&
+      card->firmware_version_count != 4) {
+    fprintf(
+      stderr,
+      "Firmware Version has invalid count %d\n",
+      card->firmware_version_count
+    );
+    goto done;
+  }
+
+  // Get firmware version
+  firmware_version = alsa_get_elem_int_values(firmware_elem);
+
+  // Check if the best firmware version is less than the current
+  // version
+  for (int i = 0; i < card->firmware_version_count; i++)
+    if (card->best_firmware_version[i] < firmware_version[i])
+      goto done;
+
+  char *version_str, *best_version_str;
+  if (card->firmware_version_count == 1) {
+    version_str = g_strdup_printf("%ld", firmware_version[0]);
+    best_version_str = g_strdup_printf("%d", card->best_firmware_version[0]);
+  } else {
+    version_str = g_strdup_printf(
+      "%ld.%ld.%ld.%ld",
+      firmware_version[0],
+      firmware_version[1],
+      firmware_version[2],
+      firmware_version[3]
+    );
+    best_version_str = g_strdup_printf(
+      "%d.%d.%d.%d",
+      card->best_firmware_version[0],
+      card->best_firmware_version[1],
+      card->best_firmware_version[2],
+      card->best_firmware_version[3]
+    );
+  }
 
   char *s = g_strdup_printf(
     "Updating the firmware will reset the interface to its "
     "factory default settings and update the firmware from version "
-    "%d to %d.",
-    firmware_version,
-    card->best_firmware_version
+    "%s to version %s.",
+    version_str,
+    best_version_str
   );
   add_reset_action(
     card,
@@ -332,6 +387,11 @@ static void add_reset_actions(
   );
 
   g_free(s);
+  g_free(version_str);
+  g_free(best_version_str);
+
+done:
+  free(firmware_version);
 }
 
 static void add_no_startup_controls_msg(GtkWidget *grid) {
@@ -363,6 +423,7 @@ GtkWidget *create_startup_controls(struct alsa_card *card) {
   int has_spdif_mode = add_spdif_mode_control(elems, grid, &grid_y);
   int show_reboot_option = has_msd || has_spdif_mode;
   add_reset_actions(card, grid, &grid_y, show_reboot_option);
+  add_firmware_update_action(card, grid, &grid_y);
 
   if (!grid_y)
     add_no_startup_controls_msg(grid);

@@ -491,18 +491,43 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
 
   alsa_get_elem_tlv(&alsa_elem);
 
-  // Scarlett 1st Gen driver puts two volume controls/mutes in the
-  // same element, so split them out to match the other series
+  // Distinguish between elements with multiple values that should
+  // have multiple controls (e.g. 1st Gen stereo controls) and
+  // elements that should have a single control with multiple values
+  // (e.g. Level Meter, Firmware Version)
+
+  // count is the number of controls to create
+  // alsa_elem.index is the index within the element
+  // default to creating an element for each count
+  // override by setting count = 1
   int count = alsa_elem.count;
 
+  // Don't create multiple level meters controls
   if (strcmp(alsa_elem.name, "Level Meter") == 0)
     count = 1;
 
-  if (count > 2) {
-    fprintf(stderr, "element %s has count %d\n", alsa_elem.name, count);
+  // Don't create multiple firmware version controls
+  if (strstr(alsa_elem.name, "Firmware Version")) {
+    if (count != 1 &&
+        count != 4) {
+      fprintf(stderr, "Firmware Version has invalid count %d\n", count);
+      return;
+    }
+    card->firmware_version_count = count;
     count = 1;
   }
 
+  if (count > 2) {
+    fprintf(
+      stderr,
+      "Unexpected element %s has count %d\n",
+      alsa_elem.name,
+      count
+    );
+    count = 1;
+  }
+
+  // Create a new alsa_elem for each count (channel in the element
   for (int i = 0; i < count; i++, alsa_elem.lr_num++) {
     alsa_elem.index = i;
 
@@ -799,7 +824,12 @@ static void complete_card_init(struct alsa_card *card) {
   alsa_get_elem_list(card);
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
-  card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
+
+  if (card->firmware_version_count) {
+    if (card->firmware_version_count == 1)
+      card->best_firmware_version[0] =
+        scarlett2_get_best_firmware_version(card->pid);
+  }
 
   if (card->serial) {
     // Call the reopen callbacks for this card

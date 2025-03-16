@@ -11,11 +11,88 @@
 #include "iface-waiting.h"
 #include "main.h"
 #include "menu.h"
+#include "scarlett4-firmware.h"
 #include "window-iface.h"
 #include "window-startup.h"
 
 static GtkWidget *no_cards_window;
 static int window_count;
+
+// Check if a firmware update is required
+// or if some firmware version is available and the device is in MSD
+// mode (updating will disable MSD mode)
+static int firmware_update_required(struct alsa_card *card, int in_msd_mode) {
+  struct alsa_elem *firmware_elem =
+    get_elem_by_name(card->elems, "Firmware Version");
+  long *firmware_version = NULL;
+  long *min_firmware_version = NULL;
+  int ret = 0;
+
+  // No firmware version control
+  if (!firmware_elem)
+    goto done;
+
+  // Validate firmware version count
+  if (card->firmware_version_count != 1 &&
+      card->firmware_version_count != 4) {
+    fprintf(
+      stderr,
+      "Firmware Version has invalid count %d\n",
+      card->firmware_version_count
+    );
+    goto done;
+  }
+
+  // Get firmware version
+  firmware_version = alsa_get_elem_int_values(firmware_elem);
+
+  // Check if there is a minimum firmware version
+  struct alsa_elem *min_firmware_elem =
+    get_elem_by_name(card->elems, "Minimum Firmware Version");
+
+  if (min_firmware_elem) {
+
+    // Check if the minimum firmware version has the same count
+    if (min_firmware_elem->count !=
+        card->firmware_version_count) {
+      fprintf(
+        stderr,
+        "Minimum Firmware Version has invalid count %d\n",
+        min_firmware_elem->count
+      );
+      goto done;
+    }
+
+    // Get the minimum firmware version
+    min_firmware_version = alsa_get_elem_int_values(min_firmware_elem);
+
+    // Check if the firmware version is less than the minimum
+    for (int i = 0; i < card->firmware_version_count; i++)
+      if (firmware_version[i] < min_firmware_version[i]) {
+        ret = 1;
+        goto done;
+      }
+  }
+
+  // If not in MSD mode, firmware update is not mandatory
+  if (!in_msd_mode)
+    goto done;
+
+  // Check best firmware version
+  if (!card->best_firmware_version[0])
+    goto done;
+
+  for (int i = 0; i < card->firmware_version_count; i++)
+    if (card->best_firmware_version[i] > firmware_version[i]) {
+      ret = 1;
+      goto done;
+    }
+
+done:
+  free(firmware_version);
+  free(min_firmware_version);
+  return ret;
+}
 
 void create_card_window(struct alsa_card *card) {
   if (no_cards_window) {
@@ -54,23 +131,7 @@ void create_card_window(struct alsa_card *card) {
     get_elem_by_name(card->elems, "MSD Mode Switch");
   int in_msd_mode = msd_elem && alsa_get_elem_value(msd_elem);
 
-  struct alsa_elem *firmware_elem =
-    get_elem_by_name(card->elems, "Firmware Version");
-  struct alsa_elem *min_firmware_elem =
-    get_elem_by_name(card->elems, "Minimum Firmware Version");
-  int firmware_version = 0;
-  int min_firmware_version = 0;
-  if (firmware_elem && min_firmware_elem) {
-    firmware_version = alsa_get_elem_value(firmware_elem);
-    min_firmware_version = alsa_get_elem_value(min_firmware_elem);
-  }
-
-  // Firmware update required
-  // or firmware version available and in MSD mode
-  // (updating will disable MSD mode)
-  if (firmware_version < min_firmware_version ||
-      (card->best_firmware_version > firmware_version &&
-         in_msd_mode)) {
+  if (firmware_update_required(card, in_msd_mode)) {
     card->window_main_contents = create_iface_update_main(card);
     has_startup = false;
     has_mixer = false;

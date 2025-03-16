@@ -177,7 +177,8 @@ struct alsa_card {
   char               *name;
   int                 driver_type;
   char               *fcp_socket;
-  int                 best_firmware_version;
+  int                 firmware_version_count;
+  uint32_t            best_firmware_version[4];
   snd_ctl_t          *handle;
   struct pollfd       pfd;
   GArray             *elems;

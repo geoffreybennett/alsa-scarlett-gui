@@ -25,7 +25,7 @@ GtkWidget *create_iface_update_main(struct alsa_card *card) {
   gtk_widget_add_css_class(w, "window-title");
   gtk_box_append(GTK_BOX(content), w);
 
-  if (!card->best_firmware_version) {
+  if (!card->best_firmware_version[0]) {
     w = gtk_label_new(NULL);
     gtk_label_set_markup(
       GTK_LABEL(w),
@@ -33,7 +33,10 @@ GtkWidget *create_iface_update_main(struct alsa_card *card) {
       "access all of its features. Please obtain the firmware from\n"
       "<a class=\"linktext\" "
       "href=\"https://github.com/geoffreybennett/scarlett2-firmware\">"
-      "https://github.com/geoffreybennett/scarlett2-firmware</a>,\n"
+      "https://github.com/geoffreybennett/scarlett2-firmware</a> and\n"
+      "<a class=\"linktext\" "
+      "href=\"https://github.com/geoffreybennett/scarlett4-firmware\">"
+      "https://github.com/geoffreybennett/scarlett4-firmware</a>,\n"
       "and restart this application."
     );
 
