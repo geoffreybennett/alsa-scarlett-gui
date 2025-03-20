@@ -59,6 +59,12 @@ If you don’t see the “Mixer Driver” message or if it shows “disabled”
 then check the [OLDKERNEL.md](OLDKERNEL.md) instructions (or,
 preferably, upgrade your distro/kernel!).
 
+### FCP User-Space Driver
+
+The FCP kernel driver requires the user-space driver `fcp-server` in
+order to do anything useful. This is available from the
+[fcp-support](https://github.com/geoffreybennett/fcp-support) repo.
+
 ### Gtk4
 
 You need a Linux distribution with Gtk4 development libraries. If it
