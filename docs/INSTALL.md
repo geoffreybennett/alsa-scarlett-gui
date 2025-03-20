@@ -89,9 +89,12 @@ https://github.com/geoffreybennett/scarlett2-firmware and place it in
 
 Firmware updates for the big Scarlett 4th Gen interfaces are currently
 only possible through the CLI `fcp-tool` utility available in the
-[fcp-support](https://github.com/geoffreybennett/fcp-support). You
-need to install this package and update the firmware before
-alsa-scarlett-gui will work.
+[fcp-support](https://github.com/geoffreybennett/fcp-support) repo.
+Updating the firmware is mandatory for these interfaces.
+
+Download the firmware from
+https://github.com/geoffreybennett/scarlett4-firmware and place it in
+`/usr/lib/firmware/scarlett4` or use the RPM/deb package.
 
 ## Building and Running
 
