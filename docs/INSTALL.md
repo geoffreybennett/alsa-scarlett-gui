@@ -30,8 +30,8 @@ is not needed, useful, or supported for these models.
 
 If your distribution doesn’t include a recent-enough kernel for your
 interface, you can get the latest driver from here and build it for
-your current kernel if it’s not too old (the Scarlett2 and FCP drivers
-are both maintained in the same tree here):
+your current kernel, if it’s not too old (the Scarlett2 and FCP
+drivers are both maintained in the same tree here):
 https://github.com/geoffreybennett/linux-fcp/releases
 
 Kernel 6.7 and later have the Scarlett2 driver enabled by default. The
@@ -81,7 +81,7 @@ https://github.com/geoffreybennett/scarlett2-firmware and place it in
 
 #### FCP Driver
 
-Firmware updates for the big Scarlett 4th Gen interfaces is currently
+Firmware updates for the big Scarlett 4th Gen interfaces are currently
 only possible through the CLI `fcp-tool` utility available in the
 [fcp-support](https://github.com/geoffreybennett/fcp-support). You
 need to install this package and update the firmware before
