@@ -99,27 +99,31 @@ and even across different computers. This includes all routing,
 mixing, and other control panel settings.
 
 If you find that your settings are reverting whenever you plug your
-interface in or power it back on, the most likely cause is the
-`alsa-state` and `alsa-restore` systemd services. These services save
-the state of ALSA controls on system shutdown to
-`/var/lib/alsa/asound.state` and then restore it each time the device
-is plugged in, potentially overwriting your interface’s stored
-settings.
+interface in, power it back on, or even if you reset to factory
+defaults, the most likely cause is the `alsa-state` and `alsa-restore`
+systemd services. These services save the state of ALSA controls on
+system shutdown to `/var/lib/alsa/asound.state` and then restore it
+each time the device is plugged in, potentially overwriting your
+interface’s stored settings.
 
 It can be rather annoying, wondering why your device is unusable or
 needs to be reconfigured every time you plug it in or turn it on.
 
-To fix this issue, disable these services:
+To fix this issue, disable these services, optionally remove the
+`asound.state` file if you have no other sound card that needs it, and
+then reboot:
 
 ```sh
 sudo systemctl mask alsa-state
 sudo systemctl mask alsa-restore
+sudo rm /var/lib/alsa/asound.state
+sudo reboot
 ```
 
 You can verify if this is the cause of your issues by:
 
 1. Change some setting that is indicated on the device (the “Inst”
-   setting is a good).
+   setting is a good one to test with).
 2. Disconnect USB and notice the state of the setting on the device
    has not changed.
 3. Power cycle the device and notice the state of the setting on the
@@ -128,7 +132,8 @@ You can verify if this is the cause of your issues by:
    changed.
 
 If the setting on the device changes at step 4, then the `alsa-state`
-and `alsa-restore` services are the likely cause of your issues.
+and `alsa-restore` services are the likely cause of your issues and
+you should disable them as above.
 
 ## Help?!
 
