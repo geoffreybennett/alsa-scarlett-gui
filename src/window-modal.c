@@ -12,6 +12,7 @@ static void modal_no_callback(GtkWidget *w, struct modal_data *modal_data) {
   alsa_unregister_reopen_callback(modal_data->serial);
 
   gtk_window_destroy(GTK_WINDOW(dialog));
+  modal_data->card->window_modal = NULL;
   check_modal_window_closed();
 }
 
