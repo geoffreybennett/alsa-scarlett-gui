@@ -109,15 +109,16 @@ interface’s stored settings.
 It can be rather annoying, wondering why your device is unusable or
 needs to be reconfigured every time you plug it in or turn it on.
 
-To fix this issue, disable these services, optionally remove the
-`asound.state` file if you have no other sound card that needs it, and
-then reboot:
+Presuming that you have no other sound card that needs this ALSA
+service, then disable and stop these two services and remove the
+`asound.state` file:
 
 ```sh
 sudo systemctl mask alsa-state
 sudo systemctl mask alsa-restore
+sudo systemctl stop alsa-state
+sudo systemctl stop alsa-restore
 sudo rm /var/lib/alsa/asound.state
-sudo reboot
 ```
 
 You can verify if this is the cause of your issues by:
