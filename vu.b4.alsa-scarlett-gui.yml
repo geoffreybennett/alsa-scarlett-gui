@@ -1,6 +1,6 @@
 app-id: vu.b4.alsa-scarlett-gui
 runtime: org.gnome.Platform
-runtime-version: "45"
+runtime-version: "47"
 sdk: org.gnome.Sdk
 command: alsa-scarlett-gui
 build-options:
@@ -17,10 +17,45 @@ finish-args:
   # Point to the firmware directory
   - --env=SCARLETT2_FIRMWARE_DIR=/app/lib/firmware/scarlett2
 modules:
+  - name: alsa-utils
+    sources:
+      - type: archive
+        url: https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
+        sha256: 4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
+        dest: .deps/alsa-lib
+      - type: archive
+        url: https://www.alsa-project.org/files/pub/utils/alsa-utils-1.2.12.tar.bz2
+        sha256: 98bc6677d0c0074006679051822324a0ab0879aea558a8f68b511780d30cd924
+    buildsystem: autotools
+    config-opts:
+      # We are only interested in alsactl
+      - --bindir=/app/null
+      - --with-udev-rules-dir=/app/null
+      - --with-systemdsystemunitdir=/app/null
+      # https://github.com/alsa-project/alsa-utils/issues/33
+      - --enable-alsa-topology
+      - --disable-alsaconf
+      - --disable-alsatest
+      - --disable-alsabat-backend-tiny
+      - --disable-alsamixer
+      - --disable-alsaloop
+      - --disable-nhlt
+      - --disable-xmlto
+      - --disable-rst2man
+      - --with-alsa-inc-prefix=.deps/alsa-lib/include
+    post-install:
+      - install -Dm755 /app/sbin/alsactl /app/bin/alsactl
+    cleanup:
+      - /lib/debug
+      - /lib/alsa-topology
+      - /null
+      - /sbin
+      - /share/alsa
+      - /share/locale
+      - /share/man
+      - /share/runtime
+      - /share/sounds
   - name: alsa-scarlett-gui
-    buildsystem: simple
-    build-commands:
-      - make -j8 install PREFIX=$FLATPAK_DEST
     sources:
       - type: dir
         path: ./src
@@ -28,13 +63,18 @@ modules:
       # - type: git
       #   url: https://github.com/geoffreybennett/alsa-scarlett-gui.git
       #   tag: "0.2"
-
-  - name: scarlett2-firmware
     buildsystem: simple
     build-commands:
-      - mkdir -p $FLATPAK_DEST/lib/firmware/scarlett2
-      - cp -a LICENSE.Focusrite firmware/* $FLATPAK_DEST/lib/firmware/scarlett2
+      - make -j8 install PREFIX=$FLATPAK_DEST
+    cleanup:
+      - /lib/debug
+      - /lib/source
+  - name: scarlett2-firmware
     sources:
       - type: archive
         url: https://github.com/geoffreybennett/scarlett2-firmware/archive/refs/tags/2128b.tar.gz
         sha256: 4a17fdbe2110855c2f7f6cfc5ea1894943a6e58770f3dff5ef283961f8ae2a03
+    buildsystem: simple
+    build-commands:
+      - mkdir -p $FLATPAK_DEST/lib/firmware/scarlett2
+      - cp -a LICENSE.Focusrite firmware/* $FLATPAK_DEST/lib/firmware/scarlett2

@@ -23,7 +23,7 @@ jobs:
 
       - name: Build from sources
         run: |
-          make -C src -j4 PREFIX=/usr
+          make -C src -j$(nproc) PREFIX=/usr
 
       - name: Prepare package workspace
         run: |
@@ -44,7 +44,7 @@ jobs:
           maintainer: geoffreybennett
           depends: 'libgtk-4-1, libasound2, alsa-utils'
           version: ${{ env.APP_VERSION }}
-          desc: ${{ env.APP_NAME }} is a Gtk4 GUI for the ALSA controls presented by the Linux kernel Focusrite Scarlett2 Mixer Driver.
+          desc: ${{ env.APP_NAME }} is a Gtk4 GUI for the ALSA controls presented by the Linux kernel Focusrite USB drivers.
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1

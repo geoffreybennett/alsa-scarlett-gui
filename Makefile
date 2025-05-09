@@ -10,7 +10,7 @@ default:
 	@echo
 	@echo "If you want to build and install from source, please try:"
 	@echo "  cd src"
-	@echo "  make -j4"
+	@echo "  make -j$(shell nproc)"
 	@echo "  sudo make install"
 	@echo
 	@echo "This Makefile knows about packaging:"

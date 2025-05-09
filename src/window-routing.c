@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "gtkhelper.h"
@@ -9,107 +9,6 @@
 #include "widget-boolean.h"
 #include "window-mixer.h"
 #include "window-routing.h"
-
-static void get_routing_srcs(struct alsa_card *card) {
-  struct alsa_elem *elem = card->sample_capture_elem;
-
-  int count = alsa_get_item_count(elem);
-  card->routing_srcs = g_array_new(
-    FALSE, TRUE, sizeof(struct routing_src)
-  );
-  g_array_set_size(card->routing_srcs, count);
-
-  for (int i = 0; i < count; i++) {
-    char *name = alsa_get_item_name(elem, i);
-
-    struct routing_src *r = &g_array_index(
-      card->routing_srcs, struct routing_src, i
-    );
-    r->card = card;
-    r->id = i;
-
-    if (strncmp(name, "Mix", 3) == 0)
-      r->port_category = PC_MIX;
-    else if (strncmp(name, "DSP", 3) == 0)
-      r->port_category = PC_DSP;
-    else if (strncmp(name, "PCM", 3) == 0)
-      r->port_category = PC_PCM;
-    else
-      r->port_category = PC_HW;
-
-    r->name = name;
-    r->lr_num =
-      r->port_category == PC_MIX
-        ? name[4] - 'A' + 1
-        : get_num_from_string(name);
-
-    r->port_num = card->routing_in_count[r->port_category]++;
-  }
-
-  assert(card->routing_in_count[PC_MIX] <= MAX_MIX_OUT);
-}
-
-static void get_routing_snks(struct alsa_card *card) {
-  GArray *elems = card->elems;
-
-  int count = 0;
-
-  // count and label routing snks
-  for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
-
-    if (!elem->card)
-      continue;
-
-    if (!is_elem_routing_snk(elem))
-      continue;
-
-    int i = get_num_from_string(elem->name);
-    if (i < 0)
-      continue;
-
-    elem->lr_num = i;
-    count++;
-  }
-
-  // create an array of routing snks pointing to those elements
-  card->routing_snks = g_array_new(
-    FALSE, TRUE, sizeof(struct routing_snk)
-  );
-  g_array_set_size(card->routing_snks, count);
-
-  // count through card->routing_snks
-  int j = 0;
-
-  for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
-
-    if (!elem->lr_num)
-      continue;
-
-    struct routing_snk *r = &g_array_index(
-      card->routing_snks, struct routing_snk, j
-    );
-    r->idx = j;
-    j++;
-    r->elem = elem;
-    if (strncmp(elem->name, "Mixer Input", 11) == 0) {
-      r->port_category = PC_MIX;
-    } else if (strncmp(elem->name, "DSP Input", 9) == 0) {
-      r->port_category = PC_DSP;
-    } else if (strncmp(elem->name, "PCM", 3) == 0) {
-      r->port_category = PC_PCM;
-    } else if (strstr(elem->name, "Playback Enum")) {
-      r->port_category = PC_HW;
-    } else {
-      printf("unknown mixer routing elem %s\n", elem->name);
-      continue;
-    }
-    r->port_num = card->routing_out_count[r->port_category]++;
-  }
-
-  assert(j == count);
-}
 
 // clear all the routing sinks
 static void routing_preset_clear(struct alsa_card *card) {
@@ -150,8 +49,9 @@ static void routing_preset_link(
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, snk_idx
     );
+    struct alsa_elem *elem = r_snk->elem;
 
-    if (r_snk->port_category == snk_port_category)
+    if (elem->port_category == snk_port_category)
       break;
   }
 
@@ -172,11 +72,13 @@ static void routing_preset_link(
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, snk_idx
     );
-    if (r_snk->port_category != snk_port_category)
+    struct alsa_elem *elem = r_snk->elem;
+
+    if (elem->port_category != snk_port_category)
       break;
 
     // do the assignment
-    alsa_set_elem_value(r_snk->elem, r_src->id);
+    alsa_set_elem_value(elem, r_src->id);
 
     // get the next index
     src_idx++;
@@ -339,11 +241,12 @@ static void create_routing_grid(struct alsa_card *card) {
       GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
     );
   }
-  card->routing_mixer_in_grid = create_routing_group_grid(
-    card, "routing_mixer_in_grid", "Mixer\nInputs",
-    "Mixer Inputs are used to mix multiple audio channels together",
-    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
-  );
+  if (!card->has_fixed_mixer_inputs)
+    card->routing_mixer_in_grid = create_routing_group_grid(
+      card, "routing_mixer_in_grid", "Mixer\nInputs",
+      "Mixer Inputs are used to mix multiple audio channels together",
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+    );
   card->routing_mixer_out_grid = create_routing_group_grid(
     card, "routing_mixer_out_grid",
     card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
@@ -376,9 +279,10 @@ static void create_routing_grid(struct alsa_card *card) {
       routing_grid, card->routing_dsp_out_grid, dsp_col_num, 3, 1, 1
     );
   }
-  gtk_grid_attach(
-    routing_grid, card->routing_mixer_in_grid, mix_col_num, 0, 1, 1
-  );
+  if (!card->has_fixed_mixer_inputs)
+    gtk_grid_attach(
+      routing_grid, card->routing_mixer_in_grid, mix_col_num, 0, 1, 1
+    );
   gtk_grid_attach(
     routing_grid, card->routing_mixer_out_grid, mix_col_num, 3, 1, 1
   );
@@ -388,7 +292,9 @@ static void create_routing_grid(struct alsa_card *card) {
   gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(routing_grid, src_label, left_col_num, 3, 1, 1);
 
-  GtkWidget *snk_label = gtk_label_new("← Sinks\n↓");
+  GtkWidget *snk_label = gtk_label_new(
+    card->has_fixed_mixer_inputs ? "Sinks\n↓" : "← Sinks\n↓"
+  );
   gtk_label_set_justify(GTK_LABEL(snk_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(routing_grid, snk_label, right_col_num, 0, 1, 1);
 }
@@ -401,6 +307,101 @@ static GtkWidget *make_socket_widget(void) {
   gtk_picture_set_can_shrink(GTK_PICTURE(w), FALSE);
   gtk_widget_set_margin(w, 2);
   return w;
+}
+
+static void routing_label_enter(
+  GtkEventControllerMotion *controller,
+  double x, double y,
+  gpointer user_data
+) {
+  GtkWidget *widget = GTK_WIDGET(user_data);
+
+  gtk_widget_add_css_class(widget, "route-label-hover");
+
+  struct routing_src *r_src = g_object_get_data(G_OBJECT(widget), "routing_src");
+  struct routing_snk *r_snk = g_object_get_data(G_OBJECT(widget), "routing_snk");
+
+  if (r_src) {
+    struct alsa_card *card = r_src->card;
+
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+
+      if (!r_snk->box_widget)
+        continue;
+
+      if (alsa_get_elem_value(r_snk->elem) == r_src->id)
+        gtk_widget_add_css_class(r_snk->box_widget, "route-label-hover");
+    }
+
+  } else if (r_snk) {
+    struct alsa_card *card = r_snk->elem->card;
+
+    int r_src_idx = alsa_get_elem_value(r_snk->elem);
+
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+
+      if (!r_src->widget)
+        continue;
+
+      if (r_src->id == r_src_idx)
+        gtk_widget_add_css_class(r_src->widget, "route-label-hover");
+    }
+  }
+}
+
+static void routing_label_leave(
+  GtkEventControllerMotion *controller,
+  gpointer user_data
+) {
+  GtkWidget *widget = GTK_WIDGET(user_data);
+
+  gtk_widget_remove_css_class(widget, "route-label-hover");
+
+  struct routing_src *r_src = g_object_get_data(G_OBJECT(widget), "routing_src");
+  struct routing_snk *r_snk = g_object_get_data(G_OBJECT(widget), "routing_snk");
+
+  if (r_src) {
+    struct alsa_card *card = r_src->card;
+
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+
+      if (!r_snk->box_widget)
+        continue;
+
+      gtk_widget_remove_css_class(r_snk->box_widget, "route-label-hover");
+    }
+
+  } else if (r_snk) {
+    struct alsa_card *card = r_snk->elem->card;
+
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+
+      if (!r_src->widget)
+        continue;
+
+      gtk_widget_remove_css_class(r_src->widget, "route-label-hover");
+    }
+  }
+}
+
+static void add_routing_hover_controller(GtkWidget *widget) {
+  GtkEventController *motion = gtk_event_controller_motion_new();
+
+  g_signal_connect(motion, "enter", G_CALLBACK(routing_label_enter), widget);
+  g_signal_connect(motion, "leave", G_CALLBACK(routing_label_leave), widget);
+  gtk_widget_add_controller(widget, motion);
 }
 
 // something was dropped on a routing source
@@ -467,11 +468,12 @@ static void src_routing_clicked(
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
     );
+    struct alsa_elem *elem = r_snk->elem;
 
-    int r_src_idx = alsa_get_elem_value(r_snk->elem);
+    int r_src_idx = alsa_get_elem_value(elem);
 
     if (r_src_idx == r_src->id)
-      alsa_set_elem_value(r_snk->elem, 0);
+      alsa_set_elem_value(elem, 0);
   }
 }
 
@@ -699,6 +701,8 @@ static void make_src_routing_widget(
   GtkWidget *box = r_src->widget = gtk_box_new(orientation, 5);
   GtkWidget *socket = r_src->widget2 = make_socket_widget();
 
+  g_object_set_data(G_OBJECT(box), "routing_src", r_src);
+
   // create label for mixer inputs (length > 1) and mixer outputs if
   // not talkback (talkback has a button outside the box instead of a
   // label inside the box)
@@ -732,6 +736,9 @@ static void make_src_routing_widget(
     GTK_WIDGET(box), GTK_EVENT_CONTROLLER(gesture)
   );
 
+  // handle hovering
+  add_routing_hover_controller(box);
+
   // handle dragging to or from the box
   setup_src_drag(r_src);
 }
@@ -764,6 +771,9 @@ static void make_snk_routing_widget(
   GtkWidget *label = gtk_label_new(name);
   gtk_box_append(GTK_BOX(box), label);
   GtkWidget *socket = r_snk->socket_widget = make_socket_widget();
+
+  g_object_set_data(G_OBJECT(box), "routing_snk", r_snk);
+
   if (orientation == GTK_ORIENTATION_VERTICAL) {
     gtk_box_append(GTK_BOX(box), socket);
     gtk_widget_set_margin_start(box, 5);
@@ -785,6 +795,9 @@ static void make_snk_routing_widget(
     GTK_WIDGET(box), GTK_EVENT_CONTROLLER(gesture)
   );
 
+  // handle hovering
+  add_routing_hover_controller(box);
+
   // handle dragging to or from the box
   setup_snk_drag(r_snk);
 }
@@ -802,7 +815,7 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
 
   // "DSP Input X Capture Enum" controls (DSP Inputs) go along
   // the top, in card->routing_mixer_in_grid
-  if (r_snk->port_category == PC_DSP) {
+  if (elem->port_category == PC_DSP) {
 
     char name[10];
 
@@ -810,12 +823,15 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
     make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
     gtk_grid_attach(
       GTK_GRID(card->routing_dsp_in_grid), r_snk->box_widget,
-      r_snk->port_num + 1, 0, 1, 1
+      elem->port_num + 1, 0, 1, 1
     );
 
   // "Mixer Input X Capture Enum" controls (Mixer Inputs) go along
   // the top, in card->routing_mixer_in_grid after the DSP Inputs
-  } else if (r_snk->port_category == PC_MIX) {
+  } else if (elem->port_category == PC_MIX) {
+
+    if (card->has_fixed_mixer_inputs)
+      return;
 
     char name[10];
 
@@ -823,48 +839,37 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
     make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
     gtk_grid_attach(
       GTK_GRID(card->routing_mixer_in_grid), r_snk->box_widget,
-      r_snk->port_num + 1, 0, 1, 1
+      elem->port_num + 1, 0, 1, 1
     );
 
   // "PCM X Capture Enum" controls (PCM Inputs) go along the right,
   // in card->routing_pcm_out_grid
-  } else if (r_snk->port_category == PC_PCM) {
-    char *name = strdup(elem->name);
-    char *name_end = strchr(name, ' ');
-
-    // in case the number is zero-padded
-    if (name_end)
-      snprintf(name_end, strlen(name_end) + 1, " %d", elem->lr_num);
-
+  } else if (elem->port_category == PC_PCM) {
+    char *name = g_strdup_printf("PCM %d", elem->lr_num);
     make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_HORIZONTAL);
-    free(name);
+    g_free(name);
 
     gtk_grid_attach(
       GTK_GRID(card->routing_pcm_out_grid), r_snk->box_widget,
-      0, r_snk->port_num + 1, 1, 1
+      0, elem->port_num + 1, 1, 1
     );
 
-  // "* Output X Playback Enum" controls go along the right, in
+  // "* X Playback Enum" controls go along the right, in
   // card->routing_hw_out_grid
-  } else if (r_snk->port_category == PC_HW) {
+  } else if (elem->port_category == PC_HW) {
 
-    // Convert "Analogue 01 Output Playback Enum" to "Analogue 1"
-    char *name = strdup(elem->name);
-    char *name_end = strstr(name, " Output ");
-
-    // in case the number is zero-padded
-    if (name_end)
-      snprintf(name_end, strlen(name_end) + 1, " %d", elem->lr_num);
-
+    char *name = g_strdup_printf(
+      "%s %d", hw_type_names[elem->hw_type], elem->lr_num
+    );
     make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_HORIZONTAL);
-    free(name);
+    g_free(name);
 
     gtk_grid_attach(
       GTK_GRID(card->routing_hw_out_grid), r_snk->box_widget,
-      0, r_snk->port_num + 1, 1, 1
+      0, elem->port_num + 1, 1, 1
     );
   } else {
-    printf("invalid port category %d\n", r_snk->port_category);
+    printf("invalid port category %d\n", elem->port_category);
   }
 
   alsa_elem_add_callback(elem, routing_updated, NULL);
@@ -925,17 +930,25 @@ static void add_routing_widgets(
         );
       }
     } else if (r_src->port_category == PC_PCM) {
+      char *name = g_strdup_printf("PCM %d", r_src->lr_num);
       make_src_routing_widget(
-        card, r_src, r_src->name, GTK_ORIENTATION_HORIZONTAL
+        card, r_src, name, GTK_ORIENTATION_HORIZONTAL
       );
+      g_free(name);
       gtk_grid_attach(
         GTK_GRID(card->routing_pcm_in_grid), r_src->widget,
         0, r_src->port_num + 1, 1, 1
       );
     } else if (r_src->port_category == PC_HW) {
-      make_src_routing_widget(
-        card, r_src, r_src->name, GTK_ORIENTATION_HORIZONTAL
+      char *name = g_strdup_printf(
+        "%s %d",
+        hw_type_names[r_src->hw_type],
+        r_src->lr_num
       );
+      make_src_routing_widget(
+        card, r_src, name, GTK_ORIENTATION_HORIZONTAL
+      );
+      g_free(name);
       gtk_grid_attach(
         GTK_GRID(card->routing_hw_in_grid), r_src->widget,
         0, r_src->port_num + 1, 1, 1
@@ -973,16 +986,10 @@ static void add_routing_widgets(
 
 GtkWidget *create_routing_controls(struct alsa_card *card) {
 
-  // check that we can find a routing control
-  card->sample_capture_elem =
-    get_elem_by_name(card->elems, "PCM 01 Capture Enum");
   if (!card->sample_capture_elem) {
-    printf("couldn't find PCM 01 Capture Enum control; can't create GUI\n");
+    printf("couldn't find sample capture control; can't create GUI\n");
     return NULL;
   }
-
-  get_routing_srcs(card);
-  get_routing_snks(card);
 
   create_routing_grid(card);
 

@@ -55,7 +55,7 @@
   border-radius: 3px;
 }
 
-.route-label:hover {
+.route-label-hover {
   background: #801010;
   outline: 2px solid #801010;
 }
@@ -63,6 +63,14 @@
 .route-label:drop(active) {
   box-shadow: none;
   background: #801010;
+}
+
+.mixer-label {
+}
+
+.mixer-label-hover {
+  font-weight: bold;
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
 label.gain {
@@ -151,6 +159,27 @@ button.toggle {
   text-shadow: 0 0 5px #0000ff, 0 0 15px #0000ff;
 }
 
+.window-frame button.speaker-switching-enable:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+.window-frame button.speaker-switching-alt {
+  color: #ffffff;
+  text-shadow: 0 0 5px #00ff00, 0 0 15px #00c000;
+}
+
+.window-frame button.speaker-switching-alt:checked {
+  text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
+}
+
+.window-frame button.talkback-enable:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+.window-frame button.talk:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
 /* orange */
 .window-frame .vocaster button.autogain:checked {
   text-shadow: 0 0 5px #ffc000, 0 0 15px #ffc000;
@@ -207,6 +236,10 @@ button.toggle {
 }
 
 .window-frame button.pad:checked {
+  text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+.window-frame button.gain-switch:checked {
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 

@@ -1,35 +1,29 @@
-Summary: ALSA Scarlett Gen 2/3 Control Panel
-Name: alsa-scarlett-gui
-Version: VERSION
-Release: 1%{?dist}
-License: GPLv3+ LGPLv3+
-Url: https://github.com/geoffreybennett/alsa-scarlett-gui
-Source: %{name}-%{version}.tar.gz
+Summary:        ALSA Scarlett Control Panel
+Name:           alsa-scarlett-gui
+Version:        VERSION
+Release:        1%{?dist}
+License:        GPLv3+ LGPLv3+
+Url:            https://github.com/geoffreybennett/alsa-scarlett-gui
+Source0:        https://github.com/geoffreybennett/alsa-scarlett-gui/archive/refs/tags/%{version}.tar.gz?/%{name}-%{version}.tar.gz
+BuildRequires:  pkgconfig(alsa)
+BuildRequires:  pkgconfig(gtk4)
+BuildRequires:  pkgconfig(openssl)
 
 %description
-
 alsa-scarlett-gui is a Gtk4 GUI for the ALSA controls presented by the
-Linux kernel Focusrite Scarlett2 Mixer Driver.
+Linux kernel Focusrite USB drivers.
 
 %prep
-%setup
+%setup -q -n %{name}-%{version}/src
 
 %build
-make -C src -j4 VERSION=%{version} PREFIX=/usr
+%make_build VERSION=%{version} PREFIX=%{_prefix}
 
 %install
-%make_install -C src PREFIX=/usr
-DOCDIR=%{buildroot}/usr/share/doc/%{name}-%{version}
-mkdir -p $DOCDIR/img
-mkdir $DOCDIR/demo
-mkdir $DOCDIR/docs
-cp *.md $DOCDIR
-cp img/* $DOCDIR/img
-cp demo/* $DOCDIR/demo
-cp docs/* $DOCDIR/docs
+%make_install PREFIX=%{_prefix}
 
 %files
-%doc /usr/share/doc/%{name}-%{version}
-/usr/bin/alsa-scarlett-gui
-/usr/share/applications/vu.b4.alsa-scarlett-gui.desktop
-/usr/share/icons/hicolor/256x256/apps/vu.b4.alsa-scarlett-gui.png
+%doc ../img ../demo ../docs ../*.md
+%{_bindir}/alsa-scarlett-gui
+%{_datadir}/applications/vu.b4.alsa-scarlett-gui.desktop
+%{_iconsdir}/hicolor/256x256/apps/vu.b4.alsa-scarlett-gui.png

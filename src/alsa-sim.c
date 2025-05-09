@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "alsa.h"
@@ -99,6 +99,53 @@ static void alsa_parse_enum_items(
   }
 }
 
+static void alsa_parse_int_array(
+  snd_config_t *node,
+  long        **int_values
+) {
+  int count = snd_config_is_array(node);
+  if (count < 0) {
+    printf("error: parse int array value %d\n", count);
+    return;
+  }
+
+  *int_values = calloc(count, sizeof(long));
+
+  int item_num = 0;
+
+  snd_config_iterator_t i, next;
+  snd_config_for_each(i, next, node) {
+    snd_config_t *node = snd_config_iterator_entry(i);
+
+    const char *key;
+
+    int err = snd_config_get_id(node, &key);
+    if (err < 0)
+      fatal_alsa_error("snd_config_get_id error", err);
+
+    int type = snd_config_get_type(node);
+
+    if (type == SND_CONFIG_TYPE_STRING) {
+      const char *string_value;
+
+      err = snd_config_get_string(node, &string_value);
+      if (err < 0)
+        fatal_alsa_error("snd_config_get_string error", err);
+
+      if (strcmp(string_value, "true") == 0)
+        (*int_values)[item_num++] = 1;
+
+    } else if (type == SND_CONFIG_TYPE_INTEGER) {
+      long int_value;
+      err = snd_config_get_integer(node, &int_value);
+      if (err < 0)
+        fatal_alsa_error("snd_config_get_integer error", err);
+
+      (*int_values)[item_num++] = int_value;
+    }
+  }
+}
+
 // parse a comment node and update elem, e.g.:
 //
 // comment {
@@ -149,6 +196,14 @@ static void alsa_parse_comment_node(
         elem->type = SND_CTL_ELEM_TYPE_ENUMERATED;
       else if (strcmp(type, "INTEGER") == 0)
         elem->type = SND_CTL_ELEM_TYPE_INTEGER;
+    } else if (strcmp(key, "count") == 0) {
+      long count;
+
+      err = snd_config_get_integer(node, &count);
+      if (err < 0)
+        fatal_alsa_error("snd_config_get_integer error", err);
+
+      elem->count = count;
     } else if (strcmp(key, "item") == 0) {
       alsa_parse_enum_items(node, elem);
     } else if (strcmp(key, "range") == 0) {
@@ -176,7 +231,7 @@ static void alsa_parse_comment_node(
       err = snd_config_get_integer(node, &dbmin);
       if (err < 0)
         fatal_alsa_error("snd_config_get_integer error", err);
-      elem->min_dB = dbmin / 100;
+      elem->min_cdB = dbmin;
     } else if (strcmp(key, "dbmax") == 0) {
       if (type != SND_CONFIG_TYPE_INTEGER) {
         printf("dbmax type not integer\n");
@@ -186,14 +241,14 @@ static void alsa_parse_comment_node(
       err = snd_config_get_integer(node, &dbmax);
       if (err < 0)
         fatal_alsa_error("snd_config_get_integer error", err);
-      elem->max_dB = dbmax / 100;
+      elem->max_cdB = dbmax;
     }
   }
 }
 
 static int alsa_config_to_new_elem(
-  snd_config_t     *config,
-  struct alsa_elem *elem
+  struct alsa_card *card,
+  snd_config_t     *config
 ) {
   const char *s;
   int id;
@@ -202,7 +257,10 @@ static int alsa_config_to_new_elem(
   int value_type = -1;
   char *string_value = NULL;
   long int_value;
+  long *int_values = NULL;
   int err;
+
+  struct alsa_elem elem = {};
 
   err = snd_config_get_id(config, &s);
   if (err < 0)
@@ -260,11 +318,14 @@ static int alsa_config_to_new_elem(
           fatal_alsa_error("snd_config_get_string error", err);
         string_value = strdup(s);
       } else if (type == SND_CONFIG_TYPE_COMPOUND) {
-        elem->count = snd_config_is_array(node);
+        elem.count = snd_config_is_array(node);
+
         if (strcmp(name, "Level Meter") == 0) {
           seen_value = 1;
           value_type = SND_CONFIG_TYPE_INTEGER;
           int_value = 0;
+        } else if (elem.count == 2 && strncmp(name, "Master", 6) == 0) {
+          alsa_parse_int_array(node, &int_values);
         } else {
           goto fail;
         }
@@ -278,7 +339,11 @@ static int alsa_config_to_new_elem(
 
     // comment node?
     } else if (strcmp(key, "comment") == 0) {
-      alsa_parse_comment_node(node, elem);
+      alsa_parse_comment_node(node, &elem);
+
+    // this isn't needed
+    } else if (strcmp(key, "index") == 0) {
+
     } else {
       printf("skipping unknown node %s for %d\n", key, id);
       goto fail;
@@ -309,21 +374,21 @@ static int alsa_config_to_new_elem(
 
   // integer in config
   if (value_type == SND_CONFIG_TYPE_INTEGER) {
-    elem->value = int_value;
+    elem.value = int_value;
 
   // string in config
   } else if (value_type == SND_CONFIG_TYPE_STRING) {
 
     // translate boolean true/false
-    if (elem->type == SND_CTL_ELEM_TYPE_BOOLEAN) {
+    if (elem.type == SND_CTL_ELEM_TYPE_BOOLEAN) {
       if (strcmp(string_value, "true") == 0)
-        elem->value = 1;
+        elem.value = 1;
 
     // translate enum string value to integer
-    } else if (elem->type == SND_CTL_ELEM_TYPE_ENUMERATED) {
-      for (int i = 0; i < elem->item_count; i++) {
-        if (strcmp(string_value, elem->item_names[i]) == 0) {
-          elem->value = i;
+    } else if (elem.type == SND_CTL_ELEM_TYPE_ENUMERATED) {
+      for (int i = 0; i < elem.item_count; i++) {
+        if (strcmp(string_value, elem.item_names[i]) == 0) {
+          elem.value = i;
           break;
         }
       }
@@ -334,11 +399,30 @@ static int alsa_config_to_new_elem(
     }
   }
 
-  elem->numid = id;
-  elem->name = name;
+  elem.card = card;
+  elem.numid = id;
+  elem.name = name;
+
+  // duplicate the element for each channel except for the Level Meter
+  int count = elem.count;
+
+  if (strcmp(elem.name, "Level Meter") == 0)
+    count = 1;
+
+  // for each channel, create a new element and add it to the card
+  // incrementing the index each time
+  for (int i = 0; i < count; i++, elem.index++) {
+    if (count > 1)
+      elem.value = int_values[i];
+
+    int array_len = card->elems->len;
+    g_array_set_size(card->elems, array_len + 1);
+    g_array_index(card->elems, struct alsa_elem, array_len) = elem;
+  }
 
   free(iface);
   free(string_value);
+  free(int_values);
 
   return 0;
 
@@ -346,6 +430,7 @@ fail:
   free(iface);
   free(name);
   free(string_value);
+  free(int_values);
 
   return -1;
 }
@@ -370,18 +455,8 @@ static void alsa_config_to_new_card(
     if (snd_config_get_type(config) != SND_CONFIG_TYPE_COMPOUND)
       continue;
 
-    struct alsa_elem elem = {};
-    elem.card = card;
-
     // create the element
-    int err = alsa_config_to_new_elem(node, &elem);
-
-    if (err)
-      continue;
-
-    if (card->elems->len <= elem.numid)
-      g_array_set_size(card->elems, elem.numid + 1);
-    g_array_index(card->elems, struct alsa_elem, elem.numid) = elem;
+    alsa_config_to_new_elem(card, node);
   }
 }
 
@@ -432,6 +507,9 @@ void create_sim_from_file(GtkWindow *w, char *fn) {
   alsa_config_to_new_card(config, card);
 
   snd_config_delete(config);
+
+  alsa_set_lr_nums(card);
+  alsa_get_routing_controls(card);
 
   create_card_window(card);
 }

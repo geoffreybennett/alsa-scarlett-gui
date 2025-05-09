@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
+# SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Credit to Tom Tromey and Paul D. Smith:
@@ -13,7 +13,8 @@ DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 CFLAGS ?= -ggdb -fno-omit-frame-pointer -fPIE -O2
-CFLAGS += -Wall -Werror -D_FORTIFY_SOURCE=2
+CFLAGS += -Wall -Werror
+CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 CFLAGS += -DVERSION=\"$(VERSION)\"
 CFLAGS += -Wno-error=deprecated-declarations
 
@@ -52,7 +53,7 @@ GLIB_COMPILE_RESOURCES := $(shell $(PKG_CONFIG) --variable=glib_compile_resource
 
 all: $(TARGET) $(DESKTOP_FILE)
 
-clean:
+clean: depclean
 	rm -f $(TARGET) $(DESKTOP_FILE) $(OBJS) $(XML_OBJ)
 
 depclean:

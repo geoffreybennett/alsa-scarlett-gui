@@ -1,14 +1,18 @@
 # ALSA Scarlett2 Usage With Old Kernels
 
+**This information is mostly for historical purposes. If you’re
+running a kernel before 6.7, you should upgrade to a newer kernel.**
+
 Linux kernel 6.7 (check your version with `uname -r`) was the first
-kernel version with this driver enabled by default. It’s recommended
-that you run 6.7 or later, or build the backported driver for your
-kernel. If you do, then these instructions aren’t relevant; continue
-with [INSTALL.md](INSTALL.md) for prerequisites, how to build,
-install, and run `alsa-scarlett-gui`.
+kernel version with the Scarlett2 driver enabled by default. It’s
+recommended that you run 6.7 or later, or build the backported driver
+for your kernel. If you do, then these instructions aren’t relevant;
+continue with [INSTALL.md](INSTALL.md) for prerequisites, how to
+build, install, and run `alsa-scarlett-gui`.
 
 If you’ve got a Scarlett Gen 2 or 3 or a Clarett+ 8Pre and don’t mind
-the level meters not working, then the minimum kernel versions are:
+the level meters not working, then the first kernel support was added
+in:
 
 - **Scarlett Gen 2**: Linux 5.4 (bugs fixed in Linux 5.14)
 - **Scarlett Gen 3**: Linux 5.14
@@ -18,7 +22,7 @@ the level meters not working, then the minimum kernel versions are:
 
 Install the latest version of the backported driver from here:
 
-https://github.com/geoffreybennett/scarlett-gen2/releases
+https://github.com/geoffreybennett/linux-fcp/releases
 
 then you can ignore the instructions below.
 

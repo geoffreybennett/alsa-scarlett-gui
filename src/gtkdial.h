@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2021 Stiliyan Varbanov <https://www.fiverr.com/stilvar>
-// SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 /*
@@ -68,6 +68,9 @@ double gtk_dial_get_zero_db(GtkDial *dial);
 void gtk_dial_set_off_db(GtkDial *dial, double off_db);
 double gtk_dial_get_off_db(GtkDial *dial);
 
+void gtk_dial_set_is_linear(GtkDial *dial, gboolean is_linear);
+gboolean gtk_dial_get_is_linear(GtkDial *dial);
+
 // taper functions
 enum {
   GTK_DIAL_TAPER_LINEAR,
@@ -97,6 +100,13 @@ void gtk_dial_set_level_meter_colours(
 void gtk_dial_set_peak_hold(GtkDial *dial, int peak_hold);
 int gtk_dial_get_peak_hold(GtkDial *dial);
 void gtk_dial_peak_tick(void);
+
+int cdb_to_linear_value(
+  int db, int min_val, int max_val, int min_db, int max_db
+);
+int linear_value_to_cdb(
+  int value, int min_val, int max_val, int min_db, int max_db
+);
 
 G_END_DECLS
 

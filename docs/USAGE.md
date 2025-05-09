@@ -1,4 +1,4 @@
-# ALSA Scarlett2 Control Panel Usage
+# ALSA Scarlett Control Panel Usage
 
 Refer to [INSTALL.md](INSTALL.md) for prerequisites, how to build,
 install, and run.
@@ -59,7 +59,7 @@ restart the interface, and in a moment the main window will appear.
 The View → Startup menu option opens a window to configure settings
 that only take effect when the interface is powered on.
 
-The options common to all interfaces are:
+The options common to most interfaces are:
 
 - **Reset Configuration**: this will reset the configuration to the
   factory defaults. This is particularly useful with the 4th Gen and
@@ -105,9 +105,13 @@ menu option File → Interface Simulation to load.
 The controls and menu items which are available vary widely, depending
 on your specific interface.
 
-There are three broad categories of interfaces with different
+There are five broad categories of interfaces with different
 capabilities; each category of interface is described in a separate
-ocument:
+document:
+
+- [Scarlett 1st Gen 6i6+](iface-1st-gen.md)
+
+  Full routing and mixing capabilities, but some significant caveats.
 
 - [Scarlett 3rd Gen Solo and 2i2](iface-small.md)
 
@@ -119,12 +123,20 @@ ocument:
 
   Full routing and mixing capabilities.
 
-- [Scarlett 4th Gen](iface-4th-gen.md)
+- [Scarlett Small 4th Gen](iface-4th-gen-small.md)
 
   Full routing and mixing capabilities, remote-controlled input gain,
   but no output controls.
 
+- [Scarlett Big 4th Gen](iface-4th-gen-big.md)
+
+  Full routing and mixing capabilities, remote-controlled input gain
+  and output volume controls.
+
 ## Known Bugs/Issues
+
+- For interfaces using the FCP driver, alsa-scarlett-gui needs to be
+  started after the interface is connected and fcp-server has started.
 
 - Load/Save uses `alsactl` which will be confused if the ALSA
   interface name (e.g. `USB`) changes.

@@ -1,16 +1,15 @@
-// SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "device-reset-config.h"
 #include "device-update-firmware.h"
+#include "fcp-socket.h"
 #include "gtkhelper.h"
 #include "scarlett2.h"
 #include "scarlett2-ioctls.h"
 #include "widget-boolean.h"
 #include "widget-drop-down.h"
 #include "window-startup.h"
-
-#define REQUIRED_HWDEP_VERSION_MAJOR 1
 
 static GtkWidget *small_label(const char *text) {
   GtkWidget *w = gtk_label_new(NULL);
@@ -238,21 +237,32 @@ static void add_reset_action(
 }
 
 static void reboot_device(GtkWidget *button, struct alsa_card *card) {
-  snd_hwdep_t *hwdep;
+  int err = 0;
 
-  int err = scarlett2_open_card(card->device, &hwdep);
-  if (err < 0) {
-    fprintf(stderr, "unable to open hwdep interface: %s\n", snd_strerror(err));
-    return;
+  // HWDEP (Scarlett2) driver type
+  if (card->driver_type == DRIVER_TYPE_HWDEP) {
+    snd_hwdep_t *hwdep;
+
+    err = scarlett2_open_card(card->device, &hwdep);
+    if (err < 0) {
+      fprintf(stderr, "unable to open hwdep interface: %s\n", snd_strerror(err));
+      return;
+    }
+
+    err = scarlett2_reboot(hwdep);
+    if (err < 0) {
+      fprintf(stderr, "unable to reboot device: %s\n", snd_strerror(err));
+      return;
+    }
+
+    scarlett2_close(hwdep);
+
+  // Socket (FCP) driver type
+  } else if (card->driver_type == DRIVER_TYPE_SOCKET) {
+    err = fcp_socket_reboot_device(card);
+    if (err < 0)
+      fprintf(stderr, "unable to reboot device via socket\n");
   }
-
-  err = scarlett2_reboot(hwdep);
-  if (err < 0) {
-    fprintf(stderr, "unable to reboot device: %s\n", snd_strerror(err));
-    return;
-  }
-
-  scarlett2_close(hwdep);
 }
 
 static void add_reset_actions(
@@ -261,37 +271,9 @@ static void add_reset_actions(
   int              *grid_y,
   int               show_reboot_option
 ) {
-  // simulated cards don't support hwdep
-  if (!card->device)
+  if (card->driver_type != DRIVER_TYPE_HWDEP &&
+      card->driver_type != DRIVER_TYPE_SOCKET)
     return;
-
-  snd_hwdep_t *hwdep;
-
-  int err = scarlett2_open_card(card->device, &hwdep);
-  if (err < 0) {
-    fprintf(stderr, "unable to open hwdep interface: %s\n", snd_strerror(err));
-    return;
-  }
-
-  int ver = scarlett2_get_protocol_version(hwdep);
-  if (ver < 0) {
-    fprintf(stderr, "unable to get protocol version: %s\n", snd_strerror(ver));
-    return;
-  }
-
-  if (SCARLETT2_HWDEP_VERSION_MAJOR(ver) != REQUIRED_HWDEP_VERSION_MAJOR) {
-    fprintf(
-      stderr,
-      "Unsupported hwdep protocol version %d.%d.%d on card %s\n",
-      SCARLETT2_HWDEP_VERSION_MAJOR(ver),
-      SCARLETT2_HWDEP_VERSION_MINOR(ver),
-      SCARLETT2_HWDEP_VERSION_SUBMINOR(ver),
-      card->device
-    );
-    return;
-  }
-
-  scarlett2_close(hwdep);
 
   // Add reboot action if there is a control that requires a reboot
   // to take effect
@@ -354,8 +336,7 @@ static void add_reset_actions(
 
 static void add_no_startup_controls_msg(GtkWidget *grid) {
   GtkWidget *w = big_label(
-    "It appears that there are no startup controls. You probably "
-    "need to upgrade your kernel to see something here."
+    "This device/driver combo appears to have no startup controls."
   );
   gtk_grid_attach(GTK_GRID(grid), w, 0, 0, 1, 1);
 }

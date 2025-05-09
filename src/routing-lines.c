@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "alsa.h"
@@ -237,7 +237,7 @@ static void get_snk_center(
   double             *y
 ) {
   get_widget_center(r_snk->socket_widget, parent, x, y);
-  if (IS_MIXER(r_snk->port_category))
+  if (IS_MIXER(r_snk->elem->port_category))
     (*y)++;
 }
 
@@ -261,6 +261,12 @@ void draw_routing_lines(
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
     );
+    struct alsa_elem *elem = r_snk->elem;
+
+    // don't draw lines to read-only mixer sinks
+    if (elem->port_category == PC_MIX &&
+        card->has_fixed_mixer_inputs)
+      continue;
 
     // if dragging and a routing sink is being reconnected then draw
     // it with dots
@@ -271,7 +277,7 @@ void draw_routing_lines(
       cairo_set_dash(cr, NULL, 0, 0);
 
     // get the sink and skip if it's "Off"
-    int r_src_idx = alsa_get_elem_value(r_snk->elem);
+    int r_src_idx = alsa_get_elem_value(elem);
     if (!r_src_idx)
       continue;
 
@@ -300,7 +306,7 @@ void draw_routing_lines(
     draw_connection(
       cr,
       x1, y1, r_src->port_category,
-      x2, y2, r_snk->port_category,
+      x2, y2, elem->port_category,
       r, g, b, 2
     );
   }
@@ -362,7 +368,7 @@ void draw_drag_line(
     draw_connection(
       cr,
       x1, y1, card->src_drag->port_category,
-      x2, y2, card->snk_drag->port_category,
+      x2, y2, card->snk_drag->elem->port_category,
       1, 1, 1, 2
     );
 

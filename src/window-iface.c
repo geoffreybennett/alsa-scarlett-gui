@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <gtk/gtk.h>
@@ -8,6 +8,7 @@
 #include "iface-none.h"
 #include "iface-unknown.h"
 #include "iface-update.h"
+#include "iface-waiting.h"
 #include "main.h"
 #include "menu.h"
 #include "window-iface.h"
@@ -21,10 +22,33 @@ void create_card_window(struct alsa_card *card) {
     gtk_window_destroy(GTK_WINDOW(no_cards_window));
     no_cards_window = NULL;
   }
-  window_count++;
+
+  // Replacing an existing window
+  if (card->window_main)
+    gtk_window_destroy(GTK_WINDOW(card->window_main));
+
+  // New window
+  else
+    window_count++;
 
   int has_startup = true;
   int has_mixer = true;
+
+  // Check if the FCP driver is not initialised yet
+  if (card->driver_type == DRIVER_TYPE_SOCKET_UNINIT) {
+    card->window_main_contents = create_iface_waiting_main(card);
+    has_startup = false;
+    has_mixer = false;
+
+    // Create minimal window with only the waiting interface
+    card->window_main = gtk_application_window_new(app);
+    gtk_window_set_resizable(GTK_WINDOW(card->window_main), FALSE);
+    gtk_window_set_title(GTK_WINDOW(card->window_main), card->name);
+    gtk_window_set_child(GTK_WINDOW(card->window_main), card->window_main_contents);
+    gtk_widget_set_visible(card->window_main, TRUE);
+
+    return;
+  }
 
   struct alsa_elem *msd_elem =
     get_elem_by_name(card->elems, "MSD Mode Switch");
@@ -50,6 +74,11 @@ void create_card_window(struct alsa_card *card) {
     card->window_main_contents = create_iface_update_main(card);
     has_startup = false;
     has_mixer = false;
+
+  // Scarlett Gen 1
+  } else if (get_elem_by_prefix(card->elems, "Matrix")) {
+    card->window_main_contents = create_iface_mixer_main(card);
+    has_startup = false;
 
   // Scarlett Gen 2, Gen 3 4i4+, Gen 4, Clarett, or Vocaster
   } else if (get_elem_by_prefix(card->elems, "Mixer")) {

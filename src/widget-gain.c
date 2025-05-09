@@ -1,9 +1,10 @@
-// SPDX-FileCopyrightText: 2022-2024 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "gtkdial.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
+#include "db.h"
 
 struct gain {
   struct alsa_elem *elem;
@@ -56,16 +57,31 @@ static void gain_updated(
 
   char s[20];
   char *p = s;
-  float value = (float)alsa_value * data->scale + elem->min_dB;
+  float value;
+  int min_db = round(elem->min_cdB / 100.0);
+  int max_db = round(elem->max_cdB / 100.0);
 
-  if (value > elem->max_dB)
-    value = elem->max_dB;
-  else if (value < elem->min_dB)
-    value = elem->min_dB;
+  if (elem->dB_type == SND_CTL_TLVT_DB_LINEAR) {
+    value = linear_value_to_db(
+      alsa_value,
+      elem->min_val,
+      elem->max_val,
+      min_db,
+      max_db
+    );
+  } else {
+    value = ((float)(alsa_value - elem->min_val)) * data->scale + (elem->min_cdB / 100.0);
+    if (value > max_db)
+      value = max_db;
+    else if (value < min_db)
+      value = min_db;
+  }
 
-  if (data->zero_is_off && alsa_value == 0) {
+  if (data->zero_is_off && value == min_db) {
     p += sprintf(p, "−∞");
   } else {
+    if (data->scale <= 0.5)
+      value = round(value * 10) / 10;
     if (value < 0)
       p += sprintf(p, "−");
     else if (value > 0)
@@ -159,20 +175,42 @@ GtkWidget *make_gain_alsa_elem(
   gtk_widget_set_valign(data->vbox, GTK_ALIGN_START);
   gtk_widget_set_vexpand(data->vbox, TRUE);
 
-  data->scale = (float)(elem->max_dB - elem->min_dB) /
-                       (elem->max_val - elem->min_val);
+  gboolean is_linear = elem->dB_type == SND_CTL_TLVT_DB_LINEAR;
+  double step;
 
+  if (is_linear) {
+    data->scale = 0.5;
+    step = 0.5;
+  } else {
+    data->scale = (float)(elem->max_cdB - elem->min_cdB) / 100.0 /
+                         (elem->max_val - elem->min_val);
+    step = 1;
+  }
   data->dial = gtk_dial_new_with_range(
     elem->min_val,
     elem->max_val,
-    1,
+    step,
     3 / data->scale
   );
 
   // calculate 0dB value
-  int zero_db_value = (int)((0 - elem->min_dB) / data->scale + elem->min_val);
+  int zero_db_value;
+
+  if (is_linear) {
+    zero_db_value = cdb_to_linear_value(
+      0,
+      elem->min_val,
+      elem->max_val,
+      elem->min_cdB,
+      elem->max_cdB
+    );
+  } else {
+    zero_db_value =
+      (int)((0 - elem->min_cdB) / 100.0 / data->scale + elem->min_val);
+  }
 
   gtk_dial_set_zero_db(GTK_DIAL(data->dial), zero_db_value);
+  gtk_dial_set_is_linear(GTK_DIAL(data->dial), is_linear);
 
   // convert from widget_taper to gtk_dial_taper
   int gtk_dial_taper;
