@@ -50,7 +50,6 @@ modules:
       - /lib/alsa-topology
       - /null
       - /sbin
-      - /share/alsa
       - /share/locale
       - /share/man
       - /share/runtime
