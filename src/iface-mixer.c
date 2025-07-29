@@ -146,6 +146,38 @@ static void add_sample_rate_control(
   gtk_box_append(GTK_BOX(b), w);
 }
 
+/* Scarlett 18i20 3rd Gen
+ * Scarlett 16i16, 18i16, and 18i20 4th Gen
+ * Clarett 4Pre and 8Pre */
+static void add_spdif_source_control(
+  struct alsa_card *card,
+  GtkWidget        *global_controls
+) {
+  GArray *elems = card->elems;
+
+  struct alsa_elem *spdif_source = get_elem_by_name(elems, "S/PDIF Source Capture Enum");
+  if (!spdif_source) {
+    return;
+  }
+
+  GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_tooltip_text(
+    b,
+    "S/PDIF Source determines if S/PDIF channels are sourced "
+    "by RCA or Optical (TOSLINK) ports.\n\n"
+    "Note that Optical renders ADAT channels unusable."
+  );
+  gtk_box_append(GTK_BOX(global_controls), b);
+
+  GtkWidget *l = gtk_label_new("S/PDIF Source");
+  GtkWidget *w = make_drop_down_alsa_elem(spdif_source, NULL);
+  gtk_widget_add_css_class(w, "spdif-source");
+  gtk_widget_add_css_class(w, "fixed");
+
+  gtk_box_append(GTK_BOX(b), l);
+  gtk_box_append(GTK_BOX(b), w);
+}
+
 static void add_speaker_switching_controls_enum(
   struct alsa_card *card,
   GtkWidget        *global_controls
@@ -931,6 +963,7 @@ static void create_global_controls(
   add_sync_status_control(card, column[1]);
   add_power_status_control(card, column[1]);
   add_sample_rate_control(card, column[2]);
+  add_spdif_source_control(card, column[2]);
   add_speaker_switching_controls_enum(card, column[0]);
   add_speaker_switching_controls_switches(card, column[0]);
   add_talkback_controls_enum(card, column[1]);
