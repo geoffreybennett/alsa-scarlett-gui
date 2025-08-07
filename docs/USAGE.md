@@ -67,7 +67,7 @@ The options common to most interfaces are:
   want to start again.
 
 - **Update Firmware**: if a firmware update is found in the
-  `/usr/share/firmware/scarlett2` directory, then an option to update
+  `/usr/lib/firmware/scarlett2` directory, then an option to update
   the firmware will be available here.
 
 ## File Menu

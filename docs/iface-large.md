@@ -316,6 +316,6 @@ defaults (except for MSD mode which is left off).
 
 ### Update Firmware
 
-If a firmware update is found in the `/usr/share/firmware/scarlett2`
+If a firmware update is found in the `/usr/lib/firmware/scarlett2`
 directory, then an option to update the firmware will be available
 here.
