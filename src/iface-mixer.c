@@ -900,6 +900,32 @@ static void create_output_controls(
         w, "Dim (lower volume) of HW controlled outputs"
       );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 3, 1, 1);
+    } else if (strcmp(elem->name, "Speaker Mute Playback Switch") == 0) {
+      w = make_boolean_alsa_elem(
+        elem, "*audio-volume-high", "*audio-volume-muted"
+      );
+      gtk_widget_add_css_class(w, "mute");
+      gtk_widget_set_tooltip_text(w, "Mute speaker output");
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 4, 1, 1);
+    } else if (strstr(elem->name, "Headphones") &&
+               strstr(elem->name, "Mute Playback Switch")) {
+      int headphones_num = get_num_from_string(elem->name);
+      int column = headphones_num > 0 ? headphones_num : 1;
+
+      w = make_boolean_alsa_elem(
+        elem, "*audio-headphones-symbolic", "*audio-headphones-symbolic"
+      );
+      gtk_widget_add_css_class(w, "mute");
+
+      if (headphones_num > 0) {
+        char tooltip[50];
+        snprintf(tooltip, 50, "Mute headphones %d output", headphones_num);
+        gtk_widget_set_tooltip_text(w, tooltip);
+      } else {
+        gtk_widget_set_tooltip_text(w, "Mute headphones output");
+      }
+
+      gtk_grid_attach(GTK_GRID(output_grid), w, column, 4, 1, 1);
     }
   }
 

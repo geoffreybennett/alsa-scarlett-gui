@@ -7,6 +7,7 @@
     <file alias="audio-volume-low.svg">img/audio-volume-low.svg</file>
     <file alias="audio-volume-medium.svg">img/audio-volume-medium.svg</file>
     <file alias="audio-volume-muted.svg">img/audio-volume-muted.svg</file>
+    <file alias="audio-headphones-symbolic.svg">img/audio-headphones-symbolic.svg</file>
   </gresource>
   <gresource prefix="/vu/b4/alsa-scarlett-gui">
     <file>alsa-scarlett-gui.css</file>
