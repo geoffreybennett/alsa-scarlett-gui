@@ -20,7 +20,7 @@ static void run_alsactl(
     alsactl_path = g_strdup("/usr/sbin/alsactl");
 
   gchar *argv[] = {
-    alsactl_path, cmd, card->device, "-f", fn, NULL
+    alsactl_path, cmd, card->device, "-I", "-f", fn, NULL
   };
 
   gchar  *stdout;
