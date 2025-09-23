@@ -1597,10 +1597,18 @@ static void gtk_dial_click_gesture_pressed(
   if (n_press >= 2) {
     double lower = gtk_adjustment_get_lower(dial->adj);
 
-    if (gtk_dial_get_value(dial) != lower)
+    if (gtk_dial_get_has_origin(dial)) {
+      double zero_db = gtk_dial_get_zero_db(dial);
+
+      if (zero_db == -G_MAXDOUBLE)
+        zero_db = lower;
+
+      set_value(dial, zero_db);
+    } else if (gtk_dial_get_value(dial) != lower) {
       set_value(dial, lower);
-    else
+    } else {
       set_value(dial, dial->zero_db);
+    }
 
     return;
   }

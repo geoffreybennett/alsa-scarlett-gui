@@ -483,6 +483,7 @@ static void mixer_combined_create_widgets(struct mixer_combined_cell *cell) {
   );
   gtk_widget_set_vexpand(cell->pan_dial, TRUE);
   gtk_dial_set_has_origin(GTK_DIAL(cell->pan_dial), TRUE);
+  gtk_dial_set_zero_db(GTK_DIAL(cell->pan_dial), 0.0);
   gtk_dial_set_can_control(GTK_DIAL(cell->pan_dial), TRUE);
   gtk_dial_set_round_digits(GTK_DIAL(cell->pan_dial), 0);
 
