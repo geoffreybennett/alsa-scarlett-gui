@@ -39,6 +39,7 @@ struct mixer_combined_cell {
   int                min_db;
   int                max_db;
   int                zero_is_off;
+  int                zero_db_value;
   double             scale;
   double             volume_norm;
   double             pan_norm;
@@ -340,6 +341,16 @@ static void mixer_combined_volume_changed(
 
   cell->volume_norm = volume_norm;
 
+  gboolean reset_pan = FALSE;
+
+  if (alsa_value <= cell->min_val)
+    reset_pan = TRUE;
+  else if (alsa_value == cell->zero_db_value)
+    reset_pan = TRUE;
+
+  if (reset_pan)
+    cell->pan_norm = 0.0;
+
   double pan = cell->pan_norm;
   double left_norm = volume_norm;
   double right_norm = volume_norm;
@@ -355,6 +366,12 @@ static void mixer_combined_volume_changed(
   cell->updating = TRUE;
   alsa_set_elem_value(cell->left_elem, left_value);
   alsa_set_elem_value(cell->right_elem, right_value);
+
+  if (reset_pan && cell->pan_dial) {
+    gtk_dial_set_value(GTK_DIAL(cell->pan_dial), 0.0);
+    mixer_combined_update_pan_label(cell);
+  }
+
   mixer_combined_update_volume_label(cell, alsa_value);
   cell->updating = FALSE;
 }
@@ -440,7 +457,7 @@ static void mixer_combined_create_widgets(struct mixer_combined_cell *cell) {
   gtk_dial_set_is_linear(GTK_DIAL(cell->volume_dial), cell->is_linear);
   gtk_dial_set_taper(GTK_DIAL(cell->volume_dial), GTK_DIAL_TAPER_LOG);
 
-  int zero_db_value;
+  double zero_db_value;
 
   if (cell->is_linear) {
     zero_db_value = cdb_to_linear_value(
@@ -452,10 +469,20 @@ static void mixer_combined_create_widgets(struct mixer_combined_cell *cell) {
     );
   } else {
     zero_db_value =
-      (int)((0 - cell->min_cdB) / 100.0 / cell->scale + cell->min_val);
+      (0 - cell->min_cdB) / 100.0 / cell->scale + cell->min_val;
   }
 
-  gtk_dial_set_zero_db(GTK_DIAL(cell->volume_dial), zero_db_value);
+  cell->zero_db_value = (int)round(zero_db_value);
+
+  if (cell->zero_db_value < cell->min_val)
+    cell->zero_db_value = cell->min_val;
+  else if (cell->zero_db_value > cell->max_val)
+    cell->zero_db_value = cell->max_val;
+
+  gtk_dial_set_zero_db(
+    GTK_DIAL(cell->volume_dial),
+    cell->zero_db_value
+  );
   gtk_dial_set_can_control(GTK_DIAL(cell->volume_dial), TRUE);
 
   cell->volume_label = gtk_label_new(NULL);
