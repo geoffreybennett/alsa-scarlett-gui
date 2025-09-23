@@ -43,9 +43,11 @@ struct mixer_combined_cell {
   double             scale;
   double             volume_norm;
   double             pan_norm;
+  double             stored_pan_norm;
   gboolean           has_combined;
   gboolean           updating;
   gboolean           is_linear;
+  gboolean           stored_pan_valid;
 };
 
 struct mixer_pair {
@@ -280,9 +282,14 @@ static void mixer_combined_sync(struct mixer_combined_cell *cell) {
   double right_norm = mixer_value_to_norm(cell, right_value);
   double volume_norm = MAX(left_norm, right_norm);
 
-  if (volume_norm < 0.0001) {
+  gboolean have_pan_ratio = volume_norm >= 0.0001;
+
+  if (!have_pan_ratio) {
     volume_norm = 0.0;
-    cell->pan_norm = 0.0;
+    if (cell->stored_pan_valid)
+      cell->pan_norm = cell->stored_pan_norm;
+    else
+      cell->pan_norm = 0.0;
   } else {
     double pan = (right_norm - left_norm) / volume_norm;
     if (pan < -1.0)
@@ -290,6 +297,8 @@ static void mixer_combined_sync(struct mixer_combined_cell *cell) {
     else if (pan > 1.0)
       pan = 1.0;
     cell->pan_norm = pan;
+    cell->stored_pan_norm = pan;
+    cell->stored_pan_valid = TRUE;
   }
 
   cell->volume_norm = volume_norm;
@@ -343,13 +352,14 @@ static void mixer_combined_volume_changed(
 
   gboolean reset_pan = FALSE;
 
-  if (alsa_value <= cell->min_val)
-    reset_pan = TRUE;
-  else if (alsa_value == cell->zero_db_value)
+  if (alsa_value == cell->zero_db_value)
     reset_pan = TRUE;
 
   if (reset_pan)
     cell->pan_norm = 0.0;
+
+  cell->stored_pan_norm = cell->pan_norm;
+  cell->stored_pan_valid = TRUE;
 
   double pan = cell->pan_norm;
   double left_norm = volume_norm;
@@ -394,6 +404,8 @@ static void mixer_combined_pan_changed(
     pan_norm = 1.0;
 
   cell->pan_norm = pan_norm;
+  cell->stored_pan_norm = cell->pan_norm;
+  cell->stored_pan_valid = TRUE;
 
   double left_norm = cell->volume_norm;
   double right_norm = cell->volume_norm;
@@ -594,6 +606,10 @@ static void mixer_combined_create_widgets(struct mixer_combined_cell *cell) {
     );
     add_mixer_hover_controller(cell->pan_box);
   }
+
+  cell->pan_norm = 0.0;
+  cell->stored_pan_norm = 0.0;
+  cell->stored_pan_valid = TRUE;
 
   cell->has_combined = TRUE;
 }
