@@ -350,14 +350,6 @@ static void mixer_combined_volume_changed(
 
   cell->volume_norm = volume_norm;
 
-  gboolean reset_pan = FALSE;
-
-  if (alsa_value == cell->zero_db_value)
-    reset_pan = TRUE;
-
-  if (reset_pan)
-    cell->pan_norm = 0.0;
-
   cell->stored_pan_norm = cell->pan_norm;
   cell->stored_pan_valid = TRUE;
 
@@ -376,11 +368,6 @@ static void mixer_combined_volume_changed(
   cell->updating = TRUE;
   alsa_set_elem_value(cell->left_elem, left_value);
   alsa_set_elem_value(cell->right_elem, right_value);
-
-  if (reset_pan && cell->pan_dial) {
-    gtk_dial_set_value(GTK_DIAL(cell->pan_dial), 0.0);
-    mixer_combined_update_pan_label(cell);
-  }
 
   mixer_combined_update_volume_label(cell, alsa_value);
   cell->updating = FALSE;
