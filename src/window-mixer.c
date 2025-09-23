@@ -48,31 +48,66 @@ struct mixer_combined_cell {
 };
 
 struct mixer_pair {
-  struct mixer_state *state;
-  int                 pair_index;
-  int                 left_mix;
-  int                 right_mix;
-  GtkWidget          *toggle_box;
-  GtkSwitch          *toggle_switch;
-  GtkWidget          *toggle_label;
-  gboolean            combined;
-  struct mixer_combined_cell cells[MAX_MIX_OUT];
+  struct mixer_state        *state;
+  int                        pair_index;
+  int                        left_mix;
+  int                        right_mix;
+  GtkWidget                 *toggle_box;
+  GtkSwitch                 *toggle_switch;
+  GtkWidget                 *toggle_label;
+  gboolean                   combined;
+  struct mixer_combined_cell *cells;
 };
 
 struct mixer_state {
-  struct alsa_card *card;
-  GtkWidget        *top;
-  GtkWidget        *mixer_top;
-  int               mix_count;
-  int               input_count;
-  int               pair_count;
-  GtkWidget        *mix_labels_left[MAX_MIX_OUT];
-  GtkWidget        *mix_labels_right[MAX_MIX_OUT];
-  GtkWidget        *stacks[MAX_MIX_OUT][MAX_MIX_OUT];
-  GtkWidget        *gain_widgets[MAX_MIX_OUT][MAX_MIX_OUT];
-  struct alsa_elem *elems[MAX_MIX_OUT][MAX_MIX_OUT];
-  struct mixer_pair pairs[MAX_MIX_OUT / 2];
+  struct alsa_card   *card;
+  GtkWidget          *top;
+  GtkWidget          *mixer_top;
+  int                 mix_count;
+  int                 input_count;
+  int                 pair_count;
+  GtkWidget         **mix_labels_left;
+  GtkWidget         **mix_labels_right;
+  GtkWidget        ***stacks;
+  GtkWidget        ***gain_widgets;
+  struct alsa_elem ***elems;
+  struct mixer_pair   *pairs;
 };
+
+static void mixer_state_free(gpointer data) {
+  struct mixer_state *state = data;
+
+  if (!state)
+    return;
+
+  if (state->pairs) {
+    for (int i = 0; i < state->pair_count; i++)
+      g_free(state->pairs[i].cells);
+    g_free(state->pairs);
+  }
+
+  if (state->stacks) {
+    for (int i = 0; i < state->mix_count; i++)
+      g_free(state->stacks[i]);
+    g_free(state->stacks);
+  }
+
+  if (state->gain_widgets) {
+    for (int i = 0; i < state->mix_count; i++)
+      g_free(state->gain_widgets[i]);
+    g_free(state->gain_widgets);
+  }
+
+  if (state->elems) {
+    for (int i = 0; i < state->mix_count; i++)
+      g_free(state->elems[i]);
+    g_free(state->elems);
+  }
+
+  g_free(state->mix_labels_left);
+  g_free(state->mix_labels_right);
+  g_free(state);
+}
 
 static void mixer_pair_set_combined(struct mixer_pair *pair, gboolean combined);
 static void mixer_combined_sync(struct mixer_combined_cell *cell);
@@ -536,6 +571,12 @@ static void mixer_combined_create_widgets(struct mixer_combined_cell *cell) {
 }
 
 static void mixer_state_init_combined_cells(struct mixer_state *state) {
+  if (!state->pairs)
+    return;
+
+  if (!state->stacks || !state->gain_widgets || !state->elems)
+    return;
+
   for (int i = 0; i < state->pair_count; i++) {
     struct mixer_pair *pair = &state->pairs[i];
 
@@ -543,6 +584,16 @@ static void mixer_state_init_combined_cells(struct mixer_state *state) {
     pair->pair_index = i;
     pair->left_mix = i * 2;
     pair->right_mix = pair->left_mix + 1;
+
+    g_free(pair->cells);
+    pair->cells = NULL;
+
+    if (state->input_count <= 0)
+      continue;
+
+    pair->cells = g_new0(struct mixer_combined_cell, state->input_count);
+    if (!pair->cells)
+      continue;
 
     for (int j = 0; j < state->input_count; j++) {
       struct mixer_combined_cell *cell = &pair->cells[j];
@@ -601,7 +652,22 @@ static void mixer_pair_set_combined(struct mixer_pair *pair, gboolean combined) 
   pair->combined = combined;
   mixer_pair_update_toggle_label(pair);
 
+  if (!pair->cells)
+    return;
+
   char label[16];
+  GtkWidget *left_mix_left_label =
+    (state->mix_labels_left && pair->left_mix < state->mix_count) ?
+      state->mix_labels_left[pair->left_mix] : NULL;
+  GtkWidget *left_mix_right_label =
+    (state->mix_labels_right && pair->left_mix < state->mix_count) ?
+      state->mix_labels_right[pair->left_mix] : NULL;
+  GtkWidget *right_mix_left_label =
+    (state->mix_labels_left && pair->right_mix < state->mix_count) ?
+      state->mix_labels_left[pair->right_mix] : NULL;
+  GtkWidget *right_mix_right_label =
+    (state->mix_labels_right && pair->right_mix < state->mix_count) ?
+      state->mix_labels_right[pair->right_mix] : NULL;
 
   if (combined) {
     snprintf(
@@ -611,22 +677,14 @@ static void mixer_pair_set_combined(struct mixer_pair *pair, gboolean combined) 
       'A' + pair->left_mix,
       'A' + pair->right_mix
     );
-    gtk_label_set_text(
-      GTK_LABEL(state->mix_labels_left[pair->left_mix]),
-      label
-    );
-    gtk_label_set_text(
-      GTK_LABEL(state->mix_labels_right[pair->left_mix]),
-      label
-    );
-    gtk_label_set_text(
-      GTK_LABEL(state->mix_labels_left[pair->right_mix]),
-      "Pan"
-    );
-    gtk_label_set_text(
-      GTK_LABEL(state->mix_labels_right[pair->right_mix]),
-      "Pan"
-    );
+    if (left_mix_left_label)
+      gtk_label_set_text(GTK_LABEL(left_mix_left_label), label);
+    if (left_mix_right_label)
+      gtk_label_set_text(GTK_LABEL(left_mix_right_label), label);
+    if (right_mix_left_label)
+      gtk_label_set_text(GTK_LABEL(right_mix_left_label), "Pan");
+    if (right_mix_right_label)
+      gtk_label_set_text(GTK_LABEL(right_mix_right_label), "Pan");
   } else {
     snprintf(
       label,
@@ -634,28 +692,20 @@ static void mixer_pair_set_combined(struct mixer_pair *pair, gboolean combined) 
       "Mix %c",
       'A' + pair->left_mix
     );
-    gtk_label_set_text(
-      GTK_LABEL(state->mix_labels_left[pair->left_mix]),
-      label
-    );
-    gtk_label_set_text(
-      GTK_LABEL(state->mix_labels_right[pair->left_mix]),
-      label
-    );
+    if (left_mix_left_label)
+      gtk_label_set_text(GTK_LABEL(left_mix_left_label), label);
+    if (left_mix_right_label)
+      gtk_label_set_text(GTK_LABEL(left_mix_right_label), label);
     snprintf(
       label,
       sizeof(label),
       "Mix %c",
       'A' + pair->right_mix
     );
-    gtk_label_set_text(
-      GTK_LABEL(state->mix_labels_left[pair->right_mix]),
-      label
-    );
-    gtk_label_set_text(
-      GTK_LABEL(state->mix_labels_right[pair->right_mix]),
-      label
-    );
+    if (right_mix_left_label)
+      gtk_label_set_text(GTK_LABEL(right_mix_left_label), label);
+    if (right_mix_right_label)
+      gtk_label_set_text(GTK_LABEL(right_mix_right_label), label);
   }
 
   for (int i = 0; i < state->input_count; i++) {
@@ -726,20 +776,44 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   state->mix_count = card->routing_in_count[PC_MIX];
   state->input_count = card->routing_out_count[PC_MIX];
   state->pair_count = state->mix_count / 2;
-  g_object_set_data_full(G_OBJECT(top), "mixer-state", state, g_free);
+  if (state->mix_count > 0) {
+    state->mix_labels_left = g_new0(GtkWidget *, state->mix_count);
+    state->mix_labels_right = g_new0(GtkWidget *, state->mix_count);
+  }
+
+  if (state->mix_count > 0 && state->input_count > 0) {
+    state->stacks = g_new0(GtkWidget **, state->mix_count);
+    state->gain_widgets = g_new0(GtkWidget **, state->mix_count);
+    state->elems = g_new0(struct alsa_elem **, state->mix_count);
+
+    for (int i = 0; i < state->mix_count; i++) {
+      state->stacks[i] = g_new0(GtkWidget *, state->input_count);
+      state->gain_widgets[i] = g_new0(GtkWidget *, state->input_count);
+      state->elems[i] = g_new0(struct alsa_elem *, state->input_count);
+    }
+  }
+
+  if (state->pair_count > 0)
+    state->pairs = g_new0(struct mixer_pair, state->pair_count);
+
+  g_object_set_data_full(G_OBJECT(top), "mixer-state", state, mixer_state_free);
 
   // create the Mix X labels on the left and right of the grid
   for (int i = 0; i < card->routing_in_count[PC_MIX]; i++) {
     char name[10];
     snprintf(name, 10, "Mix %c", i + 'A');
 
-    GtkWidget *l_left = state->mix_labels_left[i] = gtk_label_new(name);
+    GtkWidget *l_left = state->mix_labels_left ?
+      (state->mix_labels_left[i] = gtk_label_new(name)) :
+      gtk_label_new(name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_left,
       0, i + 2, 1, 1
     );
 
-    GtkWidget *l_right = state->mix_labels_right[i] = gtk_label_new(name);
+    GtkWidget *l_right = state->mix_labels_right ?
+      (state->mix_labels_right[i] = gtk_label_new(name)) :
+      gtk_label_new(name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_right,
       card->routing_out_count[PC_MIX] + 1, i + 2, 1, 1
@@ -772,6 +846,19 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
     if (mix_num >= MAX_MIX_OUT) {
       printf("mix_num %d >= MAX_MIX_OUT %d\n", mix_num, MAX_MIX_OUT);
+      continue;
+    }
+
+    if (mix_num < 0 || mix_num >= state->mix_count)
+      continue;
+
+    if (input_num < 0 || input_num >= state->input_count) {
+      printf(
+        "input_num %d out of range (max %d) for mix %d\n",
+        input_num,
+        state->input_count,
+        mix_num
+      );
       continue;
     }
 
@@ -812,17 +899,26 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
       );
     }
 
-    g_object_set_data(G_OBJECT(w), "mix_label_left", state->mix_labels_left[mix_num]);
-    g_object_set_data(G_OBJECT(w), "mix_label_right", state->mix_labels_right[mix_num]);
+    GtkWidget *mix_label_left =
+      (state->mix_labels_left && mix_num < state->mix_count) ?
+        state->mix_labels_left[mix_num] : NULL;
+    GtkWidget *mix_label_right =
+      (state->mix_labels_right && mix_num < state->mix_count) ?
+        state->mix_labels_right[mix_num] : NULL;
+    g_object_set_data(G_OBJECT(w), "mix_label_left", mix_label_left);
+    g_object_set_data(G_OBJECT(w), "mix_label_right", mix_label_right);
     g_object_set_data(G_OBJECT(w), "source_label_top", r_snk->mixer_label_top);
     g_object_set_data(G_OBJECT(w), "source_label_bottom", r_snk->mixer_label_bottom);
 
     // add hover controller to the gain widget
     add_mixer_hover_controller(w);
 
-    state->stacks[mix_num][input_num] = stack;
-    state->gain_widgets[mix_num][input_num] = w;
-    state->elems[mix_num][input_num] = elem;
+    if (state->stacks)
+      state->stacks[mix_num][input_num] = stack;
+    if (state->gain_widgets)
+      state->gain_widgets[mix_num][input_num] = w;
+    if (state->elems)
+      state->elems[mix_num][input_num] = elem;
 
   }
 
