@@ -920,6 +920,45 @@ static void draw_slider(
   }
 }
 
+static void draw_origin_indicator(GtkDial *dial, cairo_t *cr) {
+  double base = dial->slider_thickness / 3.0;
+
+  if (base < 2.0)
+    base = 2.0;
+
+  double track_extent = dial->knob_radius - dial->slider_thickness * 0.6;
+
+  if (track_extent < base)
+    track_extent = base;
+
+  double dot_radius = base * 0.7;
+
+  double lower = gtk_adjustment_get_lower(dial->adj);
+  double upper = gtk_adjustment_get_upper(dial->adj);
+  double fraction = 0.5;
+
+  if (upper > lower)
+    fraction = calc_valp(gtk_dial_get_value(dial), lower, upper);
+
+  double offset = fraction * 2.0 - 1.0;
+  double dot_x = dial->cx + offset * track_extent;
+  double dot_y = dial->cy;
+
+  cairo_set_line_width(cr, base * 0.6);
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.18, dial->dim);
+  cairo_move_to(cr, dial->cx - track_extent, dot_y);
+  cairo_line_to(cr, dial->cx + track_extent, dot_y);
+  cairo_stroke(cr);
+
+  cairo_set_source_rgba_dim(cr, 0, 0, 0, 0.35, dial->dim);
+  cairo_arc(cr, dot_x, dot_y, dot_radius + base * 0.25, 0, 2 * M_PI);
+  cairo_fill(cr);
+
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.9, dial->dim);
+  cairo_arc(cr, dot_x, dot_y, dot_radius, 0, 2 * M_PI);
+  cairo_fill(cr);
+}
+
 static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   GtkDial *dial = GTK_DIAL(widget);
 
@@ -942,7 +981,7 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.17, dial->dim);
   cairo_stroke(cr);
 
-  if (dial->valp > 0.0) {
+  if (dial->valp > 0.0 && !dial->has_origin) {
     // outside value shadow
     draw_slider(
       dial, cr, dial->background_radius, dial->slider_thickness / 2, 0.1
@@ -976,7 +1015,7 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     cairo_stroke(cr);
   }
 
-  if (dial->valp > 0.0) {
+  if (dial->valp > 0.0 && !dial->has_origin) {
     // value blur 1
     draw_slider(dial, cr, dial->slider_radius, 4, 0.5);
 
@@ -989,6 +1028,9 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_set_source(cr, dial->fill_pattern[has_focus][dial->dim]);
   cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI);
   cairo_fill(cr);
+
+  if (dial->has_origin)
+    draw_origin_indicator(dial, cr);
 
   // draw the circle
   cairo_set_source(cr, dial->outline_pattern[dial->dim]);
