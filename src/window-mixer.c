@@ -48,6 +48,9 @@ struct mixer_combined_cell {
   gboolean           updating;
   gboolean           is_linear;
   gboolean           stored_pan_valid;
+  int                stored_left_value;
+  int                stored_right_value;
+  gboolean           stored_values_valid;
 };
 
 struct mixer_pair {
@@ -278,6 +281,14 @@ static void mixer_combined_sync(struct mixer_combined_cell *cell) {
   int left_value = alsa_get_elem_value(cell->left_elem);
   int right_value = alsa_get_elem_value(cell->right_elem);
 
+  gboolean values_match = FALSE;
+
+  if (cell->stored_values_valid) {
+    if (left_value == cell->stored_left_value &&
+        right_value == cell->stored_right_value)
+      values_match = TRUE;
+  }
+
   double left_norm = mixer_value_to_norm(cell, left_value);
   double right_norm = mixer_value_to_norm(cell, right_value);
   double volume_norm = MAX(left_norm, right_norm);
@@ -290,6 +301,8 @@ static void mixer_combined_sync(struct mixer_combined_cell *cell) {
       cell->pan_norm = cell->stored_pan_norm;
     else
       cell->pan_norm = 0.0;
+  } else if (values_match && cell->stored_pan_valid) {
+    cell->pan_norm = cell->stored_pan_norm;
   } else {
     double pan = (right_norm - left_norm) / volume_norm;
     if (pan < -1.0)
@@ -300,6 +313,10 @@ static void mixer_combined_sync(struct mixer_combined_cell *cell) {
     cell->stored_pan_norm = pan;
     cell->stored_pan_valid = TRUE;
   }
+
+  cell->stored_left_value = left_value;
+  cell->stored_right_value = right_value;
+  cell->stored_values_valid = TRUE;
 
   cell->volume_norm = volume_norm;
 
@@ -369,6 +386,10 @@ static void mixer_combined_volume_changed(
   alsa_set_elem_value(cell->left_elem, left_value);
   alsa_set_elem_value(cell->right_elem, right_value);
 
+  cell->stored_left_value = left_value;
+  cell->stored_right_value = right_value;
+  cell->stored_values_valid = TRUE;
+
   mixer_combined_update_volume_label(cell, alsa_value);
   cell->updating = FALSE;
 }
@@ -408,6 +429,9 @@ static void mixer_combined_pan_changed(
   cell->updating = TRUE;
   alsa_set_elem_value(cell->left_elem, left_value);
   alsa_set_elem_value(cell->right_elem, right_value);
+  cell->stored_left_value = left_value;
+  cell->stored_right_value = right_value;
+  cell->stored_values_valid = TRUE;
   mixer_combined_update_pan_label(cell);
   mixer_combined_update_volume_label(
     cell,
