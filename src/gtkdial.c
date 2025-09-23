@@ -921,28 +921,35 @@ static void draw_slider(
 }
 
 static void draw_origin_indicator(GtkDial *dial, cairo_t *cr) {
-  double halo = dial->slider_thickness * 0.8;
+  double track_thickness = dial->slider_thickness * 0.35;
 
-  if (halo < 2.0)
-    halo = 2.0;
+  if (track_thickness < 1.5)
+    track_thickness = 1.5;
 
-  double dot_radius = dial->slider_thickness * 0.55;
+  double halo_width = dial->slider_thickness / 2.0;
+
+  if (halo_width < 2.0)
+    halo_width = 2.0;
+
+  double dot_radius = dial->slider_thickness * 0.4;
 
   if (dot_radius < 1.5)
     dot_radius = 1.5;
+
+  double halo_radius = dot_radius + halo_width / 2.0;
 
   double dot_x = dial->slider_cx;
   double dot_y = dial->slider_cy;
 
   // subtle path hint for the circular track
-  cairo_set_line_width(cr, dial->slider_thickness * 0.6);
+  cairo_set_line_width(cr, track_thickness);
   cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.12, dial->dim);
   cairo_arc(cr, dial->cx, dial->cy, dial->slider_radius, ANGLE_START, ANGLE_END);
   cairo_stroke(cr);
 
   // outer halo to give the marker contrast against the knob fill
   cairo_set_source_rgba_dim(cr, 0, 0, 0, 0.35, dial->dim);
-  cairo_arc(cr, dot_x, dot_y, dot_radius + halo * 0.35, 0, 2 * M_PI);
+  cairo_arc(cr, dot_x, dot_y, halo_radius, 0, 2 * M_PI);
   cairo_fill(cr);
 
   cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.9, dial->dim);
