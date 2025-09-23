@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 #include <math.h>
 
+#include "gtkdial.h"
 #include "gtkhelper.h"
 #include "db.h"
 #include "stringhelper.h"
