@@ -94,6 +94,7 @@ enum {
   PROP_IS_LINEAR,
   PROP_TAPER,
   PROP_CAN_CONTROL,
+  PROP_HAS_ORIGIN,
   PROP_PEAK_HOLD,
   LAST_PROP
 };
@@ -123,6 +124,7 @@ struct _GtkDial {
   gboolean is_linear;
   int taper;
   gboolean can_control;
+  gboolean has_origin;
   int peak_hold;
 
   int properties_updated;
@@ -603,6 +605,19 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
   );
 
   /**
+   * GtkDial:has-origin: (attributes org.gtk.Method.get=gtk_dial_get_has_origin org.gtk.Method.set=gtk_dial_set_has_origin)
+   *
+   * Whether the dial should visually emphasize its origin.
+   */
+  properties[PROP_HAS_ORIGIN] = g_param_spec_boolean(
+    "has-origin",
+    "HasOrigin",
+    "Whether the dial should visually emphasize its origin",
+    FALSE,
+    G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+  );
+
+  /**
    * GtkDial:peak-hold: (attributes org.gtk.Method.get=gtk_dial_get_peak_hold org.gtk.Method.set=gtk_dial_set_peak_hold)
    *
    * The number of milliseconds to hold the peak value.
@@ -739,6 +754,7 @@ static void gtk_dial_init(GtkDial *dial) {
   dial->hist_head = 0;
   dial->hist_tail = 0;
   dial->hist_count = 0;
+  dial->has_origin = FALSE;
 }
 
 static void dial_measure(
@@ -1069,6 +1085,9 @@ static void gtk_dial_set_property(
     case PROP_CAN_CONTROL:
       gtk_dial_set_can_control(dial, g_value_get_boolean(value));
       break;
+    case PROP_HAS_ORIGIN:
+      gtk_dial_set_has_origin(dial, g_value_get_boolean(value));
+      break;
     case PROP_PEAK_HOLD:
       gtk_dial_set_peak_hold(dial, g_value_get_int(value));
       break;
@@ -1107,6 +1126,9 @@ static void gtk_dial_get_property(
       break;
     case PROP_CAN_CONTROL:
       g_value_set_boolean(value, dial->can_control);
+      break;
+    case PROP_HAS_ORIGIN:
+      g_value_set_boolean(value, dial->has_origin);
       break;
     case PROP_PEAK_HOLD:
       g_value_set_int(value, dial->peak_hold);
@@ -1214,6 +1236,16 @@ void gtk_dial_set_can_control(GtkDial *dial, gboolean can_control) {
 
 gboolean gtk_dial_get_can_control(GtkDial *dial) {
   return dial->can_control;
+}
+
+void gtk_dial_set_has_origin(GtkDial *dial, gboolean has_origin) {
+  dial->has_origin = has_origin;
+  dial->properties_updated = 1;
+  gtk_widget_queue_draw(GTK_WIDGET(dial));
+}
+
+gboolean gtk_dial_get_has_origin(GtkDial *dial) {
+  return dial->has_origin;
 }
 
 void gtk_dial_set_level_meter_colours(
