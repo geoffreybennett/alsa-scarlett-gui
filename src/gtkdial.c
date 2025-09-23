@@ -937,6 +937,7 @@ static void draw_origin_indicator(GtkDial *dial, cairo_t *cr) {
     dot_radius = 1.5;
 
   double halo_radius = dot_radius + halo_width / 2.0;
+  dot_radius = halo_radius;
 
   double dot_x = dial->slider_cx;
   double dot_y = dial->slider_cy;
