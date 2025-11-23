@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "window-helper.h"
+#include "window-iface.h"
 
 gboolean window_startup_close_request(GtkWindow *w, gpointer data) {
   struct alsa_card *card = data;
@@ -36,7 +37,9 @@ GtkWidget *create_subwindow(
   const char       *name,
   GCallback         close_callback
 ) {
-  char *title = g_strdup_printf("%s %s", card->name, name);
+  char *base_title = get_card_window_title(card);
+  char *title = g_strdup_printf("%s - %s", base_title, name);
+  g_free(base_title);
 
   GtkWidget *w = gtk_window_new();
   gtk_window_set_resizable(GTK_WINDOW(w), FALSE);

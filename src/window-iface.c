@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <gtk/gtk.h>
+#include <string.h>
 
 #include "iface-mixer.h"
 #include "iface-no-mixer.h"
@@ -13,9 +14,86 @@
 #include "menu.h"
 #include "window-iface.h"
 #include "window-startup.h"
+#include "optional-controls.h"
 
 static GtkWidget *no_cards_window;
 static int window_count;
+
+// Get the window title for a card
+// Uses the Name element if available, otherwise card->name
+// Returns newly allocated string that must be freed
+char *get_card_window_title(struct alsa_card *card) {
+  struct alsa_elem *name_elem = optional_controls_get_name_elem(card);
+
+  if (name_elem) {
+    size_t size;
+    const void *bytes = alsa_get_elem_bytes(name_elem, &size);
+
+    if (bytes && size > 0) {
+      // find actual string length (up to first null byte)
+      size_t str_len = strnlen((const char *)bytes, size);
+
+      // only use if non-empty and valid UTF-8
+      if (str_len > 0 && g_utf8_validate((const char *)bytes, str_len, NULL)) {
+        char *custom_name = g_strndup((const char *)bytes, str_len);
+        char *title = g_strdup_printf("%s - %s", card->name, custom_name);
+        g_free(custom_name);
+        return title;
+      }
+    }
+  }
+
+  // no custom name or it's empty, use serial number if available
+  if (card->serial && *card->serial)
+    return g_strdup_printf("%s - %s", card->name, card->serial);
+
+  // no serial number either, just use card name
+  return g_strdup(card->name);
+}
+
+// Update all window titles when the name changes
+static void update_window_titles(struct alsa_elem *elem, void *private) {
+  struct alsa_card *card = private;
+
+  char *title = get_card_window_title(card);
+
+  // update main window
+  if (card->window_main)
+    gtk_window_set_title(GTK_WINDOW(card->window_main), title);
+
+  // update sub-windows with appropriate suffixes
+  if (card->window_routing) {
+    char *routing_title = g_strdup_printf("%s - Routing", title);
+    gtk_window_set_title(GTK_WINDOW(card->window_routing), routing_title);
+    g_free(routing_title);
+  }
+
+  if (card->window_mixer) {
+    char *mixer_title = g_strdup_printf("%s - Mixer", title);
+    gtk_window_set_title(GTK_WINDOW(card->window_mixer), mixer_title);
+    g_free(mixer_title);
+  }
+
+  if (card->window_levels) {
+    char *levels_title = g_strdup_printf("%s - Levels", title);
+    gtk_window_set_title(GTK_WINDOW(card->window_levels), levels_title);
+    g_free(levels_title);
+  }
+
+  if (card->window_configuration) {
+    char *config_title = g_strdup_printf("%s - Configuration", title);
+    gtk_window_set_title(GTK_WINDOW(card->window_configuration), config_title);
+    g_free(config_title);
+  }
+
+  if (card->window_startup) {
+    char *startup_title = g_strdup_printf("%s - Startup Configuration", title);
+    gtk_window_set_title(GTK_WINDOW(card->window_startup), startup_title);
+    g_free(startup_title);
+  }
+
+  g_free(title);
+}
 
 void create_card_window(struct alsa_card *card) {
   if (no_cards_window) {
@@ -43,7 +121,11 @@ void create_card_window(struct alsa_card *card) {
     // Create minimal window with only the waiting interface
     card->window_main = gtk_application_window_new(app);
     gtk_window_set_resizable(GTK_WINDOW(card->window_main), FALSE);
-    gtk_window_set_title(GTK_WINDOW(card->window_main), card->name);
+
+    char *title = get_card_window_title(card);
+    gtk_window_set_title(GTK_WINDOW(card->window_main), title);
+    g_free(title);
+
     gtk_window_set_child(GTK_WINDOW(card->window_main), card->window_main_contents);
     gtk_widget_set_visible(card->window_main, TRUE);
 
@@ -104,7 +186,11 @@ void create_card_window(struct alsa_card *card) {
 
   card->window_main = gtk_application_window_new(app);
   gtk_window_set_resizable(GTK_WINDOW(card->window_main), FALSE);
-  gtk_window_set_title(GTK_WINDOW(card->window_main), card->name);
+
+  char *title = get_card_window_title(card);
+  gtk_window_set_title(GTK_WINDOW(card->window_main), title);
+  g_free(title);
+
   gtk_application_window_set_show_menubar(
     GTK_APPLICATION_WINDOW(card->window_main), TRUE
   );
@@ -120,6 +206,12 @@ void create_card_window(struct alsa_card *card) {
     GTK_WINDOW(card->window_main),
     card->window_main_contents
   );
+
+  // register callback to update window titles when name changes
+  struct alsa_elem *name_elem = optional_controls_get_name_elem(card);
+  if (name_elem)
+    alsa_elem_add_callback(name_elem, update_window_titles, card);
+
   gtk_widget_set_visible(card->window_main, TRUE);
 }
 
