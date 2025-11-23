@@ -10,6 +10,7 @@
 #include "scarlett2-ioctls.h"
 #include "stringhelper.h"
 #include "window-iface.h"
+#include "optional-controls.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -281,7 +282,7 @@ void alsa_set_elem_value(struct alsa_elem *elem, long value) {
 
 // return whether the element can be modified (is writable)
 int alsa_get_elem_writable(struct alsa_elem *elem) {
-  if (elem->card->num == SIMULATED_CARD_NUM)
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
     return elem->is_writable;
 
   snd_ctl_elem_info_t *elem_info;
@@ -297,7 +298,7 @@ int alsa_get_elem_writable(struct alsa_elem *elem) {
 // return whether the element is volatile (can change without
 // notification)
 int alsa_get_elem_volatile(struct alsa_elem *elem) {
-  if (elem->card->num == SIMULATED_CARD_NUM)
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
     return elem->is_volatile;
 
   snd_ctl_elem_info_t *elem_info;
@@ -349,6 +350,114 @@ char *alsa_get_item_name(struct alsa_elem *elem, int i) {
 
   const char *name = snd_ctl_elem_info_get_item_name(elem_info);
   return strdup(name);
+}
+
+// get the bytes data from a BYTES element
+// returns pointer to data and sets *size to the data size
+// for simulated elements, returns the stored bytes_value
+// for real elements, reads from ALSA and caches in elem->bytes_value
+const void *alsa_get_elem_bytes(struct alsa_elem *elem, size_t *size) {
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
+    if (size)
+      *size = elem->count;
+    return elem->bytes_value;
+  }
+
+  // for real elements, read from ALSA and cache in elem->bytes_value
+  snd_ctl_elem_value_t *elem_value;
+
+  snd_ctl_elem_value_alloca(&elem_value);
+  snd_ctl_elem_value_set_numid(elem_value, elem->numid);
+  snd_ctl_elem_read(elem->card->handle, elem_value);
+
+  const void *data = snd_ctl_elem_value_get_bytes(elem_value);
+
+  // cache the data in elem->bytes_value (free old value first)
+  if (elem->bytes_value)
+    free(elem->bytes_value);
+  elem->bytes_value = malloc(elem->count);
+  memcpy(elem->bytes_value, data, elem->count);
+
+  if (size)
+    *size = elem->count;
+
+  return elem->bytes_value;
+}
+
+// idle callback to trigger element change
+static gboolean alsa_elem_change_idle(gpointer user_data) {
+  struct alsa_elem *elem = user_data;
+  alsa_elem_change(elem);
+  return G_SOURCE_REMOVE;
+}
+
+// set the bytes data for a BYTES element
+// for simulated elements, stores in elem->bytes_value and triggers callbacks
+// for real elements, writes to ALSA
+void alsa_set_elem_bytes(struct alsa_elem *elem, const void *data, size_t size) {
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
+    // truncate to max capacity
+    if (size > elem->bytes_size)
+      size = elem->bytes_size;
+
+    // skip if not changed
+    if (elem->count == size &&
+        memcmp(elem->bytes_value, data, size) == 0)
+      return;
+
+    memcpy(elem->bytes_value, data, size);
+    elem->count = size;  // update actual length
+
+    // schedule callback from idle to avoid GTK warnings
+    g_idle_add(alsa_elem_change_idle, elem);
+    return;
+  }
+
+  snd_ctl_elem_value_t *elem_value;
+
+  snd_ctl_elem_value_alloca(&elem_value);
+  snd_ctl_elem_value_set_numid(elem_value, elem->numid);
+  snd_ctl_elem_set_bytes(elem_value, (void *)data, size);
+  snd_ctl_elem_write(elem->card->handle, elem_value);
+}
+
+// create a simulated optional element and add it to the card's element array
+// used for optional controls that may not exist on all devices
+struct alsa_elem *alsa_create_optional_elem(
+  struct alsa_card *card,
+  const char       *name,
+  int               type,
+  size_t            max_size
+) {
+  // create a new element
+  struct alsa_elem new_elem = { 0 };
+
+  new_elem.card = card;
+  new_elem.numid = 0;  // simulated elements have no numid
+  new_elem.name = strdup(name);
+  new_elem.type = type;
+  new_elem.count = 1;
+  new_elem.index = 0;
+
+  // mark as simulated
+  new_elem.is_simulated = 1;
+  new_elem.is_writable = 1;
+  new_elem.is_volatile = 0;
+
+  // for BYTES elements, allocate buffer at max size
+  if (type == SND_CTL_ELEM_TYPE_BYTES) {
+    new_elem.bytes_value = malloc(max_size);
+    new_elem.count = 0;  // actual length, starts at 0
+    new_elem.bytes_size = max_size;  // max capacity
+  }
+
+  // add to card->elems array
+  int array_len = card->elems->len;
+  g_array_set_size(card->elems, array_len + 1);
+  g_array_index(card->elems, struct alsa_elem, array_len) = new_elem;
+
+  // return pointer to the new element
+  return &g_array_index(card->elems, struct alsa_elem, array_len);
 }
 
 //
@@ -479,6 +588,7 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
     case SND_CTL_ELEM_TYPE_BOOLEAN:
     case SND_CTL_ELEM_TYPE_ENUMERATED:
     case SND_CTL_ELEM_TYPE_INTEGER:
+    case SND_CTL_ELEM_TYPE_BYTES:
       break;
     default:
       return;
@@ -785,6 +895,11 @@ static void card_destroy_callback(void *data) {
       // free callback list
       for (GList *l = elem->callbacks; l; l = l->next) {
         struct alsa_elem_callback *cb = l->data;
+
+        // free callback data for simulated elements (optional controls)
+        if (elem->is_simulated && cb->data)
+          optional_controls_free_callback_data(cb->data);
+
         free(cb);
       }
       g_list_free(elem->callbacks);
@@ -792,6 +907,8 @@ static void card_destroy_callback(void *data) {
       // free element data
       if (elem->name)
         free(elem->name);
+      if (elem->bytes_value)
+        free(elem->bytes_value);
       if (elem->meter_labels) {
         for (int j = 0; j < elem->count; j++)
           free(elem->meter_labels[j]);
@@ -842,6 +959,7 @@ static void complete_card_init(struct alsa_card *card) {
   alsa_get_elem_list(card);
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
+  optional_controls_init(card);
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
 
   if (card->serial) {

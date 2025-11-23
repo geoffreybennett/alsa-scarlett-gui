@@ -17,6 +17,7 @@
 #include "window-mixer.h"
 #include "window-routing.h"
 #include "window-startup.h"
+#include "window-configuration.h"
 
 static void add_clock_source_control(
   struct alsa_card *card,
@@ -1031,6 +1032,18 @@ static gboolean window_mixer_close_request(GtkWindow *w, gpointer data) {
   return true;
 }
 
+static gboolean window_configuration_close_request(GtkWindow *w, gpointer data) {
+  struct alsa_card *card = data;
+
+  gtk_widget_activate_action(
+    card->window_main,
+    "win.configuration",
+    NULL
+  );
+
+  return true;
+}
+
 static gboolean window_levels_close_request(GtkWindow *w, gpointer data) {
   struct alsa_card *card = data;
 
@@ -1108,6 +1121,13 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
 
   GtkWidget *startup = create_startup_controls(card);
   gtk_window_set_child(GTK_WINDOW(card->window_startup), startup);
+
+  card->window_configuration = create_subwindow(
+    card, "Configuration", G_CALLBACK(window_configuration_close_request)
+  );
+
+  GtkWidget *configuration = create_configuration_controls(card);
+  gtk_window_set_child(GTK_WINDOW(card->window_configuration), configuration);
 
   return top;
 }

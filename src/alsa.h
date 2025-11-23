@@ -160,6 +160,7 @@ struct alsa_elem {
   GList *callbacks;
 
   // for simulated elements, the current state
+  int  is_simulated;
   int  is_writable;
   int  is_volatile;
   long value;
@@ -167,6 +168,10 @@ struct alsa_elem {
   // for simulated enumerated elements, the items
   int    item_count;
   char **item_names;
+
+  // for BYTES type elements
+  void   *bytes_value;
+  size_t  bytes_size;
 };
 
 struct alsa_card {
@@ -190,6 +195,7 @@ struct alsa_card {
   GtkWidget          *window_routing;
   GtkWidget          *window_mixer;
   GtkWidget          *window_levels;
+  GtkWidget          *window_configuration;
   GtkWidget          *window_startup;
   GtkWidget          *window_modal;
   GtkWidget          *window_main_contents;
@@ -247,6 +253,18 @@ int alsa_get_elem_volatile(struct alsa_elem *elem);
 int alsa_get_elem_count(struct alsa_elem *elem);
 int alsa_get_item_count(struct alsa_elem *elem);
 char *alsa_get_item_name(struct alsa_elem *elem, int i);
+
+// BYTES element support
+const void *alsa_get_elem_bytes(struct alsa_elem *elem, size_t *size);
+void alsa_set_elem_bytes(struct alsa_elem *elem, const void *data, size_t size);
+
+// create simulated optional element
+struct alsa_elem *alsa_create_optional_elem(
+  struct alsa_card *card,
+  const char       *name,
+  int               type,
+  size_t            max_size
+);
 
 // add to alsa_cards array
 struct alsa_card *card_create(int card_num);

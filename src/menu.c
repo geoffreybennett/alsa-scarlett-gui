@@ -5,6 +5,7 @@
 #include "file.h"
 #include "menu.h"
 #include "window-hardware.h"
+#include "window-configuration.h"
 
 // helper for common code of activate_*() functions
 static void update_visibility(
@@ -65,6 +66,16 @@ static void activate_levels(
   update_visibility(action, card->window_levels);
 }
 
+static void activate_configuration(
+  GSimpleAction *action,
+  GVariant      *parameter,
+  gpointer       data
+) {
+  struct alsa_card *card = data;
+
+  update_visibility(action, card->window_configuration);
+}
+
 static void activate_startup(
   GSimpleAction *action,
   GVariant      *parameter,
@@ -105,10 +116,11 @@ static const struct menu_data menus[] = {
   {
     "_View",
     (struct menu_item[]){
-      { "_Routing", "win.routing", { "<Control>R", NULL } },
-      { "_Mixer",   "win.mixer",   { "<Control>M", NULL } },
-      { "_Levels",  "win.levels",  { "<Control>L", NULL } },
-      { "_Startup", "win.startup", { "<Control>T", NULL } },
+      { "_Routing",       "win.routing",       { "<Control>R", NULL } },
+      { "_Mixer",         "win.mixer",         { "<Control>M", NULL } },
+      { "_Levels",        "win.levels",        { "<Control>L", NULL } },
+      { "_Configuration", "win.configuration", { "<Control>G", NULL } },
+      { "_Startup",       "win.startup",       { "<Control>T", NULL } },
       {}
     }
   },
@@ -202,6 +214,10 @@ static const GActionEntry levels_entries[] = {
   {"levels",  activate_levels,  NULL, "false"}
 };
 
+static const GActionEntry configuration_entries[] = {
+  {"configuration", activate_configuration, NULL, "false"}
+};
+
 void add_mixer_action_map(struct alsa_card *card) {
   g_action_map_add_action_entries(
     G_ACTION_MAP(card->window_main),
@@ -221,4 +237,12 @@ void add_mixer_action_map(struct alsa_card *card) {
       card
     );
   }
+
+  // Always show configuration menu
+  g_action_map_add_action_entries(
+    G_ACTION_MAP(card->window_main),
+    configuration_entries,
+    G_N_ELEMENTS(configuration_entries),
+    card
+  );
 }

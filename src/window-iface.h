@@ -5,6 +5,10 @@
 
 #include "alsa.h"
 
+// Get the window title for a card (with custom name if set)
+// Returns newly allocated string that must be freed
+char *get_card_window_title(struct alsa_card *card);
+
 void create_card_window(struct alsa_card *card);
 void create_no_card_window(void);
 void destroy_card_window(struct alsa_card *card);
