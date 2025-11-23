@@ -19,7 +19,3 @@ int optional_state_save(
   const char *control_name,
   const char *value
 );
-
-// Get the state file path for a given serial number
-// Returns newly allocated string that must be freed with g_free()
-char *optional_state_get_path(const char *serial);

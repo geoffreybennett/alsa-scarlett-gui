@@ -13,7 +13,7 @@ static char *get_config_dir(void) {
 }
 
 // Get the state file path for a given serial number
-char *optional_state_get_path(const char *serial) {
+static char *get_state_path(const char *serial) {
   char *config_dir = get_config_dir();
   char *filename = g_strdup_printf("%s.conf", serial);
   char *path = g_build_filename(config_dir, filename, NULL);
@@ -44,7 +44,7 @@ GHashTable *optional_state_load(const char *serial) {
   if (!serial || !*serial)
     return NULL;
 
-  char *path = optional_state_get_path(serial);
+  char *path = get_state_path(serial);
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
 
@@ -117,7 +117,7 @@ int optional_state_save(
   if (ensure_config_dir() < 0)
     return -1;
 
-  char *path = optional_state_get_path(serial);
+  char *path = get_state_path(serial);
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
 
