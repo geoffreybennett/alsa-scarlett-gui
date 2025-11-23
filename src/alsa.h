@@ -133,11 +133,11 @@ struct alsa_elem {
   struct alsa_card *card;
 
   // ALSA element information
-  int         numid;
-  const char *name;
-  int         type;
-  int         count;
-  int         index;
+  int   numid;
+  char *name;
+  int   type;
+  int   count;
+  int   index;
 
   // for gain/volume elements, the value range, dB type, and dB range
   int min_val;

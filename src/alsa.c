@@ -777,10 +777,53 @@ static void card_destroy_callback(void *data) {
   // close the windows associated with this card
   destroy_card_window(card);
 
-  // TODO: there is more to free
+  // free all elements and their callbacks
+  if (card->elems) {
+    for (int i = 0; i < card->elems->len; i++) {
+      struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+
+      // free callback list
+      for (GList *l = elem->callbacks; l; l = l->next) {
+        struct alsa_elem_callback *cb = l->data;
+        free(cb);
+      }
+      g_list_free(elem->callbacks);
+
+      // free element data
+      if (elem->name)
+        free(elem->name);
+      if (elem->meter_labels) {
+        for (int j = 0; j < elem->count; j++)
+          free(elem->meter_labels[j]);
+        free(elem->meter_labels);
+      }
+      if (elem->item_names) {
+        for (int j = 0; j < elem->item_count; j++)
+          free(elem->item_names[j]);
+        free(elem->item_names);
+      }
+    }
+    g_array_free(card->elems, TRUE);
+  }
+
+  // free routing arrays
+  if (card->routing_srcs)
+    g_array_free(card->routing_srcs, TRUE);
+  if (card->routing_snks)
+    g_array_free(card->routing_snks, TRUE);
+
+  // close ALSA handle
+  if (card->handle)
+    snd_ctl_close(card->handle);
+
+  // unref IO channel
+  if (card->io_channel)
+    g_io_channel_unref(card->io_channel);
+
   free(card->device);
   free(card->serial);
   free(card->name);
+  free(card->fcp_socket);
   free(card);
 
   // go through the alsa_cards array and clear the entry for this card
