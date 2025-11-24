@@ -234,6 +234,8 @@ struct alsa_card {
   GtkWidget          *routing_dsp_out_grid;
   GtkWidget          *routing_mixer_in_grid;
   GtkWidget          *routing_mixer_out_grid;
+  GtkWidget          *routing_src_label;
+  GtkWidget          *routing_snk_label;
   int                 has_speaker_switching;
   int                 has_talkback;
   int                 has_fixed_mixer_inputs;
@@ -245,7 +247,12 @@ struct alsa_card {
   struct routing_src *src_drag;
   struct routing_snk *snk_drag;
   double              drag_x, drag_y;
+  int                 pending_ui_updates;
+  guint               pending_ui_update_timeout;
 };
+
+// flags for pending_ui_updates
+#define PENDING_UI_UPDATE_ROUTING (1 << 0)
 
 // utility
 void fatal_alsa_error(const char *msg, int err);

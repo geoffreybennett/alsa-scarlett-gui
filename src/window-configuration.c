@@ -24,6 +24,15 @@ struct column_checkbox_data {
   int        was_inconsistent;  // track if we were inconsistent before click
 };
 
+// Structure to track a tab's enable-all checkbox and its column checkboxes
+struct tab_checkbox_data {
+  GtkWidget                   *tab_checkbox;
+  struct column_checkbox_data *left_column;   // can be NULL if no inputs
+  struct column_checkbox_data *right_column;  // can be NULL if no outputs
+  int                          updating;      // flag to prevent recursion
+  int                          was_inconsistent;  // track if we were inconsistent before click
+};
+
 static void on_destroy(
   struct configuration_window *data,
   GtkWidget                   *widget
@@ -107,6 +116,120 @@ static void column_checkbox_toggled(GtkCheckButton *button, gpointer user_data) 
   for (int i = 0; i < data->child_elems->len; i++) {
     struct alsa_elem *elem = g_array_index(data->child_elems, struct alsa_elem *, i);
     alsa_set_elem_value(elem, new_state ? 1 : 0);
+  }
+
+  // clear inconsistent state
+  gtk_check_button_set_inconsistent(button, FALSE);
+
+  data->updating = 0;
+}
+
+// Free tab checkbox data
+static void free_tab_checkbox_data(gpointer data) {
+  struct tab_checkbox_data *tcd = data;
+  // don't free column data - they're managed by the columns themselves
+  g_free(tcd);
+}
+
+// Update tab checkbox state based on column checkbox states
+static void update_tab_checkbox_state(struct tab_checkbox_data *data) {
+  if (data->updating)
+    return;
+
+  // count how many column checkboxes are in each state
+  int all_enabled = 0;
+  int all_disabled = 0;
+  int columns_exist = 0;
+
+  if (data->left_column && data->left_column->child_elems) {
+    columns_exist++;
+    if (gtk_check_button_get_inconsistent(GTK_CHECK_BUTTON(data->left_column->column_checkbox))) {
+      // mixed state in left column - tab is also mixed
+    } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(data->left_column->column_checkbox))) {
+      all_enabled++;
+    } else {
+      all_disabled++;
+    }
+  }
+
+  if (data->right_column && data->right_column->child_elems) {
+    columns_exist++;
+    if (gtk_check_button_get_inconsistent(GTK_CHECK_BUTTON(data->right_column->column_checkbox))) {
+      // mixed state in right column - tab is also mixed
+    } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(data->right_column->column_checkbox))) {
+      all_enabled++;
+    } else {
+      all_disabled++;
+    }
+  }
+
+  if (columns_exist == 0)
+    return;
+
+  data->updating = 1;
+
+  GtkCheckButton *check = GTK_CHECK_BUTTON(data->tab_checkbox);
+
+  if (all_disabled == columns_exist) {
+    // all columns are disabled
+    gtk_check_button_set_active(check, FALSE);
+    gtk_check_button_set_inconsistent(check, FALSE);
+    data->was_inconsistent = 0;
+  } else if (all_enabled == columns_exist) {
+    // all columns are enabled
+    gtk_check_button_set_active(check, TRUE);
+    gtk_check_button_set_inconsistent(check, FALSE);
+    data->was_inconsistent = 0;
+  } else {
+    // mixed state
+    gtk_check_button_set_inconsistent(check, TRUE);
+    data->was_inconsistent = 1;
+  }
+
+  data->updating = 0;
+}
+
+// Callback when a column checkbox changes (need to update tab checkbox)
+static void tab_child_enable_changed(struct alsa_elem *elem, void *private) {
+  struct tab_checkbox_data *data = private;
+  update_tab_checkbox_state(data);
+}
+
+// Callback when tab checkbox is clicked
+static void tab_checkbox_toggled(GtkCheckButton *button, gpointer user_data) {
+  struct tab_checkbox_data *data = user_data;
+
+  if (data->updating)
+    return;
+
+  data->updating = 1;
+
+  // If we were inconsistent before the click, turn all off
+  // Otherwise, use the new active state (toggle between all on/all off)
+  gboolean new_state;
+
+  if (data->was_inconsistent) {
+    new_state = FALSE;  // turn all off when clicking indeterminate
+    gtk_check_button_set_active(button, FALSE);  // also update the checkbox itself
+    data->was_inconsistent = 0;
+  } else {
+    gboolean active = gtk_check_button_get_active(button);
+    new_state = active;  // toggle normally
+  }
+
+  // toggle both column checkboxes by simulating clicks on them
+  if (data->left_column && data->left_column->column_checkbox) {
+    gtk_check_button_set_active(
+      GTK_CHECK_BUTTON(data->left_column->column_checkbox),
+      new_state
+    );
+  }
+
+  if (data->right_column && data->right_column->column_checkbox) {
+    gtk_check_button_set_active(
+      GTK_CHECK_BUTTON(data->right_column->column_checkbox),
+      new_state
+    );
   }
 
   // clear inconsistent state
@@ -349,6 +472,7 @@ static GtkWidget *create_two_column_layout(
   GtkWidget                    **right_grid,     // returns the right grid (Outputs)
   struct column_checkbox_data  **left_col_data,  // returns left column data
   struct column_checkbox_data  **right_col_data, // returns right column data
+  struct tab_checkbox_data     **tab_data,       // returns tab checkbox data
   int                            show_inputs,
   int                            show_outputs
 ) {
@@ -357,6 +481,11 @@ static GtkWidget *create_two_column_layout(
   gtk_widget_set_margin_end(hbox, 20);
   gtk_widget_set_margin_top(hbox, 20);
   gtk_widget_set_margin_bottom(hbox, 20);
+
+  // Create tab checkbox data structure
+  struct tab_checkbox_data *tab_checkbox_data = g_malloc0(sizeof(struct tab_checkbox_data));
+  tab_checkbox_data->updating = 0;
+  *tab_data = tab_checkbox_data;
 
   // Left column (Inputs)
   if (show_inputs) {
@@ -395,6 +524,7 @@ static GtkWidget *create_two_column_layout(
     gtk_box_append(GTK_BOX(hbox), left_vbox);
 
     *left_col_data = col_data;
+    tab_checkbox_data->left_column = col_data;
 
     // attach cleanup to the vbox
     g_object_weak_ref(
@@ -407,6 +537,7 @@ static GtkWidget *create_two_column_layout(
       *left_grid = NULL;
     if (left_col_data)
       *left_col_data = NULL;
+    tab_checkbox_data->left_column = NULL;
   }
 
   // Right column (Outputs)
@@ -446,6 +577,7 @@ static GtkWidget *create_two_column_layout(
     gtk_box_append(GTK_BOX(hbox), right_vbox);
 
     *right_col_data = col_data;
+    tab_checkbox_data->right_column = col_data;
 
     // attach cleanup to the vbox
     g_object_weak_ref(
@@ -458,6 +590,7 @@ static GtkWidget *create_two_column_layout(
       *right_grid = NULL;
     if (right_col_data)
       *right_col_data = NULL;
+    tab_checkbox_data->right_column = NULL;
   }
 
   return hbox;
@@ -474,9 +607,11 @@ static void add_hw_tab(
 
   GtkWidget *left_grid, *right_grid;
   struct column_checkbox_data *left_col_data, *right_col_data;
+  struct tab_checkbox_data *tab_data;
   GtkWidget *content = create_two_column_layout(
     &left_grid, &right_grid,
     &left_col_data, &right_col_data,
+    &tab_data,
     1, 1
   );
 
@@ -486,14 +621,52 @@ static void add_hw_tab(
   // Right column: Outputs (sinks - audio to hardware)
   add_snk_names_for_category(card, right_grid, PC_HW, hw_type, right_col_data);
 
+  // Register callbacks from children to update tab checkbox
+  if (left_col_data) {
+    for (int i = 0; i < left_col_data->child_elems->len; i++) {
+      struct alsa_elem *elem = g_array_index(left_col_data->child_elems, struct alsa_elem *, i);
+      alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+    }
+  }
+  if (right_col_data) {
+    for (int i = 0; i < right_col_data->child_elems->len; i++) {
+      struct alsa_elem *elem = g_array_index(right_col_data->child_elems, struct alsa_elem *, i);
+      alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+    }
+  }
+
   // Update column checkbox initial states
   if (left_col_data)
     update_column_checkbox_state(left_col_data);
   if (right_col_data)
     update_column_checkbox_state(right_col_data);
 
-  GtkWidget *label = gtk_label_new(hw_type_names[hw_type]);
-  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, label);
+  // Create custom tab label with checkbox
+  GtkWidget *tab_label_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  tab_data->tab_checkbox = gtk_check_button_new();
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(tab_data->tab_checkbox), TRUE);
+  g_signal_connect(
+    tab_data->tab_checkbox,
+    "toggled",
+    G_CALLBACK(tab_checkbox_toggled),
+    tab_data
+  );
+  gtk_box_append(GTK_BOX(tab_label_box), tab_data->tab_checkbox);
+
+  GtkWidget *tab_label_text = gtk_label_new(hw_type_names[hw_type]);
+  gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
+
+  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, tab_label_box);
+
+  // Update tab checkbox initial state
+  update_tab_checkbox_state(tab_data);
+
+  // attach cleanup to the content
+  g_object_weak_ref(
+    G_OBJECT(content),
+    (GWeakNotify)free_tab_checkbox_data,
+    tab_data
+  );
 }
 
 // Add a non-hardware tab (PCM, Mixer, DSP)
@@ -510,9 +683,11 @@ static void add_category_tab(
 
   GtkWidget *left_grid, *right_grid;
   struct column_checkbox_data *left_col_data, *right_col_data;
+  struct tab_checkbox_data *tab_data;
   GtkWidget *content = create_two_column_layout(
     &left_grid, &right_grid,
     &left_col_data, &right_col_data,
+    &tab_data,
     show_inputs, show_outputs
   );
 
@@ -524,14 +699,52 @@ static void add_category_tab(
   if (show_outputs && right_grid)
     add_src_names_for_category(card, right_grid, port_category, -1, right_col_data);
 
+  // Register callbacks from children to update tab checkbox
+  if (left_col_data) {
+    for (int i = 0; i < left_col_data->child_elems->len; i++) {
+      struct alsa_elem *elem = g_array_index(left_col_data->child_elems, struct alsa_elem *, i);
+      alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+    }
+  }
+  if (right_col_data) {
+    for (int i = 0; i < right_col_data->child_elems->len; i++) {
+      struct alsa_elem *elem = g_array_index(right_col_data->child_elems, struct alsa_elem *, i);
+      alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+    }
+  }
+
   // Update column checkbox initial states
   if (left_col_data)
     update_column_checkbox_state(left_col_data);
   if (right_col_data)
     update_column_checkbox_state(right_col_data);
 
-  GtkWidget *label = gtk_label_new(tab_name);
-  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, label);
+  // Create custom tab label with checkbox
+  GtkWidget *tab_label_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  tab_data->tab_checkbox = gtk_check_button_new();
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(tab_data->tab_checkbox), TRUE);
+  g_signal_connect(
+    tab_data->tab_checkbox,
+    "toggled",
+    G_CALLBACK(tab_checkbox_toggled),
+    tab_data
+  );
+  gtk_box_append(GTK_BOX(tab_label_box), tab_data->tab_checkbox);
+
+  GtkWidget *tab_label_text = gtk_label_new(tab_name);
+  gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
+
+  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, tab_label_box);
+
+  // Update tab checkbox initial state
+  update_tab_checkbox_state(tab_data);
+
+  // attach cleanup to the content
+  g_object_weak_ref(
+    G_OBJECT(content),
+    (GWeakNotify)free_tab_checkbox_data,
+    tab_data
+  );
 }
 
 GtkWidget *create_configuration_controls(struct alsa_card *card) {

@@ -8,6 +8,9 @@
 #include "optional-state.h"
 #include "alsa.h"
 
+// Debounce delay for UI updates in milliseconds
+#define UI_UPDATE_DEBOUNCE_MS 50
+
 // Callback structure to pass data to save callback
 struct port_enable_save_data {
   char *serial;
@@ -27,6 +30,116 @@ static void port_enable_changed(
 
   // save as "1" or "0"
   optional_state_save(data->serial, data->config_key, value ? "1" : "0");
+}
+
+// Flush pending UI updates for a card
+static gboolean flush_pending_ui_updates(gpointer user_data) {
+  struct alsa_card *card = user_data;
+
+  card->pending_ui_update_timeout = 0;
+
+  // perform the updates
+  if (card->pending_ui_updates & PENDING_UI_UPDATE_ROUTING) {
+    update_routing_section_visibility(card);
+    if (card->routing_lines)
+      gtk_widget_queue_draw(card->routing_lines);
+  }
+
+  // clear pending updates
+  card->pending_ui_updates = 0;
+
+  return G_SOURCE_REMOVE;
+}
+
+// Schedule a debounced UI update for a card
+static void schedule_ui_update(struct alsa_card *card, int flags) {
+  if (!card)
+    return;
+
+  // combine with existing flags
+  card->pending_ui_updates |= flags;
+
+  // cancel existing timeout if any
+  if (card->pending_ui_update_timeout)
+    g_source_remove(card->pending_ui_update_timeout);
+
+  // schedule new timeout
+  card->pending_ui_update_timeout = g_timeout_add(
+    UI_UPDATE_DEBOUNCE_MS,
+    flush_pending_ui_updates,
+    card
+  );
+}
+
+// Update the Sources label arrows based on which sections are visible
+static void update_sources_label(struct alsa_card *card) {
+  if (!card || !card->routing_src_label)
+    return;
+
+  // Check if we have any enabled sources in each category
+  int has_hw_or_pcm_sources =
+    !all_sources_disabled(card, PC_HW) ||
+    !all_sources_disabled(card, PC_PCM);
+  int has_mixer_or_dsp_sources =
+    !all_sources_disabled(card, PC_MIX) ||
+    !all_sources_disabled(card, PC_DSP);
+
+  // Hide the label if there are no arrows (no sources enabled)
+  if (!has_hw_or_pcm_sources && !has_mixer_or_dsp_sources) {
+    gtk_widget_set_visible(card->routing_src_label, FALSE);
+    return;
+  }
+
+  // Show the label and set text based on what's visible
+  gtk_widget_set_visible(card->routing_src_label, TRUE);
+
+  char *text;
+  if (has_hw_or_pcm_sources && has_mixer_or_dsp_sources) {
+    text = "↑\nSources →";
+  } else if (has_hw_or_pcm_sources) {
+    text = "↑\nSources";
+  } else {
+    text = "Sources →";
+  }
+
+  gtk_label_set_text(GTK_LABEL(card->routing_src_label), text);
+}
+
+// Update the Sinks label arrows based on which sections are visible
+static void update_sinks_label(struct alsa_card *card) {
+  if (!card || !card->routing_snk_label)
+    return;
+
+  // Check if we have any enabled sinks in each category
+  int has_hw_or_pcm_sinks =
+    !all_sinks_disabled(card, PC_HW) ||
+    !all_sinks_disabled(card, PC_PCM);
+
+  // Don't count mixer sinks if they're fixed (not configurable)
+  int has_mixer_sinks = card->has_fixed_mixer_inputs ? 0 : !all_sinks_disabled(card, PC_MIX);
+  int has_mixer_or_dsp_sinks =
+    has_mixer_sinks ||
+    !all_sinks_disabled(card, PC_DSP);
+
+  // Hide the label if there are no arrows (no sinks enabled)
+  if (!has_hw_or_pcm_sinks && !has_mixer_or_dsp_sinks) {
+    gtk_widget_set_visible(card->routing_snk_label, FALSE);
+    return;
+  }
+
+  // Show the label and set text based on what's visible
+  gtk_widget_set_visible(card->routing_snk_label, TRUE);
+
+  char *text;
+  if (has_hw_or_pcm_sinks && has_mixer_or_dsp_sinks) {
+    text = "← Sinks\n↓";
+  } else if (has_hw_or_pcm_sinks) {
+    text = "Sinks\n↓";
+  } else {
+    text = "← Sinks";
+  }
+
+  gtk_label_set_text(GTK_LABEL(card->routing_snk_label), text);
 }
 
 // Update visibility of routing section grids based on port enable states
@@ -81,6 +194,10 @@ void update_routing_section_visibility(struct alsa_card *card) {
     int all_disabled = all_sources_disabled(card, PC_MIX);
     gtk_widget_set_visible(card->routing_mixer_out_grid, !all_disabled);
   }
+
+  // Update the Sources and Sinks label arrows
+  update_sources_label(card);
+  update_sinks_label(card);
 }
 
 // Callback to update routing source visibility
@@ -97,12 +214,8 @@ static void src_visibility_changed(
   int enabled = alsa_get_elem_value(elem);
   gtk_widget_set_visible(src->widget, enabled != 0);
 
-  // update section visibility
-  update_routing_section_visibility(src->card);
-
-  // redraw routing lines to reflect new layout
-  if (src->card && src->card->routing_lines)
-    gtk_widget_queue_draw(src->card->routing_lines);
+  // schedule expensive updates (debounced)
+  schedule_ui_update(src->card, PENDING_UI_UPDATE_ROUTING);
 }
 
 // Callback to update routing sink visibility
@@ -119,14 +232,10 @@ static void snk_visibility_changed(
   int enabled = alsa_get_elem_value(elem);
   gtk_widget_set_visible(snk->box_widget, enabled != 0);
 
-  // update section visibility
+  // schedule expensive updates (debounced)
   struct alsa_card *card = snk->elem ? snk->elem->card : NULL;
   if (card)
-    update_routing_section_visibility(card);
-
-  // redraw routing lines to reflect new layout
-  if (card && card->routing_lines)
-    gtk_widget_queue_draw(card->routing_lines);
+    schedule_ui_update(card, PENDING_UI_UPDATE_ROUTING);
 }
 
 // Free port enable callback data
