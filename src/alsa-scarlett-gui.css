@@ -419,3 +419,46 @@ button.toggle {
   border-radius: 5px;
   color: #d0d0d0;
 }
+
+/* Popover styling */
+.window-frame popover.background {
+  background-color: transparent;
+}
+
+.window-frame popover > arrow,
+.window-frame popover > contents {
+  background-color: #282828;
+  color: #d0d0d0;
+  border: 1px solid #a00000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.window-frame popover > contents {
+  padding: 8px;
+  border-radius: 8px;
+}
+
+/* Popover list item styling */
+.window-frame popover row:hover {
+  background-color: #800000;
+  outline: none;
+}
+
+.window-frame popover row:focus {
+  background-color: #800000;
+  outline: none;
+}
+
+.window-frame popover row:selected {
+  background-color: #800000;
+  outline: none;
+}
+
+/* Popover checkmark images */
+.window-frame popover row image {
+  color: #d0d0d0;
+}
+
+.window-frame popover row:hover image {
+  color: #ffffff;
+}
