@@ -281,14 +281,16 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     g_malloc0(sizeof(struct configuration_window));
   data->card = card;
 
+  // create top-level frame with CSS styling
+  GtkWidget *top = gtk_frame_new(NULL);
+  gtk_widget_add_css_class(top, "window-frame");
+
   // create main container
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
-  gtk_widget_set_margin_start(vbox, 20);
-  gtk_widget_set_margin_end(vbox, 20);
-  gtk_widget_set_margin_top(vbox, 20);
-  gtk_widget_set_margin_bottom(vbox, 20);
+  gtk_widget_add_css_class(vbox, "window-content");
+  gtk_frame_set_child(GTK_FRAME(top), vbox);
 
-  data->top = vbox;
+  data->top = top;
 
   // Device Name section
   struct alsa_elem *name_elem = optional_controls_get_name_elem(card);
