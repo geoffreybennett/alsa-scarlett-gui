@@ -136,7 +136,10 @@ void optional_controls_init(struct alsa_card *card) {
     callback_data->serial = g_strdup(card->serial);
     callback_data->config_key = g_strdup(def->config_key);
 
-    alsa_elem_add_callback(elem, optional_control_changed, callback_data);
+    alsa_elem_add_callback(
+      elem, optional_control_changed, callback_data,
+      optional_controls_free_callback_data
+    );
   }
 
   g_hash_table_destroy(state);

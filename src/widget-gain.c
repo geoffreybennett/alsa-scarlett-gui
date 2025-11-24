@@ -244,7 +244,7 @@ GtkWidget *make_gain_alsa_elem(
     data->dial, "value-changed", G_CALLBACK(gain_changed), data
   );
 
-  alsa_elem_add_callback(elem, gain_updated, data);
+  alsa_elem_add_callback(elem, gain_updated, data, NULL);
 
   gain_updated(elem, data);
 

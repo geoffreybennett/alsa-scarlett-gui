@@ -210,7 +210,7 @@ void create_card_window(struct alsa_card *card) {
   // register callback to update window titles when name changes
   struct alsa_elem *name_elem = optional_controls_get_name_elem(card);
   if (name_elem)
-    alsa_elem_add_callback(name_elem, update_window_titles, card);
+    alsa_elem_add_callback(name_elem, update_window_titles, card, NULL);
 
   gtk_widget_set_visible(card->window_main, TRUE);
 }
@@ -229,6 +229,8 @@ void destroy_card_window(struct alsa_card *card) {
     gtk_window_destroy(GTK_WINDOW(card->window_mixer));
   if (card->window_levels)
     gtk_window_destroy(GTK_WINDOW(card->window_levels));
+  if (card->window_configuration)
+    gtk_window_destroy(GTK_WINDOW(card->window_configuration));
   if (card->window_startup)
     gtk_window_destroy(GTK_WINDOW(card->window_startup));
   if (card->window_modal) {

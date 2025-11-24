@@ -96,6 +96,17 @@ struct routing_src {
 
   // the socket widget
   GtkWidget *widget2;
+
+  // optional/simulated element for custom name
+  struct alsa_elem *custom_name_elem;
+
+  // cached display name (either custom or default)
+  // updated by callback when custom name changes
+  char *display_name;
+
+  // mixer window labels for mixer outputs (Mix A, Mix B, etc.)
+  GtkWidget *mixer_label_left;
+  GtkWidget *mixer_label_right;
 };
 
 // entry in alsa_card routing_snks (routing sinks) array for alsa
@@ -118,12 +129,20 @@ struct routing_snk {
   // the mixer label widgets for this sink
   GtkWidget *mixer_label_top;
   GtkWidget *mixer_label_bottom;
+
+  // optional/simulated element for custom name
+  struct alsa_elem *custom_name_elem;
+
+  // cached display name (either custom or default)
+  // updated by callback when custom name changes
+  char *display_name;
 };
 
 // hold one callback & its data
 struct alsa_elem_callback {
   AlsaElemCallback *callback;
   void             *data;
+  GDestroyNotify    destroy;  // cleanup function, NULL if no cleanup needed
 };
 
 // entry in alsa_card elems (ALSA control elements) array
@@ -239,8 +258,12 @@ int get_max_elem_by_name(
 void alsa_elem_add_callback(
   struct alsa_elem *elem,
   AlsaElemCallback *callback,
-  void             *data
+  void             *data,
+  GDestroyNotify    destroy  // cleanup function, NULL if no cleanup needed
 );
+
+// trigger callbacks for an element (notify of value change)
+void alsa_elem_change(struct alsa_elem *elem);
 
 // alsa snd_ctl_elem_*() functions
 int alsa_get_elem_type(struct alsa_elem *elem);
@@ -272,6 +295,7 @@ struct alsa_card *card_create(int card_num);
 // parse elements (used by alsa-sim.c)
 void alsa_set_lr_nums(struct alsa_card *card);
 void alsa_get_routing_controls(struct alsa_card *card);
+void refresh_routing_elem_pointers(struct alsa_card *card);
 
 // init
 void alsa_init(void);

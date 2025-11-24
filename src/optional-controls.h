@@ -34,6 +34,5 @@ void optional_controls_init(struct alsa_card *card);
 // Returns NULL if not available
 struct alsa_elem *optional_controls_get_name_elem(struct alsa_card *card);
 
-// Free optional control callback data
-// Called from card_destroy_callback for simulated elements only
+// Free optional control callback data (for use as GDestroyNotify)
 void optional_controls_free_callback_data(void *data);

@@ -183,7 +183,7 @@ GtkWidget *make_drop_down_alsa_elem(
   );
   drop_down_updated(elem, data);
 
-  alsa_elem_add_callback(elem, drop_down_updated, data);
+  alsa_elem_add_callback(elem, drop_down_updated, data, NULL);
 
   return data->button;
 }

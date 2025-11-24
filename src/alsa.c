@@ -11,6 +11,7 @@
 #include "stringhelper.h"
 #include "window-iface.h"
 #include "optional-controls.h"
+#include "custom-names.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -53,7 +54,7 @@ struct reopen_callback {
 GHashTable *reopen_callbacks;
 
 // forward declaration
-static void alsa_elem_change(struct alsa_elem *elem);
+void alsa_elem_change(struct alsa_elem *elem);
 
 void fatal_alsa_error(const char *msg, int err) {
   fprintf(stderr, "%s: %s\n", msg, snd_strerror(err));
@@ -149,12 +150,14 @@ int get_max_elem_by_name(
 void alsa_elem_add_callback(
   struct alsa_elem *elem,
   AlsaElemCallback *callback,
-  void             *data
+  void             *data,
+  GDestroyNotify    destroy
 ) {
   struct alsa_elem_callback *cb = calloc(1, sizeof(struct alsa_elem_callback));
 
   cb->callback = callback;
   cb->data = data;
+  cb->destroy = destroy;
 
   elem->callbacks = g_list_append(elem->callbacks, cb);
 }
@@ -841,6 +844,44 @@ static void get_routing_snks(struct alsa_card *card) {
   assert(j == count);
 }
 
+// Refresh routing_snk elem pointers after card->elems array may have been
+// reallocated. Routing snks only point to real ALSA elements which have
+// is_routing_snk=1 and matching port info.
+void refresh_routing_elem_pointers(struct alsa_card *card) {
+  if (!card->routing_snks)
+    return;
+
+  // refresh routing_snk elem pointers
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    // find the element by is_routing_snk flag and matching idx
+    int old_port_num = snk->idx;  // use idx as a temporary match key
+    snk->elem = NULL;
+
+    // find the routing snk element by counting through is_routing_snk elements
+    int j_count = 0;
+    for (int j = 0; j < card->elems->len; j++) {
+      struct alsa_elem *elem = &g_array_index(
+        card->elems, struct alsa_elem, j
+      );
+      if (elem->is_routing_snk) {
+        if (j_count == old_port_num) {
+          snk->elem = elem;
+          break;
+        }
+        j_count++;
+      }
+    }
+
+    if (!snk->elem) {
+      fprintf(stderr, "Failed to refresh elem pointer for routing snk %d\n", i);
+    }
+  }
+}
+
 void alsa_get_routing_controls(struct alsa_card *card) {
 
   // check that we can find a routing control
@@ -867,7 +908,7 @@ void alsa_get_routing_controls(struct alsa_card *card) {
   get_routing_snks(card);
 }
 
-static void alsa_elem_change(struct alsa_elem *elem) {
+void alsa_elem_change(struct alsa_elem *elem) {
   if (!elem || !elem->callbacks)
     return;
 
@@ -896,9 +937,9 @@ static void card_destroy_callback(void *data) {
       for (GList *l = elem->callbacks; l; l = l->next) {
         struct alsa_elem_callback *cb = l->data;
 
-        // free callback data for simulated elements (optional controls)
-        if (elem->is_simulated && cb->data)
-          optional_controls_free_callback_data(cb->data);
+        // call cleanup function if provided
+        if (cb->destroy && cb->data)
+          cb->destroy(cb->data);
 
         free(cb);
       }
@@ -924,10 +965,24 @@ static void card_destroy_callback(void *data) {
   }
 
   // free routing arrays
-  if (card->routing_srcs)
+  if (card->routing_srcs) {
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+      g_free(src->display_name);
+    }
     g_array_free(card->routing_srcs, TRUE);
-  if (card->routing_snks)
+  }
+  if (card->routing_snks) {
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      g_free(snk->display_name);
+    }
     g_array_free(card->routing_snks, TRUE);
+  }
 
   // close ALSA handle
   if (card->handle)
@@ -960,6 +1015,10 @@ static void complete_card_init(struct alsa_card *card) {
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
   optional_controls_init(card);
+  // refresh routing_snk elem pointers after adding simulated elements
+  // (which may have caused card->elems array to be reallocated)
+  refresh_routing_elem_pointers(card);
+  custom_names_init(card);
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
 
   if (card->serial) {

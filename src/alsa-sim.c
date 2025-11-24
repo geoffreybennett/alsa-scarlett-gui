@@ -5,6 +5,8 @@
 #include "alsa-sim.h"
 #include "error.h"
 #include "window-iface.h"
+#include "optional-controls.h"
+#include "custom-names.h"
 
 // check that *config is a compound node, retrieve the first node
 // within, check that that node is a compound node, optionally check
@@ -510,6 +512,11 @@ void create_sim_from_file(GtkWindow *w, char *fn) {
 
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
+  optional_controls_init(card);
+  // refresh routing_snk elem pointers after adding simulated elements
+  // (which may have caused card->elems array to be reallocated)
+  refresh_routing_elem_pointers(card);
+  custom_names_init(card);
 
   create_card_window(card);
 }
