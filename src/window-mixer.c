@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 
+#include "custom-names.h"
 #include "gtkhelper.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
@@ -89,32 +90,59 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   gtk_widget_set_valign(mixer_top, GTK_ALIGN_CENTER);
   gtk_grid_set_column_homogeneous(GTK_GRID(mixer_top), TRUE);
 
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   GtkWidget *mix_labels_left[MAX_MIX_OUT];
   GtkWidget *mix_labels_right[MAX_MIX_OUT];
 
   // create the Mix X labels on the left and right of the grid
   for (int i = 0; i < card->routing_in_count[PC_MIX]; i++) {
-    char name[10];
-    snprintf(name, 10, "Mix %c", i + 'A');
+    // find the corresponding routing source for this mixer output
+    struct routing_src *r_src = NULL;
+    for (int j = 0; j < card->routing_srcs->len; j++) {
+      struct routing_src *src = &g_array_index(
+        card->routing_srcs, struct routing_src, j
+      );
+      if (src->port_category == PC_MIX && src->port_num == i) {
+        r_src = src;
+        break;
+      }
+    }
+
+    char *name = r_src ?
+      get_mixer_output_label_for_mixer_window(r_src) :
+      g_strdup_printf("Mix %c", i + 'A');
 
     GtkWidget *l_left = mix_labels_left[i] = gtk_label_new(name);
+    gtk_label_set_ellipsize(GTK_LABEL(l_left), PANGO_ELLIPSIZE_END);
+    gtk_label_set_max_width_chars(GTK_LABEL(l_left), 12);
+    gtk_widget_set_tooltip_text(l_left, name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_left,
       0, i + 2, 1, 1
     );
 
     GtkWidget *l_right = mix_labels_right[i] = gtk_label_new(name);
+    gtk_label_set_ellipsize(GTK_LABEL(l_right), PANGO_ELLIPSIZE_END);
+    gtk_label_set_max_width_chars(GTK_LABEL(l_right), 12);
+    gtk_widget_set_tooltip_text(l_right, name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_right,
       card->routing_out_count[PC_MIX] + 1, i + 2, 1, 1
     );
+
+    g_free(name);
+
+    // store pointers to these labels in the routing source
+    if (r_src) {
+      r_src->mixer_label_left = l_left;
+      r_src->mixer_label_right = l_right;
+    }
   }
 
   // go through each element and create the mixer
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     // if no card entry, it's an empty slot
     if (!elem->card)
@@ -205,8 +233,9 @@ void update_mixer_labels(struct alsa_card *card) {
     );
 
     if (r_snk->mixer_label_top) {
-      gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_top), r_src->name);
-      gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_bottom), r_src->name);
+      const char *display_name = get_routing_src_display_name(r_src);
+      gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_top), display_name);
+      gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_bottom), display_name);
     }
   }
 }

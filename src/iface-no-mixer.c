@@ -11,7 +11,7 @@
 #include "window-startup.h"
 
 GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   GtkWidget *top = gtk_frame_new(NULL);
   gtk_widget_add_css_class(top, "window-frame");
@@ -65,7 +65,7 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
   }
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
     GtkWidget *w;
 
     // if no card entry, it's not a bool/enum/int elem

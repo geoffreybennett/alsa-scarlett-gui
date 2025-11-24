@@ -11,6 +11,7 @@
 #include "stringhelper.h"
 #include "window-iface.h"
 #include "optional-controls.h"
+#include "custom-names.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -53,7 +54,7 @@ struct reopen_callback {
 GHashTable *reopen_callbacks;
 
 // forward declaration
-static void alsa_elem_change(struct alsa_elem *elem);
+void alsa_elem_change(struct alsa_elem *elem);
 
 void fatal_alsa_error(const char *msg, int err) {
   fprintf(stderr, "%s: %s\n", msg, snd_strerror(err));
@@ -65,9 +66,9 @@ void fatal_alsa_error(const char *msg, int err) {
 //
 
 // return the element with the exact matching name
-struct alsa_elem *get_elem_by_name(GArray *elems, const char *name) {
+struct alsa_elem *get_elem_by_name(GPtrArray *elems, const char *name) {
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -80,11 +81,11 @@ struct alsa_elem *get_elem_by_name(GArray *elems, const char *name) {
 }
 
 // return the first element with a name starting with the given prefix
-struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix) {
+struct alsa_elem *get_elem_by_prefix(GPtrArray *elems, const char *prefix) {
   int prefix_len = strlen(prefix);
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -97,9 +98,9 @@ struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix) {
 }
 
 // return the first element with a name containing the given substring
-struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr) {
+struct alsa_elem *get_elem_by_substr(GPtrArray *elems, const char *substr) {
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -117,7 +118,7 @@ struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr) {
 // will return 8 when the last pad capture switch is
 // "Line In 8 Pad Capture Switch"
 int get_max_elem_by_name(
-  GArray *elems,
+  GPtrArray *elems,
   const char *prefix,
   const char *needle
 ) {
@@ -125,7 +126,7 @@ int get_max_elem_by_name(
   int l = strlen(prefix);
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
     int num;
 
     if (!elem->card)
@@ -149,12 +150,14 @@ int get_max_elem_by_name(
 void alsa_elem_add_callback(
   struct alsa_elem *elem,
   AlsaElemCallback *callback,
-  void             *data
+  void             *data,
+  GDestroyNotify    destroy
 ) {
   struct alsa_elem_callback *cb = calloc(1, sizeof(struct alsa_elem_callback));
 
   cb->callback = callback;
   cb->data = data;
+  cb->destroy = destroy;
 
   elem->callbacks = g_list_append(elem->callbacks, cb);
 }
@@ -429,35 +432,32 @@ struct alsa_elem *alsa_create_optional_elem(
   int               type,
   size_t            max_size
 ) {
-  // create a new element
-  struct alsa_elem new_elem = { 0 };
+  // allocate new element
+  struct alsa_elem *elem = calloc(1, sizeof(struct alsa_elem));
 
-  new_elem.card = card;
-  new_elem.numid = 0;  // simulated elements have no numid
-  new_elem.name = strdup(name);
-  new_elem.type = type;
-  new_elem.count = 1;
-  new_elem.index = 0;
+  elem->card = card;
+  elem->numid = 0;  // simulated elements have no numid
+  elem->name = strdup(name);
+  elem->type = type;
+  elem->count = 1;
+  elem->index = 0;
 
   // mark as simulated
-  new_elem.is_simulated = 1;
-  new_elem.is_writable = 1;
-  new_elem.is_volatile = 0;
+  elem->is_simulated = 1;
+  elem->is_writable = 1;
+  elem->is_volatile = 0;
 
   // for BYTES elements, allocate buffer at max size
   if (type == SND_CTL_ELEM_TYPE_BYTES) {
-    new_elem.bytes_value = malloc(max_size);
-    new_elem.count = 0;  // actual length, starts at 0
-    new_elem.bytes_size = max_size;  // max capacity
+    elem->bytes_value = malloc(max_size);
+    elem->count = 0;  // actual length, starts at 0
+    elem->bytes_size = max_size;  // max capacity
   }
 
   // add to card->elems array
-  int array_len = card->elems->len;
-  g_array_set_size(card->elems, array_len + 1);
-  g_array_index(card->elems, struct alsa_elem, array_len) = new_elem;
+  g_ptr_array_add(card->elems, elem);
 
-  // return pointer to the new element
-  return &g_array_index(card->elems, struct alsa_elem, array_len);
+  return elem;
 }
 
 //
@@ -614,9 +614,10 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
   for (int i = 0; i < count; i++, alsa_elem.lr_num++) {
     alsa_elem.index = i;
 
-    int array_len = card->elems->len;
-    g_array_set_size(card->elems, array_len + 1);
-    g_array_index(card->elems, struct alsa_elem, array_len) = alsa_elem;
+    // allocate new element and copy data
+    struct alsa_elem *elem = malloc(sizeof(struct alsa_elem));
+    *elem = alsa_elem;
+    g_ptr_array_add(card->elems, elem);
   }
 }
 
@@ -666,7 +667,7 @@ static void alsa_set_elem_lr_num(struct alsa_elem *elem) {
 
 void alsa_set_lr_nums(struct alsa_card *card) {
   for (int i = 0; i < card->elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
     alsa_set_elem_lr_num(elem);
   }
@@ -761,13 +762,13 @@ static int is_elem_routing_snk(struct alsa_elem *elem) {
 }
 
 static void get_routing_snks(struct alsa_card *card) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   int count = 0;
 
   // count and label routing snks
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -822,7 +823,7 @@ static void get_routing_snks(struct alsa_card *card) {
   int j = 0;
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->is_routing_snk)
       continue;
@@ -865,7 +866,7 @@ void alsa_get_routing_controls(struct alsa_card *card) {
   get_routing_snks(card);
 }
 
-static void alsa_elem_change(struct alsa_elem *elem) {
+void alsa_elem_change(struct alsa_elem *elem) {
   if (!elem || !elem->callbacks)
     return;
 
@@ -888,15 +889,15 @@ static void card_destroy_callback(void *data) {
   // free all elements and their callbacks
   if (card->elems) {
     for (int i = 0; i < card->elems->len; i++) {
-      struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+      struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
       // free callback list
       for (GList *l = elem->callbacks; l; l = l->next) {
         struct alsa_elem_callback *cb = l->data;
 
-        // free callback data for simulated elements (optional controls)
-        if (elem->is_simulated && cb->data)
-          optional_controls_free_callback_data(cb->data);
+        // call cleanup function if provided
+        if (cb->destroy && cb->data)
+          cb->destroy(cb->data);
 
         free(cb);
       }
@@ -917,15 +918,32 @@ static void card_destroy_callback(void *data) {
           free(elem->item_names[j]);
         free(elem->item_names);
       }
+
+      // free the element struct itself
+      free(elem);
     }
-    g_array_free(card->elems, TRUE);
+    g_ptr_array_free(card->elems, TRUE);
   }
 
   // free routing arrays
-  if (card->routing_srcs)
+  if (card->routing_srcs) {
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+      g_free(src->display_name);
+    }
     g_array_free(card->routing_srcs, TRUE);
-  if (card->routing_snks)
+  }
+  if (card->routing_snks) {
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      g_free(snk->display_name);
+    }
     g_array_free(card->routing_snks, TRUE);
+  }
 
   // close ALSA handle
   if (card->handle)
@@ -958,6 +976,7 @@ static void complete_card_init(struct alsa_card *card) {
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
   optional_controls_init(card);
+  custom_names_init(card);
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
 
   if (card->serial) {
@@ -1069,7 +1088,7 @@ static gboolean alsa_card_callback(
     return 1;
 
   for (int i = 0; i < card->elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
     if (elem->numid == numid)
       alsa_elem_change(elem);
@@ -1117,7 +1136,7 @@ struct alsa_card *card_create(int card_num) {
   *card_ptr = calloc(1, sizeof(struct alsa_card));
   struct alsa_card *card = *card_ptr;
   card->num = card_num;
-  card->elems = g_array_new(FALSE, TRUE, sizeof(struct alsa_elem));
+  card->elems = g_ptr_array_new();
 
   return card;
 }

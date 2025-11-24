@@ -92,7 +92,7 @@ GtkWidget *make_boolean_alsa_elem(
   g_signal_connect(
     data->button, "clicked", G_CALLBACK(button_clicked), data
   );
-  alsa_elem_add_callback(elem, toggle_button_updated, data);
+  alsa_elem_add_callback(elem, toggle_button_updated, data, NULL);
   data->text[0] = disabled_text;
   data->text[1] = enabled_text;
   load_icons(data);
