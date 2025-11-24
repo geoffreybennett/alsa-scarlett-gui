@@ -49,7 +49,7 @@ static void add_sep(GtkWidget *grid, int *grid_y) {
 }
 
 static void add_standalone_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int       *grid_y
 ) {
@@ -83,7 +83,7 @@ static void add_standalone_control(
 }
 
 static void add_phantom_persistence_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int       *grid_y
 ) {
@@ -118,7 +118,7 @@ static void add_phantom_persistence_control(
 }
 
 static int add_msd_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int       *grid_y
 ) {
@@ -157,7 +157,7 @@ static int add_msd_control(
 }
 
 static int add_spdif_mode_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int       *grid_y
 ) {
@@ -342,7 +342,7 @@ static void add_no_startup_controls_msg(GtkWidget *grid) {
 }
 
 GtkWidget *create_startup_controls(struct alsa_card *card) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   GtkWidget *top = gtk_frame_new(NULL);
   gtk_widget_add_css_class(top, "window-frame");

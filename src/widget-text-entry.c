@@ -77,7 +77,7 @@ GtkWidget *make_text_entry_alsa_elem(struct alsa_elem *elem) {
   );
 
   // register callback for ALSA element changes
-  alsa_elem_add_callback(elem, text_entry_updated, data);
+  alsa_elem_add_callback(elem, text_entry_updated, data, NULL);
 
   // initial update
   text_entry_updated(elem, data);

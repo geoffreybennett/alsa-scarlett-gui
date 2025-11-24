@@ -68,7 +68,7 @@ GtkWidget *make_dual_boolean_alsa_elems(
   g_signal_connect(
     data->button2, "clicked", G_CALLBACK(dual_button_clicked), data
   );
-  alsa_elem_add_callback(elem, dual_button_updated, data);
+  alsa_elem_add_callback(elem, dual_button_updated, data, NULL);
   data->text[0] = disabled_text_1;
   data->text[1] = enabled_text_1;
   data->text[2] = disabled_text_2;
