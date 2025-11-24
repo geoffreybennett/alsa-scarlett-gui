@@ -371,3 +371,52 @@ button.toggle {
 .window-frame .big-padding button {
   padding: 5px 30px;
 }
+
+/* Notebook styling */
+.window-frame notebook {
+  border: none;
+}
+
+.window-frame notebook > header {
+  background: none;
+  border-bottom: 1px solid #a00000;
+}
+
+.window-frame notebook > header > tabs > tab {
+  background: #181818;
+  color: #808080;
+  border: 1px solid #404040;
+  border-bottom: none;
+  padding: 8px 16px;
+  margin: 2px;
+  border-radius: 5px 5px 0 0;
+}
+
+.window-frame notebook > header > tabs > tab:checked {
+  background: #141414;
+  color: #ffffff;
+  border: 1px solid #a00000;
+  border-bottom: 1px solid #141414;
+  outline: none;
+  box-shadow: inset 0px -3px #c00000;
+}
+
+.window-frame notebook > header > tabs > tab:hover {
+  background: #282828;
+  box-shadow: inset 0px -3px #ffffff;
+}
+
+.window-frame notebook > header > tabs > tab:focus {
+  outline: none;
+}
+
+.window-frame notebook > header > tabs > tab:focus-visible {
+  outline: none;
+}
+
+.window-frame notebook > stack {
+  background: #141414;
+  border: 1px solid #a00000;
+  border-radius: 5px;
+  color: #d0d0d0;
+}
