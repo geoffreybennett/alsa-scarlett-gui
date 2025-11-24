@@ -16,6 +16,13 @@ installed
 need to do that (and update the firmware) before you can use
 alsa-scarlett-gui.
 
+> [!IMPORTANT]
+> The latest firmware version for these interfaces is not yet suppported
+> by the driver. For now, you'll have to install the version in the
+> [scarlett4-firmware](https://github.com/geoffreybennett/scarlett4-firmware)
+> repo using `fcp-tool`. See [#169](https://github.com/geoffreybennett/alsa-scarlett-gui/issues/169)
+> for more details.
+
 ## Main Window
 
 The main window is divided into three sections:
