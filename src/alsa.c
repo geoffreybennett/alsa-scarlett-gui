@@ -12,6 +12,7 @@
 #include "window-iface.h"
 #include "optional-controls.h"
 #include "custom-names.h"
+#include "port-enable.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -194,7 +195,7 @@ char *alsa_get_elem_name(struct alsa_elem *elem) {
 // get the element value
 // boolean, enum, or int all returned as long ints
 long alsa_get_elem_value(struct alsa_elem *elem) {
-  if (elem->card->num == SIMULATED_CARD_NUM)
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
     return elem->value;
 
   snd_ctl_elem_value_t *elem_value;
@@ -248,7 +249,7 @@ long *alsa_get_elem_int_values(struct alsa_elem *elem) {
 // set the element value
 // boolean, enum, or int all set from long ints
 void alsa_set_elem_value(struct alsa_elem *elem, long value) {
-  if (elem->card->num == SIMULATED_CARD_NUM) {
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
     if (elem->value != value) {
       elem->value = value;
       alsa_elem_change(elem);
@@ -1019,6 +1020,7 @@ static void complete_card_init(struct alsa_card *card) {
   // (which may have caused card->elems array to be reallocated)
   refresh_routing_elem_pointers(card);
   custom_names_init(card);
+  port_enable_init(card);
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
 
   if (card->serial) {

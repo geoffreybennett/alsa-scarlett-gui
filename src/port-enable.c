@@ -1,0 +1,491 @@
+// SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include <alsa/asoundlib.h>
+#include <string.h>
+
+#include "port-enable.h"
+#include "optional-state.h"
+#include "alsa.h"
+
+// Callback structure to pass data to save callback
+struct port_enable_save_data {
+  char *serial;
+  char *config_key;
+};
+
+// Callback when a port enable value changes
+// Saves the new value to the state file
+static void port_enable_changed(
+  struct alsa_elem *elem,
+  void             *private
+) {
+  struct port_enable_save_data *data = private;
+
+  // get the boolean value
+  long value = alsa_get_elem_value(elem);
+
+  // save as "1" or "0"
+  optional_state_save(data->serial, data->config_key, value ? "1" : "0");
+}
+
+// Update visibility of routing section grids based on port enable states
+void update_routing_section_visibility(struct alsa_card *card) {
+  if (!card)
+    return;
+
+  // Hardware Inputs
+  if (card->routing_hw_in_grid) {
+    int all_disabled = all_sources_disabled(card, PC_HW);
+    gtk_widget_set_visible(card->routing_hw_in_grid, !all_disabled);
+  }
+
+  // Hardware Outputs
+  if (card->routing_hw_out_grid) {
+    int all_disabled = all_sinks_disabled(card, PC_HW);
+    gtk_widget_set_visible(card->routing_hw_out_grid, !all_disabled);
+  }
+
+  // PCM Inputs (sources - to PC)
+  if (card->routing_pcm_in_grid) {
+    int all_disabled = all_sources_disabled(card, PC_PCM);
+    gtk_widget_set_visible(card->routing_pcm_in_grid, !all_disabled);
+  }
+
+  // PCM Outputs (sinks - from PC)
+  if (card->routing_pcm_out_grid) {
+    int all_disabled = all_sinks_disabled(card, PC_PCM);
+    gtk_widget_set_visible(card->routing_pcm_out_grid, !all_disabled);
+  }
+
+  // DSP Inputs (sinks)
+  if (card->routing_dsp_in_grid) {
+    int all_disabled = all_sinks_disabled(card, PC_DSP);
+    gtk_widget_set_visible(card->routing_dsp_in_grid, !all_disabled);
+  }
+
+  // DSP Outputs (sources)
+  if (card->routing_dsp_out_grid) {
+    int all_disabled = all_sources_disabled(card, PC_DSP);
+    gtk_widget_set_visible(card->routing_dsp_out_grid, !all_disabled);
+  }
+
+  // Mixer Inputs (sinks)
+  if (card->routing_mixer_in_grid) {
+    int all_disabled = all_sinks_disabled(card, PC_MIX);
+    gtk_widget_set_visible(card->routing_mixer_in_grid, !all_disabled);
+  }
+
+  // Mixer Outputs (sources)
+  if (card->routing_mixer_out_grid) {
+    int all_disabled = all_sources_disabled(card, PC_MIX);
+    gtk_widget_set_visible(card->routing_mixer_out_grid, !all_disabled);
+  }
+}
+
+// Callback to update routing source visibility
+static void src_visibility_changed(
+  struct alsa_elem   *elem,
+  void               *private
+) {
+  struct routing_src *src = private;
+
+  // widget might not exist yet if routing window hasn't been created
+  if (!src->widget)
+    return;
+
+  int enabled = alsa_get_elem_value(elem);
+  gtk_widget_set_visible(src->widget, enabled != 0);
+
+  // update section visibility
+  update_routing_section_visibility(src->card);
+
+  // redraw routing lines to reflect new layout
+  if (src->card && src->card->routing_lines)
+    gtk_widget_queue_draw(src->card->routing_lines);
+}
+
+// Callback to update routing sink visibility
+static void snk_visibility_changed(
+  struct alsa_elem   *elem,
+  void               *private
+) {
+  struct routing_snk *snk = private;
+
+  // widget might not exist yet if routing window hasn't been created
+  if (!snk->box_widget)
+    return;
+
+  int enabled = alsa_get_elem_value(elem);
+  gtk_widget_set_visible(snk->box_widget, enabled != 0);
+
+  // update section visibility
+  struct alsa_card *card = snk->elem ? snk->elem->card : NULL;
+  if (card)
+    update_routing_section_visibility(card);
+
+  // redraw routing lines to reflect new layout
+  if (card && card->routing_lines)
+    gtk_widget_queue_draw(card->routing_lines);
+}
+
+// Free port enable callback data
+void port_enable_free_callback_data(void *data) {
+  if (!data)
+    return;
+
+  struct port_enable_save_data *save_data = data;
+  g_free(save_data->serial);
+  g_free(save_data->config_key);
+  g_free(save_data);
+}
+
+// Generate ALSA element name for a routing source
+// Returns newly allocated string that must be freed
+static char *get_src_enable_elem_name(struct routing_src *src) {
+  const char *category_name = NULL;
+
+  switch (src->port_category) {
+    case PC_HW:
+      category_name = hw_type_names[src->hw_type];
+      return g_strdup_printf("%s In %d Enable", category_name, src->lr_num);
+
+    case PC_PCM:
+      return g_strdup_printf("PCM In %d Enable", src->lr_num);
+
+    case PC_MIX:
+      return g_strdup_printf("Mix In %d Enable", src->lr_num);
+
+    case PC_DSP:
+      return g_strdup_printf("DSP In %d Enable", src->lr_num);
+
+    default:
+      return NULL;
+  }
+}
+
+// Generate ALSA element name for a routing sink
+// Returns newly allocated string that must be freed
+static char *get_snk_enable_elem_name(struct routing_snk *snk) {
+  struct alsa_elem *elem = snk->elem;
+  const char *category_name = NULL;
+
+  switch (elem->port_category) {
+    case PC_HW:
+      category_name = hw_type_names[elem->hw_type];
+      return g_strdup_printf("%s Out %d Enable", category_name, elem->lr_num);
+
+    case PC_PCM:
+      return g_strdup_printf("PCM Out %d Enable", elem->lr_num);
+
+    case PC_MIX:
+      return g_strdup_printf("Mix Out %d Enable", elem->lr_num);
+
+    case PC_DSP:
+      return g_strdup_printf("DSP Out %d Enable", elem->lr_num);
+
+    default:
+      return NULL;
+  }
+}
+
+// Generate config key for a routing source
+// Returns newly allocated string that must be freed
+static char *get_src_enable_config_key(struct routing_src *src) {
+  const char *category_prefix = NULL;
+
+  switch (src->port_category) {
+    case PC_HW:
+      category_prefix = hw_type_names[src->hw_type];
+      return g_strdup_printf("%s_in_%d_enable", category_prefix, src->lr_num);
+
+    case PC_PCM:
+      return g_strdup_printf("pcm_in_%d_enable", src->lr_num);
+
+    case PC_MIX:
+      return g_strdup_printf("mix_in_%d_enable", src->lr_num);
+
+    case PC_DSP:
+      return g_strdup_printf("dsp_in_%d_enable", src->lr_num);
+
+    default:
+      return NULL;
+  }
+}
+
+// Generate config key for a routing sink
+// Returns newly allocated string that must be freed
+static char *get_snk_enable_config_key(struct routing_snk *snk) {
+  struct alsa_elem *elem = snk->elem;
+  const char *category_prefix = NULL;
+
+  switch (elem->port_category) {
+    case PC_HW:
+      category_prefix = hw_type_names[elem->hw_type];
+      return g_strdup_printf("%s_out_%d_enable", category_prefix, elem->lr_num);
+
+    case PC_PCM:
+      return g_strdup_printf("pcm_out_%d_enable", elem->lr_num);
+
+    case PC_MIX:
+      return g_strdup_printf("mix_out_%d_enable", elem->lr_num);
+
+    case PC_DSP:
+      return g_strdup_printf("dsp_out_%d_enable", elem->lr_num);
+
+    default:
+      return NULL;
+  }
+}
+
+// Create simulated enable element for a routing source
+static void create_src_enable_elem(
+  struct alsa_card   *card,
+  struct routing_src *src,
+  GHashTable         *state
+) {
+  // skip PC_OFF
+  if (src->port_category == PC_OFF)
+    return;
+
+  // generate element name
+  char *elem_name = get_src_enable_elem_name(src);
+  if (!elem_name)
+    return;
+
+  // check if real element exists (for forward compatibility)
+  struct alsa_elem *elem = get_elem_by_name(card->elems, elem_name);
+
+  if (elem) {
+    // real element exists, use it directly
+    src->enable_elem = elem;
+    g_free(elem_name);
+    return;
+  }
+
+  // create simulated boolean element
+  elem = alsa_create_optional_elem(
+    card,
+    elem_name,
+    SND_CTL_ELEM_TYPE_BOOLEAN,
+    0  // size not used for boolean
+  );
+  g_free(elem_name);
+
+  if (!elem) {
+    fprintf(stderr, "Failed to create enable element for source\n");
+    return;
+  }
+
+  src->enable_elem = elem;
+
+  // generate config key
+  char *config_key = get_src_enable_config_key(src);
+  if (!config_key)
+    return;
+
+  // load value from state file (default to enabled)
+  const char *value = g_hash_table_lookup(state, config_key);
+  long enabled = 1;  // default to enabled
+
+  if (value && *value) {
+    enabled = (strcmp(value, "1") == 0) ? 1 : 0;
+  }
+
+  // set the initial value
+  elem->value = enabled;
+
+  // register callback to save state on changes
+  struct port_enable_save_data *callback_data =
+    g_malloc0(sizeof(struct port_enable_save_data));
+  callback_data->serial = g_strdup(card->serial);
+  callback_data->config_key = config_key;  // transfer ownership
+
+  alsa_elem_add_callback(
+    elem, port_enable_changed, callback_data,
+    port_enable_free_callback_data
+  );
+
+  // register callback to update widget visibility
+  alsa_elem_add_callback(elem, src_visibility_changed, src, NULL);
+}
+
+// Create simulated enable element for a routing sink
+static void create_snk_enable_elem(
+  struct alsa_card   *card,
+  struct routing_snk *snk,
+  GHashTable         *state
+) {
+  // skip sinks without valid port category
+  if (snk->elem->port_category == PC_OFF)
+    return;
+
+  // generate element name
+  char *elem_name = get_snk_enable_elem_name(snk);
+  if (!elem_name)
+    return;
+
+  // check if real element exists (for forward compatibility)
+  struct alsa_elem *elem = get_elem_by_name(card->elems, elem_name);
+
+  if (elem) {
+    // real element exists, use it directly
+    snk->enable_elem = elem;
+    g_free(elem_name);
+    return;
+  }
+
+  // create simulated boolean element
+  elem = alsa_create_optional_elem(
+    card,
+    elem_name,
+    SND_CTL_ELEM_TYPE_BOOLEAN,
+    0  // size not used for boolean
+  );
+  g_free(elem_name);
+
+  if (!elem) {
+    fprintf(stderr, "Failed to create enable element for sink\n");
+    return;
+  }
+
+  snk->enable_elem = elem;
+
+  // generate config key
+  char *config_key = get_snk_enable_config_key(snk);
+  if (!config_key)
+    return;
+
+  // load value from state file (default to enabled)
+  const char *value = g_hash_table_lookup(state, config_key);
+  long enabled = 1;  // default to enabled
+
+  if (value && *value) {
+    enabled = (strcmp(value, "1") == 0) ? 1 : 0;
+  }
+
+  // set the initial value
+  elem->value = enabled;
+
+  // register callback to save state on changes
+  struct port_enable_save_data *callback_data =
+    g_malloc0(sizeof(struct port_enable_save_data));
+  callback_data->serial = g_strdup(card->serial);
+  callback_data->config_key = config_key;  // transfer ownership
+
+  alsa_elem_add_callback(
+    elem, port_enable_changed, callback_data,
+    port_enable_free_callback_data
+  );
+
+  // register callback to update widget visibility
+  alsa_elem_add_callback(elem, snk_visibility_changed, snk, NULL);
+}
+
+// Initialise port enable elements for all routing sources and sinks
+void port_enable_init(struct alsa_card *card) {
+  if (!card->serial || !*card->serial) {
+    // no serial number, can't persist state
+    return;
+  }
+
+  // check if card has routing controls
+  if (!card->routing_srcs || !card->routing_snks) {
+    // card doesn't have routing controls
+    return;
+  }
+
+  // load existing state
+  GHashTable *state = optional_state_load(card->serial);
+  if (!state) {
+    state = g_hash_table_new_full(
+      g_str_hash, g_str_equal, g_free, g_free
+    );
+  }
+
+  // create enable elements for all routing sources
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    create_src_enable_elem(card, src, state);
+  }
+
+  // create enable elements for all routing sinks
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    create_snk_enable_elem(card, snk, state);
+  }
+
+  g_hash_table_destroy(state);
+}
+
+// Check if a routing source is enabled
+int is_routing_src_enabled(struct routing_src *src) {
+  if (!src || !src->enable_elem)
+    return 1;  // default to enabled if no element
+
+  return alsa_get_elem_value(src->enable_elem) != 0;
+}
+
+// Check if a routing sink is enabled
+int is_routing_snk_enabled(struct routing_snk *snk) {
+  if (!snk || !snk->enable_elem)
+    return 1;  // default to enabled if no element
+
+  return alsa_get_elem_value(snk->enable_elem) != 0;
+}
+
+// Get the enable element for a routing source
+struct alsa_elem *get_src_enable_elem(struct routing_src *src) {
+  if (!src)
+    return NULL;
+  return src->enable_elem;
+}
+
+// Get the enable element for a routing sink
+struct alsa_elem *get_snk_enable_elem(struct routing_snk *snk) {
+  if (!snk)
+    return NULL;
+  return snk->enable_elem;
+}
+
+// Check if all sources of a given category are disabled
+int all_sources_disabled(struct alsa_card *card, int port_category) {
+  if (!card || !card->routing_srcs)
+    return 1;
+
+  for (int i = 1; i < card->routing_srcs->len; i++) {  // start at 1 to skip "Off"
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (src->port_category == port_category) {
+      if (is_routing_src_enabled(src))
+        return 0;  // found at least one enabled
+    }
+  }
+
+  return 1;  // all disabled (or none exist)
+}
+
+// Check if all sinks of a given category are disabled
+int all_sinks_disabled(struct alsa_card *card, int port_category) {
+  if (!card || !card->routing_snks)
+    return 1;
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    if (snk->elem && snk->elem->port_category == port_category) {
+      if (is_routing_snk_enabled(snk))
+        return 0;  // found at least one enabled
+    }
+  }
+
+  return 1;  // all disabled (or none exist)
+}

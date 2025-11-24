@@ -7,12 +7,21 @@
 #include "gtkhelper.h"
 #include "optional-controls.h"
 #include "custom-names.h"
+#include "port-enable.h"
 #include "widget-text-entry.h"
 #include "window-configuration.h"
 
 struct configuration_window {
   struct alsa_card *card;
   GtkWidget        *top;
+};
+
+// Structure to track a column's enable-all checkbox and its children
+struct column_checkbox_data {
+  GtkWidget *column_checkbox;
+  GArray    *child_elems;  // array of struct alsa_elem*
+  int        updating;     // flag to prevent recursion
+  int        was_inconsistent;  // track if we were inconsistent before click
 };
 
 static void on_destroy(
@@ -22,11 +31,96 @@ static void on_destroy(
   g_free(data);
 }
 
+// Free column checkbox data
+static void free_column_checkbox_data(gpointer data) {
+  struct column_checkbox_data *ccd = data;
+  if (ccd->child_elems)
+    g_array_free(ccd->child_elems, TRUE);
+  g_free(ccd);
+}
+
+// Update column checkbox state based on child states
+static void update_column_checkbox_state(struct column_checkbox_data *data) {
+  if (data->updating || !data->child_elems || data->child_elems->len == 0)
+    return;
+
+  int enabled_count = 0;
+
+  for (int i = 0; i < data->child_elems->len; i++) {
+    struct alsa_elem *elem = g_array_index(data->child_elems, struct alsa_elem *, i);
+    if (alsa_get_elem_value(elem))
+      enabled_count++;
+  }
+
+  data->updating = 1;
+
+  GtkCheckButton *check = GTK_CHECK_BUTTON(data->column_checkbox);
+
+  if (enabled_count == 0) {
+    // all disabled
+    gtk_check_button_set_active(check, FALSE);
+    gtk_check_button_set_inconsistent(check, FALSE);
+    data->was_inconsistent = 0;
+  } else if (enabled_count == data->child_elems->len) {
+    // all enabled
+    gtk_check_button_set_active(check, TRUE);
+    gtk_check_button_set_inconsistent(check, FALSE);
+    data->was_inconsistent = 0;
+  } else {
+    // mixed state
+    gtk_check_button_set_inconsistent(check, TRUE);
+    data->was_inconsistent = 1;
+  }
+
+  data->updating = 0;
+}
+
+// Callback when an individual port enable checkbox changes
+static void child_enable_changed(struct alsa_elem *elem, void *private) {
+  struct column_checkbox_data *data = private;
+  update_column_checkbox_state(data);
+}
+
+// Callback when column checkbox is clicked
+static void column_checkbox_toggled(GtkCheckButton *button, gpointer user_data) {
+  struct column_checkbox_data *data = user_data;
+
+  if (data->updating)
+    return;
+
+  data->updating = 1;
+
+  // If we were inconsistent before the click, turn all off (to clear the mixed state)
+  // Otherwise, use the new active state (toggle between all on/all off)
+  gboolean new_state;
+
+  if (data->was_inconsistent) {
+    new_state = FALSE;  // turn all off when clicking indeterminate
+    gtk_check_button_set_active(button, FALSE);  // also update the checkbox itself
+    data->was_inconsistent = 0;
+  } else {
+    gboolean active = gtk_check_button_get_active(button);
+    new_state = active;  // toggle normally
+  }
+
+  // update all child checkboxes
+  for (int i = 0; i < data->child_elems->len; i++) {
+    struct alsa_elem *elem = g_array_index(data->child_elems, struct alsa_elem *, i);
+    alsa_set_elem_value(elem, new_state ? 1 : 0);
+  }
+
+  // clear inconsistent state
+  gtk_check_button_set_inconsistent(button, FALSE);
+
+  data->updating = 0;
+}
+
 // Create a grid for name entries
 static GtkWidget *create_name_grid(void) {
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
   gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
+  gtk_widget_set_margin_start(grid, 16);
   return grid;
 }
 
@@ -53,30 +147,75 @@ static char *get_clean_snk_label(struct routing_snk *snk) {
   }
 }
 
-// Add a custom name entry to a grid
+// Callback when enable checkbox is toggled
+static void enable_checkbox_toggled(GtkCheckButton *button, gpointer user_data) {
+  struct alsa_elem *elem = user_data;
+  gboolean active = gtk_check_button_get_active(button);
+  alsa_set_elem_value(elem, active ? 1 : 0);
+}
+
+// Callback when enable element changes
+static void enable_checkbox_updated(struct alsa_elem *elem, void *private) {
+  GtkCheckButton *button = GTK_CHECK_BUTTON(private);
+  int value = alsa_get_elem_value(elem);
+  gtk_check_button_set_active(button, value != 0);
+}
+
+// Add a custom name entry to a grid with enable checkbox
 static void add_name_entry_to_grid(
   GtkWidget        *grid,
   int               row,
   const char       *default_name,
-  struct alsa_elem *custom_name_elem
+  struct alsa_elem *custom_name_elem,
+  struct alsa_elem *enable_elem
 ) {
+  // Enable checkbox
+  if (enable_elem) {
+    GtkWidget *checkbox = gtk_check_button_new();
+    gtk_widget_set_halign(checkbox, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(checkbox, GTK_ALIGN_CENTER);
+    gtk_widget_set_tooltip_text(checkbox, "Enable/disable this port");
+
+    // connect signals
+    g_signal_connect(
+      checkbox,
+      "toggled",
+      G_CALLBACK(enable_checkbox_toggled),
+      enable_elem
+    );
+
+    alsa_elem_add_callback(
+      enable_elem,
+      enable_checkbox_updated,
+      checkbox,
+      NULL
+    );
+
+    // set initial state
+    int value = alsa_get_elem_value(enable_elem);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(checkbox), value != 0);
+
+    gtk_grid_attach(GTK_GRID(grid), checkbox, 0, row, 1, 1);
+  }
+
   // Label showing the default name
   GtkWidget *label = gtk_label_new(default_name);
   gtk_widget_set_halign(label, GTK_ALIGN_END);
-  gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), label, 1, row, 1, 1);
 
   // Text entry for custom name
   GtkWidget *entry = make_text_entry_alsa_elem(custom_name_elem);
   gtk_widget_set_hexpand(entry, TRUE);
-  gtk_grid_attach(GTK_GRID(grid), entry, 1, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), entry, 2, row, 1, 1);
 }
 
 // Add custom name entries for routing sources of a specific category and hw_type
 static void add_src_names_for_category(
-  struct alsa_card *card,
-  GtkWidget        *grid,
-  int               port_category,
-  int               hw_type  // only used for PC_HW, -1 for others
+  struct alsa_card            *card,
+  GtkWidget                   *grid,
+  int                          port_category,
+  int                          hw_type,  // only used for PC_HW, -1 for others
+  struct column_checkbox_data *col_data  // for column checkbox tracking
 ) {
   int row = 0;
 
@@ -101,17 +240,30 @@ static void add_src_names_for_category(
       grid,
       row++,
       src->name,
-      src->custom_name_elem
+      src->custom_name_elem,
+      src->enable_elem
     );
+
+    // register with column checkbox if available
+    if (col_data && src->enable_elem) {
+      g_array_append_val(col_data->child_elems, src->enable_elem);
+      alsa_elem_add_callback(
+        src->enable_elem,
+        child_enable_changed,
+        col_data,
+        NULL
+      );
+    }
   }
 }
 
 // Add custom name entries for routing sinks of a specific category and hw_type
 static void add_snk_names_for_category(
-  struct alsa_card *card,
-  GtkWidget        *grid,
-  int               port_category,
-  int               hw_type  // only used for PC_HW, -1 for others
+  struct alsa_card            *card,
+  GtkWidget                   *grid,
+  int                          port_category,
+  int                          hw_type,  // only used for PC_HW, -1 for others
+  struct column_checkbox_data *col_data  // for column checkbox tracking
 ) {
   int row = 0;
 
@@ -137,9 +289,21 @@ static void add_snk_names_for_category(
       grid,
       row++,
       clean_label,
-      snk->custom_name_elem
+      snk->custom_name_elem,
+      snk->enable_elem
     );
     g_free(clean_label);
+
+    // register with column checkbox if available
+    if (col_data && snk->enable_elem) {
+      g_array_append_val(col_data->child_elems, snk->enable_elem);
+      alsa_elem_add_callback(
+        snk->enable_elem,
+        child_enable_changed,
+        col_data,
+        NULL
+      );
+    }
   }
 }
 
@@ -178,13 +342,15 @@ static int has_io_for_category(
   return 0;
 }
 
-// Create a two-column layout for inputs and outputs
+// Create a two-column layout for inputs and outputs with column checkboxes
 // Returns the box containing both columns
 static GtkWidget *create_two_column_layout(
-  GtkWidget **left_grid,   // returns the left grid (Inputs), can be NULL if show_inputs=0
-  GtkWidget **right_grid,  // returns the right grid (Outputs), can be NULL if show_outputs=0
-  int         show_inputs,
-  int         show_outputs
+  GtkWidget                    **left_grid,      // returns the left grid (Inputs)
+  GtkWidget                    **right_grid,     // returns the right grid (Outputs)
+  struct column_checkbox_data  **left_col_data,  // returns left column data
+  struct column_checkbox_data  **right_col_data, // returns right column data
+  int                            show_inputs,
+  int                            show_outputs
 ) {
   GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 30);
   gtk_widget_set_margin_start(hbox, 20);
@@ -195,31 +361,103 @@ static GtkWidget *create_two_column_layout(
   // Left column (Inputs)
   if (show_inputs) {
     GtkWidget *left_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+
+    // Header with checkbox and label
+    GtkWidget *left_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+    // Create column checkbox data
+    struct column_checkbox_data *col_data = g_malloc0(sizeof(struct column_checkbox_data));
+    col_data->child_elems = g_array_new(FALSE, FALSE, sizeof(struct alsa_elem *));
+    col_data->updating = 0;
+
+    // Column checkbox
+    col_data->column_checkbox = gtk_check_button_new();
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(col_data->column_checkbox), TRUE);
+    g_signal_connect(
+      col_data->column_checkbox,
+      "toggled",
+      G_CALLBACK(column_checkbox_toggled),
+      col_data
+    );
+    gtk_box_append(GTK_BOX(left_header), col_data->column_checkbox);
+
+    // Label
     GtkWidget *left_label = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(left_label), "<b>Inputs</b>");
     gtk_widget_set_halign(left_label, GTK_ALIGN_START);
-    gtk_box_append(GTK_BOX(left_vbox), left_label);
+    gtk_box_append(GTK_BOX(left_header), left_label);
+
+    gtk_widget_set_halign(left_header, GTK_ALIGN_START);
+    gtk_box_append(GTK_BOX(left_vbox), left_header);
 
     *left_grid = create_name_grid();
     gtk_box_append(GTK_BOX(left_vbox), *left_grid);
     gtk_box_append(GTK_BOX(hbox), left_vbox);
-  } else if (left_grid) {
-    *left_grid = NULL;
+
+    *left_col_data = col_data;
+
+    // attach cleanup to the vbox
+    g_object_weak_ref(
+      G_OBJECT(left_vbox),
+      (GWeakNotify)free_column_checkbox_data,
+      col_data
+    );
+  } else {
+    if (left_grid)
+      *left_grid = NULL;
+    if (left_col_data)
+      *left_col_data = NULL;
   }
 
   // Right column (Outputs)
   if (show_outputs) {
     GtkWidget *right_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+
+    // Header with checkbox and label
+    GtkWidget *right_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+    // Create column checkbox data
+    struct column_checkbox_data *col_data = g_malloc0(sizeof(struct column_checkbox_data));
+    col_data->child_elems = g_array_new(FALSE, FALSE, sizeof(struct alsa_elem *));
+    col_data->updating = 0;
+
+    // Column checkbox
+    col_data->column_checkbox = gtk_check_button_new();
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(col_data->column_checkbox), TRUE);
+    g_signal_connect(
+      col_data->column_checkbox,
+      "toggled",
+      G_CALLBACK(column_checkbox_toggled),
+      col_data
+    );
+    gtk_box_append(GTK_BOX(right_header), col_data->column_checkbox);
+
+    // Label
     GtkWidget *right_label = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(right_label), "<b>Outputs</b>");
     gtk_widget_set_halign(right_label, GTK_ALIGN_START);
-    gtk_box_append(GTK_BOX(right_vbox), right_label);
+    gtk_box_append(GTK_BOX(right_header), right_label);
+
+    gtk_widget_set_halign(right_header, GTK_ALIGN_START);
+    gtk_box_append(GTK_BOX(right_vbox), right_header);
 
     *right_grid = create_name_grid();
     gtk_box_append(GTK_BOX(right_vbox), *right_grid);
     gtk_box_append(GTK_BOX(hbox), right_vbox);
-  } else if (right_grid) {
-    *right_grid = NULL;
+
+    *right_col_data = col_data;
+
+    // attach cleanup to the vbox
+    g_object_weak_ref(
+      G_OBJECT(right_vbox),
+      (GWeakNotify)free_column_checkbox_data,
+      col_data
+    );
+  } else {
+    if (right_grid)
+      *right_grid = NULL;
+    if (right_col_data)
+      *right_col_data = NULL;
   }
 
   return hbox;
@@ -235,13 +473,24 @@ static void add_hw_tab(
     return;
 
   GtkWidget *left_grid, *right_grid;
-  GtkWidget *content = create_two_column_layout(&left_grid, &right_grid, 1, 1);
+  struct column_checkbox_data *left_col_data, *right_col_data;
+  GtkWidget *content = create_two_column_layout(
+    &left_grid, &right_grid,
+    &left_col_data, &right_col_data,
+    1, 1
+  );
 
   // Left column: Inputs (sources - audio from hardware)
-  add_src_names_for_category(card, left_grid, PC_HW, hw_type);
+  add_src_names_for_category(card, left_grid, PC_HW, hw_type, left_col_data);
 
   // Right column: Outputs (sinks - audio to hardware)
-  add_snk_names_for_category(card, right_grid, PC_HW, hw_type);
+  add_snk_names_for_category(card, right_grid, PC_HW, hw_type, right_col_data);
+
+  // Update column checkbox initial states
+  if (left_col_data)
+    update_column_checkbox_state(left_col_data);
+  if (right_col_data)
+    update_column_checkbox_state(right_col_data);
 
   GtkWidget *label = gtk_label_new(hw_type_names[hw_type]);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, label);
@@ -260,17 +509,26 @@ static void add_category_tab(
     return;
 
   GtkWidget *left_grid, *right_grid;
+  struct column_checkbox_data *left_col_data, *right_col_data;
   GtkWidget *content = create_two_column_layout(
-    &left_grid, &right_grid, show_inputs, show_outputs
+    &left_grid, &right_grid,
+    &left_col_data, &right_col_data,
+    show_inputs, show_outputs
   );
 
   // Left column: Inputs (sinks - audio into the subsystem)
   if (show_inputs && left_grid)
-    add_snk_names_for_category(card, left_grid, port_category, -1);
+    add_snk_names_for_category(card, left_grid, port_category, -1, left_col_data);
 
   // Right column: Outputs (sources - audio from the subsystem)
   if (show_outputs && right_grid)
-    add_src_names_for_category(card, right_grid, port_category, -1);
+    add_src_names_for_category(card, right_grid, port_category, -1, right_col_data);
+
+  // Update column checkbox initial states
+  if (left_col_data)
+    update_column_checkbox_state(left_col_data);
+  if (right_col_data)
+    update_column_checkbox_state(right_col_data);
 
   GtkWidget *label = gtk_label_new(tab_name);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, label);
@@ -350,8 +608,8 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     gtk_box_append(GTK_BOX(io_section), io_label);
 
     GtkWidget *io_help = gtk_label_new(
-      "Give custom names to your inputs and outputs to help identify them.\n"
-      "These names will appear throughout the application."
+      "Use the checkboxes to hide unused inputs and outputs from the display.\n"
+      "You can also give each port a custom name to help identify it."
     );
     gtk_widget_set_halign(io_help, GTK_ALIGN_START);
     gtk_widget_add_css_class(io_help, "dim-label");
