@@ -10,6 +10,7 @@
 #include "window-mixer.h"
 #include "window-routing.h"
 #include "custom-names.h"
+#include "port-enable.h"
 
 // Get the formatted name to display for a routing source
 // Returns newly allocated string that must be freed
@@ -304,6 +305,12 @@ static void create_routing_grid(struct alsa_card *card) {
   int mix_col_num = dsp_col_num + 1;
   int right_col_num = mix_col_num + 1;
 
+  // set minimum width on the mixer column to maintain spacing even when empty
+  gtk_grid_set_column_homogeneous(routing_grid, FALSE);
+  GtkWidget *spacer = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_set_size_request(spacer, 200, 1);
+  gtk_grid_attach(routing_grid, spacer, mix_col_num, 0, 1, 1);
+
   gtk_grid_attach(
     routing_grid, card->routing_hw_in_grid, left_col_num, 1, 1, 1
   );
@@ -333,15 +340,15 @@ static void create_routing_grid(struct alsa_card *card) {
   );
   gtk_grid_set_spacing(routing_grid, 10);
 
-  GtkWidget *src_label = gtk_label_new("↑\nSources →");
-  gtk_label_set_justify(GTK_LABEL(src_label), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(routing_grid, src_label, left_col_num, 3, 1, 1);
+  card->routing_src_label = gtk_label_new("↑\nSources →");
+  gtk_label_set_justify(GTK_LABEL(card->routing_src_label), GTK_JUSTIFY_CENTER);
+  gtk_grid_attach(routing_grid, card->routing_src_label, left_col_num, 3, 1, 1);
 
-  GtkWidget *snk_label = gtk_label_new(
+  card->routing_snk_label = gtk_label_new(
     card->has_fixed_mixer_inputs ? "Sinks\n↓" : "← Sinks\n↓"
   );
-  gtk_label_set_justify(GTK_LABEL(snk_label), GTK_JUSTIFY_CENTER);
-  gtk_grid_attach(routing_grid, snk_label, right_col_num, 0, 1, 1);
+  gtk_label_set_justify(GTK_LABEL(card->routing_snk_label), GTK_JUSTIFY_CENTER);
+  gtk_grid_attach(routing_grid, card->routing_snk_label, right_col_num, 0, 1, 1);
 }
 
 static GtkWidget *make_socket_widget(void) {
@@ -938,6 +945,12 @@ static void add_routing_widgets(
     struct routing_snk *r_snk = &g_array_index(r_snks, struct routing_snk, i);
 
     make_routing_alsa_elem(r_snk);
+
+    // set initial visibility based on enable state
+    if (r_snk->box_widget) {
+      int enabled = is_routing_snk_enabled(r_snk);
+      gtk_widget_set_visible(r_snk->box_widget, enabled);
+    }
   }
 
   if (!card->routing_out_count[PC_MIX]) {
@@ -1000,6 +1013,12 @@ static void add_routing_widgets(
     }
 
     g_free(name);
+
+    // set initial visibility based on enable state
+    if (r_src->widget) {
+      int enabled = is_routing_src_enabled(r_src);
+      gtk_widget_set_visible(r_src->widget, enabled);
+    }
   }
 
   if (card->has_talkback) {
@@ -1026,6 +1045,9 @@ static void add_routing_widgets(
   );
 
   update_mixer_labels(card);
+
+  // set initial visibility of routing sections based on port enable states
+  update_routing_section_visibility(card);
 }
 
 GtkWidget *create_routing_controls(struct alsa_card *card) {
