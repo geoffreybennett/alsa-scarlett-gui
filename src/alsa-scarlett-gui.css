@@ -462,3 +462,29 @@ button.toggle {
 .window-frame popover row:hover image {
   color: #ffffff;
 }
+
+/* Configuration window checkboxes */
+.window-frame check:checked {
+  background: #c00000;
+  color: white;
+  border: 1px solid red;
+}
+
+.window-frame check:hover {
+  outline: 1px solid #ff0000;
+  background: #c0c0c0;
+}
+
+.window-frame check:checked:hover {
+  outline: 1px solid white;
+  background: #c00000;
+}
+
+.window-frame check:indeterminate {
+  background: #c04040;
+  border: 1px solid #ff8080;
+}
+
+.window-frame check:focus:focus-visible {
+  outline: 2px solid #ff4040;
+}
