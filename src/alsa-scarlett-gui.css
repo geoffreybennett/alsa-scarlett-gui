@@ -345,10 +345,9 @@ button.toggle {
 
 /* Textview used for long descriptions in the startup window */
 .window-frame textview {
-  color: #ffffff;
+  color: #fefefe;
   background: none;
 }
-
 .window-frame textview > text {
   background: none;
 }
