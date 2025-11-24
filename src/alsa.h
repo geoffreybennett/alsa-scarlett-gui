@@ -100,6 +100,9 @@ struct routing_src {
   // optional/simulated element for custom name
   struct alsa_elem *custom_name_elem;
 
+  // optional/simulated element for enable/disable
+  struct alsa_elem *enable_elem;
+
   // cached display name (either custom or default)
   // updated by callback when custom name changes
   char *display_name;
@@ -132,6 +135,9 @@ struct routing_snk {
 
   // optional/simulated element for custom name
   struct alsa_elem *custom_name_elem;
+
+  // optional/simulated element for enable/disable
+  struct alsa_elem *enable_elem;
 
   // cached display name (either custom or default)
   // updated by callback when custom name changes

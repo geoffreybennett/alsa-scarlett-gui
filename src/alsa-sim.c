@@ -7,6 +7,7 @@
 #include "window-iface.h"
 #include "optional-controls.h"
 #include "custom-names.h"
+#include "port-enable.h"
 
 // check that *config is a compound node, retrieve the first node
 // within, check that that node is a compound node, optionally check
@@ -515,6 +516,7 @@ void create_sim_from_file(GtkWindow *w, char *fn) {
   alsa_get_routing_controls(card);
   optional_controls_init(card);
   custom_names_init(card);
+  port_enable_init(card);
 
   create_card_window(card);
 }
