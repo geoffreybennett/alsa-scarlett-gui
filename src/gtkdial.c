@@ -94,6 +94,7 @@ enum {
   PROP_IS_LINEAR,
   PROP_TAPER,
   PROP_CAN_CONTROL,
+  PROP_HAS_ORIGIN,
   PROP_PEAK_HOLD,
   LAST_PROP
 };
@@ -123,6 +124,7 @@ struct _GtkDial {
   gboolean is_linear;
   int taper;
   gboolean can_control;
+  gboolean has_origin;
   int peak_hold;
 
   int properties_updated;
@@ -603,6 +605,19 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
   );
 
   /**
+   * GtkDial:has-origin: (attributes org.gtk.Method.get=gtk_dial_get_has_origin org.gtk.Method.set=gtk_dial_set_has_origin)
+   *
+   * Whether the dial should visually emphasize its origin.
+   */
+  properties[PROP_HAS_ORIGIN] = g_param_spec_boolean(
+    "has-origin",
+    "HasOrigin",
+    "Whether the dial should visually emphasize its origin",
+    FALSE,
+    G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+  );
+
+  /**
    * GtkDial:peak-hold: (attributes org.gtk.Method.get=gtk_dial_get_peak_hold org.gtk.Method.set=gtk_dial_set_peak_hold)
    *
    * The number of milliseconds to hold the peak value.
@@ -739,6 +754,7 @@ static void gtk_dial_init(GtkDial *dial) {
   dial->hist_head = 0;
   dial->hist_tail = 0;
   dial->hist_count = 0;
+  dial->has_origin = FALSE;
 }
 
 static void dial_measure(
@@ -904,6 +920,28 @@ static void draw_slider(
   }
 }
 
+static void draw_origin_indicator(GtkDial *dial, cairo_t *cr) {
+  double track_thickness = dial->slider_thickness * 0.35;
+
+  if (track_thickness < 1.5)
+    track_thickness = 1.5;
+
+  double dot_radius = track_thickness;
+
+  double dot_x = dial->slider_cx;
+  double dot_y = dial->slider_cy;
+
+  // subtle path hint for the circular track
+  cairo_set_line_width(cr, track_thickness);
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.12, dial->dim);
+  cairo_arc(cr, dial->cx, dial->cy, dial->slider_radius, ANGLE_START, ANGLE_END);
+  cairo_stroke(cr);
+
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.9, dial->dim);
+  cairo_arc(cr, dot_x, dot_y, dot_radius, 0, 2 * M_PI);
+  cairo_fill(cr);
+}
+
 static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   GtkDial *dial = GTK_DIAL(widget);
 
@@ -926,7 +964,7 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.17, dial->dim);
   cairo_stroke(cr);
 
-  if (dial->valp > 0.0) {
+  if (dial->valp > 0.0 && !dial->has_origin) {
     // outside value shadow
     draw_slider(
       dial, cr, dial->background_radius, dial->slider_thickness / 2, 0.1
@@ -960,7 +998,7 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     cairo_stroke(cr);
   }
 
-  if (dial->valp > 0.0) {
+  if (dial->valp > 0.0 && !dial->has_origin) {
     // value blur 1
     draw_slider(dial, cr, dial->slider_radius, 4, 0.5);
 
@@ -973,6 +1011,9 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_set_source(cr, dial->fill_pattern[has_focus][dial->dim]);
   cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI);
   cairo_fill(cr);
+
+  if (dial->has_origin)
+    draw_origin_indicator(dial, cr);
 
   // draw the circle
   cairo_set_source(cr, dial->outline_pattern[dial->dim]);
@@ -1069,6 +1110,9 @@ static void gtk_dial_set_property(
     case PROP_CAN_CONTROL:
       gtk_dial_set_can_control(dial, g_value_get_boolean(value));
       break;
+    case PROP_HAS_ORIGIN:
+      gtk_dial_set_has_origin(dial, g_value_get_boolean(value));
+      break;
     case PROP_PEAK_HOLD:
       gtk_dial_set_peak_hold(dial, g_value_get_int(value));
       break;
@@ -1107,6 +1151,9 @@ static void gtk_dial_get_property(
       break;
     case PROP_CAN_CONTROL:
       g_value_set_boolean(value, dial->can_control);
+      break;
+    case PROP_HAS_ORIGIN:
+      g_value_set_boolean(value, dial->has_origin);
       break;
     case PROP_PEAK_HOLD:
       g_value_set_int(value, dial->peak_hold);
@@ -1214,6 +1261,16 @@ void gtk_dial_set_can_control(GtkDial *dial, gboolean can_control) {
 
 gboolean gtk_dial_get_can_control(GtkDial *dial) {
   return dial->can_control;
+}
+
+void gtk_dial_set_has_origin(GtkDial *dial, gboolean has_origin) {
+  dial->has_origin = has_origin;
+  dial->properties_updated = 1;
+  gtk_widget_queue_draw(GTK_WIDGET(dial));
+}
+
+gboolean gtk_dial_get_has_origin(GtkDial *dial) {
+  return dial->has_origin;
 }
 
 void gtk_dial_set_level_meter_colours(
@@ -1565,10 +1622,18 @@ static void gtk_dial_click_gesture_pressed(
   if (n_press >= 2) {
     double lower = gtk_adjustment_get_lower(dial->adj);
 
-    if (gtk_dial_get_value(dial) != lower)
+    if (gtk_dial_get_has_origin(dial)) {
+      double zero_db = gtk_dial_get_zero_db(dial);
+
+      if (zero_db == -G_MAXDOUBLE)
+        zero_db = lower;
+
+      set_value(dial, zero_db);
+    } else if (gtk_dial_get_value(dial) != lower) {
       set_value(dial, lower);
-    else
+    } else {
       set_value(dial, dial->zero_db);
+    }
 
     return;
   }
