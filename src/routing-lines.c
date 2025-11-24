@@ -3,6 +3,7 @@
 
 #include "alsa.h"
 #include "routing-lines.h"
+#include "port-enable.h"
 
 // dotted dash when a sink is going to be removed by a drag
 static const double dash_dotted[] = { 1, 10 };
@@ -268,6 +269,10 @@ void draw_routing_lines(
         card->has_fixed_mixer_inputs)
       continue;
 
+    // don't draw lines to disabled sinks
+    if (!is_routing_snk_enabled(r_snk))
+      continue;
+
     // if dragging and a routing sink is being reconnected then draw
     // it with dots
     int dragging_this = dragging && card->snk_drag == r_snk;
@@ -285,6 +290,10 @@ void draw_routing_lines(
     struct routing_src *r_src = &g_array_index(
       card->routing_srcs, struct routing_src, r_src_idx
     );
+
+    // don't draw lines from disabled sources
+    if (!is_routing_src_enabled(r_src))
+      continue;
 
     // locate the source and sink coordinates
     double x1, y1, x2, y2;
