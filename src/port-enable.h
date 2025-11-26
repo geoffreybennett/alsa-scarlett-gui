@@ -39,5 +39,9 @@ int all_sinks_disabled(struct alsa_card *card, int port_category);
 // Update visibility of routing section grids based on port enable states
 void update_routing_section_visibility(struct alsa_card *card);
 
+// Schedule a UI update for a card (runs at idle)
+// Use PENDING_UI_UPDATE_* flags from alsa.h
+void schedule_ui_update(struct alsa_card *card, int flags);
+
 // Free port enable callback data (for use as GDestroyNotify)
 void port_enable_free_callback_data(void *data);

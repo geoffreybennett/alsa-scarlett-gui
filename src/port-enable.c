@@ -7,6 +7,7 @@
 #include "port-enable.h"
 #include "optional-state.h"
 #include "alsa.h"
+#include "window-mixer.h"
 
 // Callback structure to pass data to save callback
 struct port_enable_save_data {
@@ -27,6 +28,35 @@ static void port_enable_changed(
 
   // save as "1" or "0"
   optional_state_save(data->serial, data->config_key, value ? "1" : "0");
+}
+
+// Flush pending UI updates for a card
+static gboolean flush_pending_ui_updates(gpointer user_data) {
+  struct alsa_card *card = user_data;
+
+  card->pending_ui_update_idle = FALSE;
+
+  if (card->pending_ui_updates & PENDING_UI_UPDATE_MIXER_GRID)
+    rebuild_mixer_grid(card);
+
+  card->pending_ui_updates = 0;
+
+  return G_SOURCE_REMOVE;
+}
+
+// Schedule a UI update for a card (runs at idle)
+void schedule_ui_update(struct alsa_card *card, int flags) {
+  if (!card)
+    return;
+
+  card->pending_ui_updates |= flags;
+
+  if (!card->pending_ui_update_idle) {
+    card->pending_ui_update_idle = TRUE;
+    g_idle_add_full(
+      G_PRIORITY_HIGH_IDLE, flush_pending_ui_updates, card, NULL
+    );
+  }
 }
 
 // Update the Sources label arrows based on which sections are visible
@@ -178,6 +208,10 @@ static void src_visibility_changed(
   // redraw routing lines to reflect new layout
   if (src->card && src->card->routing_lines)
     gtk_widget_queue_draw(src->card->routing_lines);
+
+  // schedule mixer grid rebuild for mixer sources
+  if (src->port_category == PC_MIX)
+    schedule_ui_update(src->card, PENDING_UI_UPDATE_MIXER_GRID);
 }
 
 // Callback to update routing sink visibility
@@ -186,22 +220,27 @@ static void snk_visibility_changed(
   void               *private
 ) {
   struct routing_snk *snk = private;
-
-  // widget might not exist yet if routing window hasn't been created
-  if (!snk->box_widget)
-    return;
-
-  int enabled = alsa_get_elem_value(elem);
-  gtk_widget_set_visible(snk->box_widget, enabled != 0);
-
-  // update section visibility
   struct alsa_card *card = snk->elem ? snk->elem->card : NULL;
-  if (card)
-    update_routing_section_visibility(card);
 
-  // redraw routing lines to reflect new layout
-  if (card && card->routing_lines)
-    gtk_widget_queue_draw(card->routing_lines);
+  // update routing widget visibility if it exists
+  // (fixed mixer inputs don't have routing widgets)
+  if (snk->box_widget) {
+    int enabled = alsa_get_elem_value(elem);
+    gtk_widget_set_visible(snk->box_widget, enabled != 0);
+
+    // update section visibility
+    if (card)
+      update_routing_section_visibility(card);
+
+    // redraw routing lines to reflect new layout
+    if (card && card->routing_lines)
+      gtk_widget_queue_draw(card->routing_lines);
+  }
+
+  // schedule mixer grid rebuild for mixer inputs
+  // (needed for fixed mixer inputs which don't have routing widgets)
+  if (card && snk->elem->port_category == PC_MIX)
+    schedule_ui_update(card, PENDING_UI_UPDATE_MIXER_GRID);
 }
 
 // Free port enable callback data
