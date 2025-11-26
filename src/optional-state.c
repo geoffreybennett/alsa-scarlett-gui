@@ -5,6 +5,13 @@
 
 #include "optional-state.h"
 
+// Debounce delay in milliseconds
+#define SAVE_DEBOUNCE_MS 100
+
+// Pending saves: serial -> GHashTable(key -> value)
+static GHashTable *pending_saves = NULL;
+static guint save_timeout_id = 0;
+
 // Get the config directory path
 // Returns newly allocated string that must be freed with g_free()
 static char *get_config_dir(void) {
@@ -105,7 +112,69 @@ GHashTable *optional_state_load(const char *serial) {
   return controls;
 }
 
-// Save optional control state to file using GKeyFile
+// Flush all pending saves to disk
+static gboolean flush_pending_saves(gpointer user_data) {
+  save_timeout_id = 0;
+
+  if (!pending_saves)
+    return G_SOURCE_REMOVE;
+
+  if (ensure_config_dir() < 0)
+    return G_SOURCE_REMOVE;
+
+  // iterate over each serial with pending saves
+  GHashTableIter serial_iter;
+  gpointer serial_key, serial_value;
+
+  g_hash_table_iter_init(&serial_iter, pending_saves);
+  while (g_hash_table_iter_next(&serial_iter, &serial_key, &serial_value)) {
+    const char *serial = serial_key;
+    GHashTable *changes = serial_value;
+
+    char *path = optional_state_get_path(serial);
+    GKeyFile *key_file = g_key_file_new();
+    GError *error = NULL;
+
+    // load existing file if it exists
+    g_key_file_load_from_file(key_file, path, G_KEY_FILE_NONE, NULL);
+
+    // set the device serial in the global group
+    g_key_file_set_string(key_file, "global", "serial", serial);
+
+    // apply all pending changes for this serial
+    GHashTableIter change_iter;
+    gpointer change_key, change_value;
+
+    g_hash_table_iter_init(&change_iter, changes);
+    while (g_hash_table_iter_next(&change_iter, &change_key, &change_value)) {
+      const char *control_name = change_key;
+      const char *value = change_value;
+
+      g_key_file_set_string(
+        key_file,
+        "global",
+        control_name,
+        value ? value : ""
+      );
+    }
+
+    // save to file
+    if (!g_key_file_save_to_file(key_file, path, &error)) {
+      g_warning("Failed to save state file %s: %s", path, error->message);
+      g_error_free(error);
+    }
+
+    g_key_file_free(key_file);
+    g_free(path);
+  }
+
+  // clear all pending saves
+  g_hash_table_remove_all(pending_saves);
+
+  return G_SOURCE_REMOVE;
+}
+
+// Save optional control state to file using GKeyFile (debounced)
 int optional_state_save(
   const char *serial,
   const char *control_name,
@@ -114,38 +183,42 @@ int optional_state_save(
   if (!serial || !*serial || !control_name || !*control_name)
     return -1;
 
-  if (ensure_config_dir() < 0)
-    return -1;
-
-  char *path = optional_state_get_path(serial);
-  GKeyFile *key_file = g_key_file_new();
-  GError *error = NULL;
-
-  // load existing file if it exists
-  g_key_file_load_from_file(key_file, path, G_KEY_FILE_NONE, NULL);
-
-  // set the device serial in the global group
-  g_key_file_set_string(key_file, "global", "serial", serial);
-
-  // set the control value in the global group
-  g_key_file_set_string(
-    key_file,
-    "global",
-    control_name,
-    value ? value : ""
-  );
-
-  // save to file
-  if (!g_key_file_save_to_file(key_file, path, &error)) {
-    g_warning("Failed to save state file %s: %s", path, error->message);
-    g_error_free(error);
-    g_key_file_free(key_file);
-    g_free(path);
-    return -1;
+  // initialise pending_saves hash table if needed
+  if (!pending_saves) {
+    pending_saves = g_hash_table_new_full(
+      g_str_hash, g_str_equal,
+      g_free,
+      (GDestroyNotify)g_hash_table_destroy
+    );
   }
 
-  g_key_file_free(key_file);
-  g_free(path);
+  // get or create the hash table for this serial
+  GHashTable *serial_changes = g_hash_table_lookup(pending_saves, serial);
+  if (!serial_changes) {
+    serial_changes = g_hash_table_new_full(
+      g_str_hash, g_str_equal, g_free, g_free
+    );
+    g_hash_table_insert(pending_saves, g_strdup(serial), serial_changes);
+  }
+
+  // add/update the pending change
+  g_hash_table_insert(
+    serial_changes,
+    g_strdup(control_name),
+    g_strdup(value ? value : "")
+  );
+
+  // cancel existing timeout if any
+  if (save_timeout_id) {
+    g_source_remove(save_timeout_id);
+  }
+
+  // schedule new timeout
+  save_timeout_id = g_timeout_add(
+    SAVE_DEBOUNCE_MS,
+    flush_pending_saves,
+    NULL
+  );
 
   return 0;
 }
