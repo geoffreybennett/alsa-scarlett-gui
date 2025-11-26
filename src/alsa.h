@@ -225,6 +225,8 @@ struct alsa_card {
   GtkWidget          *window_modal;
   GtkWidget          *window_main_contents;
   GtkWidget          *routing_grid;
+  GtkWidget          *mixer_grid;
+  GList              *mixer_gain_widgets;
   GtkWidget          *routing_lines;
   GtkWidget          *routing_hw_in_grid;
   GtkWidget          *routing_hw_out_grid;
@@ -252,7 +254,8 @@ struct alsa_card {
 };
 
 // flags for pending_ui_updates
-#define PENDING_UI_UPDATE_ROUTING (1 << 0)
+#define PENDING_UI_UPDATE_ROUTING    (1 << 0)
+#define PENDING_UI_UPDATE_MIXER_GRID (1 << 1)
 
 // utility
 void fatal_alsa_error(const char *msg, int err);

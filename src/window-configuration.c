@@ -217,22 +217,57 @@ static void tab_checkbox_toggled(GtkCheckButton *button, gpointer user_data) {
     new_state = active;  // toggle normally
   }
 
-  // toggle both column checkboxes by simulating clicks on them
-  if (data->left_column && data->left_column->column_checkbox) {
-    gtk_check_button_set_active(
-      GTK_CHECK_BUTTON(data->left_column->column_checkbox),
-      new_state
-    );
+  // Set both column checkboxes to the same state
+  // Directly update all child elements to ensure consistency
+  if (data->left_column) {
+    data->left_column->was_inconsistent = 0;
+
+    // Directly set all child elements to the target state
+    for (int i = 0; i < data->left_column->child_elems->len; i++) {
+      struct alsa_elem *elem = g_array_index(
+        data->left_column->child_elems, struct alsa_elem *, i
+      );
+      alsa_set_elem_value(elem, new_state ? 1 : 0);
+    }
+
+    // Update the column checkbox UI to match
+    if (data->left_column->column_checkbox) {
+      gtk_check_button_set_inconsistent(
+        GTK_CHECK_BUTTON(data->left_column->column_checkbox),
+        FALSE
+      );
+      gtk_check_button_set_active(
+        GTK_CHECK_BUTTON(data->left_column->column_checkbox),
+        new_state
+      );
+    }
   }
 
-  if (data->right_column && data->right_column->column_checkbox) {
-    gtk_check_button_set_active(
-      GTK_CHECK_BUTTON(data->right_column->column_checkbox),
-      new_state
-    );
+  if (data->right_column) {
+    data->right_column->was_inconsistent = 0;
+
+    // Directly set all child elements to the target state
+    for (int i = 0; i < data->right_column->child_elems->len; i++) {
+      struct alsa_elem *elem = g_array_index(
+        data->right_column->child_elems, struct alsa_elem *, i
+      );
+      alsa_set_elem_value(elem, new_state ? 1 : 0);
+    }
+
+    // Update the column checkbox UI to match
+    if (data->right_column->column_checkbox) {
+      gtk_check_button_set_inconsistent(
+        GTK_CHECK_BUTTON(data->right_column->column_checkbox),
+        FALSE
+      );
+      gtk_check_button_set_active(
+        GTK_CHECK_BUTTON(data->right_column->column_checkbox),
+        new_state
+      );
+    }
   }
 
-  // clear inconsistent state
+  // clear tab inconsistent state
   gtk_check_button_set_inconsistent(button, FALSE);
 
   data->updating = 0;
@@ -330,6 +365,194 @@ static void add_name_entry_to_grid(
   GtkWidget *entry = make_text_entry_alsa_elem(custom_name_elem);
   gtk_widget_set_hexpand(entry, TRUE);
   gtk_grid_attach(GTK_GRID(grid), entry, 2, row, 1, 1);
+}
+
+// Structure to track mixer input label and its sink
+struct mixer_input_label_data {
+  GtkLabel             *label;
+  struct routing_snk   *snk;
+  struct alsa_card     *card;
+};
+
+// Get the formatted text for a mixer input label
+// Returns newly allocated string that must be freed
+static char *get_mixer_input_label_text(
+  struct alsa_card   *card,
+  struct routing_snk *snk
+) {
+  // Get the current routing source
+  int routing_src_idx = alsa_get_elem_value(snk->elem);
+  struct routing_src *r_src = NULL;
+
+  if (routing_src_idx >= 0 && routing_src_idx < card->routing_srcs->len) {
+    r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, routing_src_idx
+    );
+  }
+
+  // Format depends on whether mixer inputs are fixed
+  if (card->has_fixed_mixer_inputs) {
+    // For fixed mixer inputs, just show the source name
+    return g_strdup(r_src ? get_routing_src_display_name(r_src) : "Off");
+  } else {
+    // For configurable mixer inputs, show "Mixer X - [Source Name]"
+    return g_strdup_printf(
+      "Mixer %d - %s",
+      snk->elem->lr_num,
+      r_src ? get_routing_src_display_name(r_src) : "Off"
+    );
+  }
+}
+
+// Callback to update mixer input label when routing changes
+static void mixer_input_label_updated(struct alsa_elem *elem, void *private) {
+  struct mixer_input_label_data *data = private;
+
+  char *label_text = get_mixer_input_label_text(data->card, data->snk);
+  gtk_label_set_text(data->label, label_text);
+  g_free(label_text);
+}
+
+// Callback when a source's custom name changes - update all mixer labels that reference it
+static void source_name_changed_update_mixer_labels(struct alsa_elem *elem, void *private) {
+  struct alsa_card *card = elem->card;
+
+  // Find which routing source this custom name belongs to
+  struct routing_src *changed_src = NULL;
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (r_src->custom_name_elem == elem) {
+      changed_src = r_src;
+      break;
+    }
+  }
+
+  if (!changed_src)
+    return;
+
+  // Find the index of this source
+  int changed_src_idx = changed_src->id;
+
+  // Update all mixer input labels that are currently routed to this source
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    if (snk->elem->port_category != PC_MIX)
+      continue;
+
+    // Check if this mixer input is routed to the changed source
+    int routing_src_idx = alsa_get_elem_value(snk->elem);
+    if (routing_src_idx == changed_src_idx) {
+      // Trigger update of this mixer input's label by calling its callback
+      alsa_elem_change(snk->elem);
+    }
+  }
+}
+
+// Free mixer input label data
+static void free_mixer_input_label_data(void *data) {
+  g_free(data);
+}
+
+// Add enable checkboxes only (no custom names) for routing sinks
+static void add_snk_enables_for_category(
+  struct alsa_card            *card,
+  GtkWidget                   *grid,
+  int                          port_category,
+  int                          hw_type,  // only used for PC_HW, -1 for others
+  struct column_checkbox_data *col_data  // for column checkbox tracking
+) {
+  int row = 0;
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    // skip if not the right category
+    if (snk->elem->port_category != port_category)
+      continue;
+
+    // for hardware, also check hw_type
+    if (port_category == PC_HW && snk->elem->hw_type != hw_type)
+      continue;
+
+    // skip if no enable element
+    if (!snk->enable_elem)
+      continue;
+
+    // Enable checkbox
+    GtkWidget *checkbox = gtk_check_button_new();
+    gtk_widget_set_halign(checkbox, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(checkbox, GTK_ALIGN_CENTER);
+    gtk_widget_set_tooltip_text(checkbox, "Enable/disable this port");
+
+    g_signal_connect(
+      checkbox,
+      "toggled",
+      G_CALLBACK(enable_checkbox_toggled),
+      snk->enable_elem
+    );
+
+    alsa_elem_add_callback(
+      snk->enable_elem,
+      enable_checkbox_updated,
+      checkbox,
+      NULL
+    );
+
+    int value = alsa_get_elem_value(snk->enable_elem);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(checkbox), value != 0);
+
+    gtk_grid_attach(GTK_GRID(grid), checkbox, 0, row, 1, 1);
+
+    // Label showing the mixer input and current source
+    GtkWidget *label;
+    if (port_category == PC_MIX) {
+      // For mixer inputs, get the formatted label text
+      char *label_text = get_mixer_input_label_text(card, snk);
+      label = gtk_label_new(label_text);
+      g_free(label_text);
+
+      // Create data structure for the callback
+      struct mixer_input_label_data *label_data =
+        g_malloc(sizeof(struct mixer_input_label_data));
+      label_data->label = GTK_LABEL(label);
+      label_data->snk = snk;
+      label_data->card = card;
+
+      // Register callback to update label when routing changes
+      alsa_elem_add_callback(
+        snk->elem,
+        mixer_input_label_updated,
+        label_data,
+        free_mixer_input_label_data
+      );
+    } else {
+      // For other categories, use display_name
+      label = gtk_label_new(snk->display_name);
+    }
+
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_grid_attach(GTK_GRID(grid), label, 1, row, 1, 1);
+
+    row++;
+
+    // register with column checkbox if available
+    if (col_data) {
+      g_array_append_val(col_data->child_elems, snk->enable_elem);
+      alsa_elem_add_callback(
+        snk->enable_elem,
+        child_enable_changed,
+        col_data,
+        NULL
+      );
+    }
+  }
 }
 
 // Add custom name entries for routing sources of a specific category and hw_type
@@ -801,11 +1024,91 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
 
   // Add tabs for other categories (PCM, Mixer, DSP)
   add_category_tab(notebook, card, PC_PCM, "PCM", 1, 1);
-  add_category_tab(
-    notebook, card, PC_MIX, "Mixer",
-    !card->has_fixed_mixer_inputs,  // hide inputs if fixed
-    1                                // always show outputs
-  );
+
+  // Mixer tab - special handling for inputs (enable-only, no custom names)
+  if (has_io_for_category(card, PC_MIX, -1, 1, 1)) {
+    GtkWidget *left_grid, *right_grid;
+    struct column_checkbox_data *left_col_data, *right_col_data;
+    struct tab_checkbox_data *tab_data;
+    GtkWidget *content = create_two_column_layout(
+      &left_grid, &right_grid,
+      &left_col_data, &right_col_data,
+      &tab_data,
+      1, 1  // show both inputs and outputs
+    );
+
+    // Register callbacks on all source custom names to update mixer labels
+    // Do this once for all mixer inputs before creating them
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+      if (r_src->custom_name_elem) {
+        alsa_elem_add_callback(
+          r_src->custom_name_elem,
+          source_name_changed_update_mixer_labels,
+          NULL,
+          NULL
+        );
+      }
+    }
+
+    // Left column: Mixer Inputs (enable-only, no custom names)
+    if (left_grid)
+      add_snk_enables_for_category(card, left_grid, PC_MIX, -1, left_col_data);
+
+    // Right column: Mixer Outputs (with custom names)
+    if (right_grid)
+      add_src_names_for_category(card, right_grid, PC_MIX, -1, right_col_data);
+
+    // Register callbacks from children to update tab checkbox
+    if (left_col_data) {
+      for (int i = 0; i < left_col_data->child_elems->len; i++) {
+        struct alsa_elem *elem = g_array_index(left_col_data->child_elems, struct alsa_elem *, i);
+        alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+      }
+    }
+    if (right_col_data) {
+      for (int i = 0; i < right_col_data->child_elems->len; i++) {
+        struct alsa_elem *elem = g_array_index(right_col_data->child_elems, struct alsa_elem *, i);
+        alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+      }
+    }
+
+    // Update column checkbox initial states
+    if (left_col_data)
+      update_column_checkbox_state(left_col_data);
+    if (right_col_data)
+      update_column_checkbox_state(right_col_data);
+
+    // Create custom tab label with checkbox
+    GtkWidget *tab_label_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    tab_data->tab_checkbox = gtk_check_button_new();
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(tab_data->tab_checkbox), TRUE);
+    g_signal_connect(
+      tab_data->tab_checkbox,
+      "toggled",
+      G_CALLBACK(tab_checkbox_toggled),
+      tab_data
+    );
+    gtk_box_append(GTK_BOX(tab_label_box), tab_data->tab_checkbox);
+
+    GtkWidget *tab_label_text = gtk_label_new("Mixer");
+    gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
+
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, tab_label_box);
+
+    // Update tab checkbox initial state
+    update_tab_checkbox_state(tab_data);
+
+    // attach cleanup to the content
+    g_object_weak_ref(
+      G_OBJECT(content),
+      (GWeakNotify)free_tab_checkbox_data,
+      tab_data
+    );
+  }
+
   add_category_tab(notebook, card, PC_DSP, "DSP", 1, 1);
 
   // Only add the notebook if there are any tabs

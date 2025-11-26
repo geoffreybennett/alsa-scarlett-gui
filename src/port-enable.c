@@ -7,6 +7,7 @@
 #include "port-enable.h"
 #include "optional-state.h"
 #include "alsa.h"
+#include "window-mixer.h"
 
 // Debounce delay for UI updates in milliseconds
 #define UI_UPDATE_DEBOUNCE_MS 50
@@ -44,6 +45,9 @@ static gboolean flush_pending_ui_updates(gpointer user_data) {
     if (card->routing_lines)
       gtk_widget_queue_draw(card->routing_lines);
   }
+
+  if (card->pending_ui_updates & PENDING_UI_UPDATE_MIXER_GRID)
+    rebuild_mixer_grid(card);
 
   // clear pending updates
   card->pending_ui_updates = 0;
@@ -215,7 +219,10 @@ static void src_visibility_changed(
   gtk_widget_set_visible(src->widget, enabled != 0);
 
   // schedule expensive updates (debounced)
-  schedule_ui_update(src->card, PENDING_UI_UPDATE_ROUTING);
+  int flags = PENDING_UI_UPDATE_ROUTING;
+  if (src->port_category == PC_MIX)
+    flags |= PENDING_UI_UPDATE_MIXER_GRID;
+  schedule_ui_update(src->card, flags);
 }
 
 // Callback to update routing sink visibility
@@ -224,18 +231,23 @@ static void snk_visibility_changed(
   void               *private
 ) {
   struct routing_snk *snk = private;
-
-  // widget might not exist yet if routing window hasn't been created
-  if (!snk->box_widget)
-    return;
-
-  int enabled = alsa_get_elem_value(elem);
-  gtk_widget_set_visible(snk->box_widget, enabled != 0);
-
-  // schedule expensive updates (debounced)
   struct alsa_card *card = snk->elem ? snk->elem->card : NULL;
-  if (card)
-    schedule_ui_update(card, PENDING_UI_UPDATE_ROUTING);
+
+  // update routing widget visibility if it exists
+  // (fixed mixer inputs don't have routing widgets)
+  if (snk->box_widget) {
+    int enabled = alsa_get_elem_value(elem);
+    gtk_widget_set_visible(snk->box_widget, enabled != 0);
+
+    // schedule routing update
+    if (card)
+      schedule_ui_update(card, PENDING_UI_UPDATE_ROUTING);
+  }
+
+  // always schedule mixer grid rebuild for mixer inputs
+  // (needed for fixed mixer inputs which don't have routing widgets)
+  if (card && snk->elem->port_category == PC_MIX)
+    schedule_ui_update(card, PENDING_UI_UPDATE_MIXER_GRID);
 }
 
 // Free port enable callback data

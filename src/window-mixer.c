@@ -5,9 +5,19 @@
 
 #include "custom-names.h"
 #include "gtkhelper.h"
+#include "port-enable.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
 #include "window-mixer.h"
+
+// Structure to store mixer gain widget and its coordinates
+struct mixer_gain_widget {
+  GtkWidget *widget;
+  int mix_num;    // 0-based mix number (A=0, B=1, etc.)
+  int input_num;  // 0-based input number
+};
+
+// mixer_gain_widgets is stored in card->mixer_gain_widgets
 
 static void mixer_gain_enter(
   GtkEventControllerMotion *controller,
@@ -80,6 +90,16 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   GtkWidget *top = gtk_frame_new(NULL);
   gtk_widget_add_css_class(top, "window-frame");
 
+  // clear any existing mixer gain widgets from previous window
+  for (GList *l = card->mixer_gain_widgets; l != NULL; l = l->next) {
+    struct mixer_gain_widget *mg = l->data;
+    if (mg->widget)
+      g_object_unref(mg->widget);  // release the ref we added
+    g_free(mg);
+  }
+  g_list_free(card->mixer_gain_widgets);
+  card->mixer_gain_widgets = NULL;
+
   GtkWidget *mixer_top = gtk_grid_new();
   gtk_widget_add_css_class(mixer_top, "window-content");
   gtk_widget_add_css_class(mixer_top, "top-level-content");
@@ -89,6 +109,9 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   gtk_widget_set_halign(mixer_top, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(mixer_top, GTK_ALIGN_CENTER);
   gtk_grid_set_column_homogeneous(GTK_GRID(mixer_top), TRUE);
+
+  // store the grid for later access
+  card->mixer_grid = mixer_top;
 
   GArray *elems = card->elems;
 
@@ -117,6 +140,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     gtk_label_set_ellipsize(GTK_LABEL(l_left), PANGO_ELLIPSIZE_END);
     gtk_label_set_max_width_chars(GTK_LABEL(l_left), 12);
     gtk_widget_set_tooltip_text(l_left, name);
+    g_object_ref(l_left);  // keep alive when removed from grid
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_left,
       0, i + 2, 1, 1
@@ -126,6 +150,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     gtk_label_set_ellipsize(GTK_LABEL(l_right), PANGO_ELLIPSIZE_END);
     gtk_label_set_max_width_chars(GTK_LABEL(l_right), 12);
     gtk_widget_set_tooltip_text(l_right, name);
+    g_object_ref(l_right);  // keep alive when removed from grid
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_right,
       card->routing_out_count[PC_MIX] + 1, i + 2, 1, 1
@@ -137,6 +162,37 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     if (r_src) {
       r_src->mixer_label_left = l_left;
       r_src->mixer_label_right = l_right;
+    }
+  }
+
+  // Create all mixer input labels upfront (top and bottom)
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    if (!r_snk->elem || r_snk->elem->port_category != PC_MIX)
+      continue;
+
+    // Create the labels if they don't exist
+    if (!r_snk->mixer_label_top) {
+      r_snk->mixer_label_top = gtk_label_new("");
+      r_snk->mixer_label_bottom = gtk_label_new("");
+      gtk_widget_add_css_class(r_snk->mixer_label_top, "mixer-label");
+      gtk_widget_add_css_class(r_snk->mixer_label_bottom, "mixer-label");
+      g_object_ref(r_snk->mixer_label_top);     // keep alive when removed from grid
+      g_object_ref(r_snk->mixer_label_bottom);  // keep alive when removed from grid
+
+      // Attach to grid initially (will be repositioned during rebuild)
+      int input_num = r_snk->elem->lr_num - 1;
+      gtk_grid_attach(
+        GTK_GRID(mixer_top), r_snk->mixer_label_top,
+        input_num, (input_num + 1) % 2, 3, 1
+      );
+      gtk_grid_attach(
+        GTK_GRID(mixer_top), r_snk->mixer_label_bottom,
+        input_num, card->routing_in_count[PC_MIX] + input_num % 2 + 2, 3, 1
+      );
     }
   }
 
@@ -169,8 +225,20 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
       continue;
     }
 
-    // create the gain control and attach to the grid
+    // create the gain control
     GtkWidget *w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0);
+
+    // store widget reference so it stays alive when removed from grid
+    g_object_ref(w);
+
+    // store widget in card's list with coordinates
+    struct mixer_gain_widget *mg = g_malloc(sizeof(struct mixer_gain_widget));
+    mg->widget = w;
+    mg->mix_num = mix_num;
+    mg->input_num = input_num;
+    card->mixer_gain_widgets = g_list_append(card->mixer_gain_widgets, mg);
+
+    // attach to the grid initially (will be rebuilt later)
     gtk_grid_attach(GTK_GRID(mixer_top), w, input_num + 1, mix_num + 2, 1, 1);
 
     // look up the r_snk entry for the mixer input number
@@ -180,27 +248,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
       continue;
     }
 
-    // lookup the top label for the mixer input
-    GtkWidget *l_top = r_snk->mixer_label_top;
-
-    // if the top label doesn't already exist the bottom doesn't
-    // either; create them both and attach to the grid
-    if (!l_top) {
-      l_top = r_snk->mixer_label_top = gtk_label_new("");
-      GtkWidget *l_bottom = r_snk->mixer_label_bottom = gtk_label_new("");
-      gtk_widget_add_css_class(l_top, "mixer-label");
-      gtk_widget_add_css_class(l_bottom, "mixer-label");
-
-      gtk_grid_attach(
-        GTK_GRID(mixer_top), l_top,
-        input_num, (input_num + 1) % 2, 3, 1
-      );
-      gtk_grid_attach(
-        GTK_GRID(mixer_top), l_bottom,
-        input_num, card->routing_in_count[PC_MIX] + input_num % 2 + 2, 3, 1
-      );
-    }
-
+    // Store label references in the gain widget for hover effect
     g_object_set_data(G_OBJECT(w), "mix_label_left", mix_labels_left[mix_num]);
     g_object_set_data(G_OBJECT(w), "mix_label_right", mix_labels_right[mix_num]);
     g_object_set_data(G_OBJECT(w), "source_label_top", r_snk->mixer_label_top);
@@ -212,6 +260,9 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   }
 
   update_mixer_labels(card);
+
+  // rebuild grid layout based on port enable states
+  rebuild_mixer_grid(card);
 
   return top;
 }
@@ -236,6 +287,172 @@ void update_mixer_labels(struct alsa_card *card) {
       const char *display_name = get_routing_src_display_name(r_src);
       gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_top), display_name);
       gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_bottom), display_name);
+    }
+  }
+}
+
+// Rebuild the mixer grid layout based on current port enable states
+void rebuild_mixer_grid(struct alsa_card *card) {
+  if (!card || !card->mixer_grid)
+    return;
+
+  GtkGrid *grid = GTK_GRID(card->mixer_grid);
+
+  // Remove all widgets from the grid (but keep references)
+  GtkWidget *child = gtk_widget_get_first_child(GTK_WIDGET(grid));
+  while (child) {
+    GtkWidget *next = gtk_widget_get_next_sibling(child);
+    gtk_grid_remove(grid, child);
+    child = next;
+  }
+
+  // Build list of visible mixer outputs (sources)
+  int visible_mix_count = 0;
+  int mix_num_to_row[MAX_MIX_OUT];  // map mix_num to row
+
+  // initialize all to -1 (not visible)
+  for (int i = 0; i < MAX_MIX_OUT; i++)
+    mix_num_to_row[i] = -1;
+
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (src->port_category != PC_MIX)
+      continue;
+
+    // bounds check
+    if (src->port_num < 0 || src->port_num >= MAX_MIX_OUT)
+      continue;
+
+    if (is_routing_src_enabled(src)) {
+      mix_num_to_row[src->port_num] = visible_mix_count;
+      visible_mix_count++;
+    } else {
+      mix_num_to_row[src->port_num] = -1;  // not visible
+    }
+  }
+
+  // Build list of visible mixer inputs (sinks)
+  int visible_input_count = 0;
+  int max_mixer_inputs = card->routing_out_count[PC_MIX];  // actual number of mixer inputs
+  int input_num_to_col[max_mixer_inputs];  // map input_num to column
+
+  // initialize all to -1 (not visible)
+  for (int i = 0; i < max_mixer_inputs; i++)
+    input_num_to_col[i] = -1;
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    if (!snk->elem || snk->elem->port_category != PC_MIX)
+      continue;
+
+    int input_num = snk->elem->lr_num - 1;  // convert to 0-based
+
+    // bounds check
+    if (input_num < 0 || input_num >= max_mixer_inputs)
+      continue;
+
+    // Check the mixer input enable state
+    int visible = is_routing_snk_enabled(snk);
+
+    if (visible) {
+      input_num_to_col[input_num] = visible_input_count;
+      visible_input_count++;
+    } else {
+      input_num_to_col[input_num] = -1;  // not visible
+    }
+  }
+
+  // Re-attach mixer output labels (left and right)
+  int row_offset = 2;  // rows 0-1 are for input labels
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (src->port_category != PC_MIX)
+      continue;
+
+    // bounds check
+    if (src->port_num < 0 || src->port_num >= MAX_MIX_OUT)
+      continue;
+
+    int row = mix_num_to_row[src->port_num];
+    if (row < 0)  // not visible
+      continue;
+
+    if (src->mixer_label_left) {
+      gtk_grid_attach(
+        grid, src->mixer_label_left,
+        0, row + row_offset, 1, 1
+      );
+    }
+
+    if (src->mixer_label_right) {
+      gtk_grid_attach(
+        grid, src->mixer_label_right,
+        visible_input_count + 1, row + row_offset, 1, 1
+      );
+    }
+  }
+
+  // Re-attach mixer input labels (top and bottom)
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    if (!snk->elem || snk->elem->port_category != PC_MIX)
+      continue;
+
+    int input_num = snk->elem->lr_num - 1;
+
+    // bounds check
+    if (input_num < 0 || input_num >= max_mixer_inputs)
+      continue;
+
+    int col = input_num_to_col[input_num];
+    if (col < 0)  // not visible
+      continue;
+
+    if (snk->mixer_label_top) {
+      gtk_grid_attach(
+        grid, snk->mixer_label_top,
+        col, (col + 1) % 2, 3, 1
+      );
+    }
+
+    if (snk->mixer_label_bottom) {
+      gtk_grid_attach(
+        grid, snk->mixer_label_bottom,
+        col, visible_mix_count + (col % 2) + row_offset, 3, 1
+      );
+    }
+  }
+
+  // Re-attach gain widgets
+  for (GList *l = card->mixer_gain_widgets; l != NULL; l = l->next) {
+    struct mixer_gain_widget *mg = l->data;
+
+    // bounds check before accessing arrays
+    if (mg->mix_num < 0 || mg->mix_num >= MAX_MIX_OUT ||
+        mg->input_num < 0 || mg->input_num >= max_mixer_inputs)
+      continue;
+
+    int row = mix_num_to_row[mg->mix_num];
+    int col = input_num_to_col[mg->input_num];
+
+    // Only attach if both mixer output and input are visible
+    if (row >= 0 && col >= 0) {
+      gtk_grid_attach(
+        grid, mg->widget,
+        col + 1, row + row_offset, 1, 1
+      );
     }
   }
 }
