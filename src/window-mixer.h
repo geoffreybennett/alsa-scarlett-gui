@@ -7,3 +7,4 @@
 
 GtkWidget *create_mixer_controls(struct alsa_card *card);
 void update_mixer_labels(struct alsa_card *card);
+void rebuild_mixer_grid(struct alsa_card *card);
