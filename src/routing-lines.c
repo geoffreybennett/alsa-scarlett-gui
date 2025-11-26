@@ -143,6 +143,60 @@ static void arrow(
   cairo_close_path(cr);
 }
 
+// draw a small arrow indicator pointing in a direction from a widget
+// direction: 0 = right (→), 1 = left (←), 2 = up (↑), 3 = down (↓)
+static void draw_arrow_indicator(
+  cairo_t *cr,
+  double   x,
+  double   y,
+  int      direction,
+  double   r,
+  double   g,
+  double   b
+) {
+  double angle;
+  switch (direction) {
+    case 0: angle = 0;          break;  // right →
+    case 1: angle = M_PI;       break;  // left ←
+    case 2: angle = -M_PI_2;    break;  // up ↑
+    case 3: angle = M_PI_2;     break;  // down ↓
+    default: angle = 0;         break;
+  }
+
+  // arrow dimensions
+  double arrow_len = 12;
+  double arrow_width = 4;
+
+  // calculate arrow tip
+  double tx = x + cos(angle) * arrow_len;
+  double ty = y + sin(angle) * arrow_len;
+
+  // calculate arrow base sides
+  double s1x = x + cos(angle - M_PI_2) * arrow_width;
+  double s1y = y + sin(angle - M_PI_2) * arrow_width;
+  double s2x = x + cos(angle + M_PI_2) * arrow_width;
+  double s2y = y + sin(angle + M_PI_2) * arrow_width;
+
+  cairo_set_source_rgb(cr, r, g, b);
+
+  // draw line from behind the arrow to the arrow base
+  double line_len = 16;
+  double lx = x - cos(angle) * line_len;
+  double ly = y - sin(angle) * line_len;
+
+  cairo_set_line_width(cr, 2);
+  cairo_move_to(cr, lx, ly);
+  cairo_line_to(cr, x, y);
+  cairo_stroke(cr);
+
+  // draw filled triangle
+  cairo_move_to(cr, tx, ty);
+  cairo_line_to(cr, s1x, s1y);
+  cairo_line_to(cr, s2x, s2y);
+  cairo_close_path(cr);
+  cairo_fill(cr);
+}
+
 // draw a nice curved line connecting a source at (x1, y1) and a sink
 // at (x2, y2)
 static void draw_connection(
@@ -319,6 +373,97 @@ void draw_routing_lines(
       r, g, b, 2
     );
   }
+
+  // draw arrows for connections to/from disabled ports
+  // this shows the user that something is connected but hidden
+
+  // track which sources have connections to disabled sinks
+  // (use a simple array since source IDs are small integers)
+  int *src_has_disabled_snk = g_malloc0(card->routing_srcs->len * sizeof(int));
+
+  // first pass: find enabled sinks connected to disabled sources
+  // and disabled sinks (to mark their sources)
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    struct alsa_elem *elem = r_snk->elem;
+
+    // skip read-only mixer sinks
+    if (elem->port_category == PC_MIX && card->has_fixed_mixer_inputs)
+      continue;
+
+    // get the source connected to this sink
+    int r_src_idx = alsa_get_elem_value(elem);
+    if (!r_src_idx)
+      continue;
+
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, r_src_idx
+    );
+
+    int snk_enabled = is_routing_snk_enabled(r_snk);
+    int src_enabled = is_routing_src_enabled(r_src);
+
+    // case 1: enabled sink connected to disabled source → draw ← to sink
+    if (snk_enabled && !src_enabled) {
+      double x, y;
+      get_snk_center(r_snk, parent, &x, &y);
+
+      // determine arrow direction based on port category
+      // mixer/DSP ports are at top/bottom, others are left/right
+      int direction;
+      if (IS_MIXER(elem->port_category)) {
+        // mixer sinks are at bottom, arrow points down
+        direction = 3;
+        y += 16;
+      } else {
+        // other sinks are on right side, arrow points left (from source)
+        direction = 1;
+        x -= 16;
+      }
+
+      draw_arrow_indicator(cr, x, y, direction, 0.75, 0.25, 0.25);
+    }
+
+    // case 2: disabled sink → mark the source
+    if (!snk_enabled && src_enabled) {
+      src_has_disabled_snk[r_src_idx] = 1;
+    }
+  }
+
+  // second pass: draw arrows from sources that have disabled sinks
+  for (int i = 1; i < card->routing_srcs->len; i++) {
+    if (!src_has_disabled_snk[i])
+      continue;
+
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    // skip if source itself is disabled
+    if (!is_routing_src_enabled(r_src))
+      continue;
+
+    double x, y;
+    get_src_center(r_src, parent, &x, &y);
+
+    // determine arrow direction based on port category
+    int direction;
+    if (IS_MIXER(r_src->port_category)) {
+      // mixer sources are at top, arrow points up
+      direction = 2;
+      y -= 16;
+    } else {
+      // other sources are on left side, arrow points right (to sink)
+      direction = 0;
+      x += 16;
+    }
+
+    draw_arrow_indicator(cr, x, y, direction, 0.75, 0.25, 0.25);
+  }
+
+  g_free(src_has_disabled_snk);
 }
 
 // draw the overlay dragging line
