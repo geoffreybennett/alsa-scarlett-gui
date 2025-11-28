@@ -1129,6 +1129,7 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   card->window_configuration = create_subwindow(
     card, "Configuration", G_CALLBACK(window_configuration_close_request)
   );
+  gtk_window_set_resizable(GTK_WINDOW(card->window_configuration), TRUE);
 
   GtkWidget *configuration = create_configuration_controls(card);
   gtk_window_set_child(GTK_WINDOW(card->window_configuration), configuration);
