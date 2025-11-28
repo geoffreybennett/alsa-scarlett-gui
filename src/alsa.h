@@ -232,6 +232,7 @@ struct alsa_card {
   GtkWidget          *window_main_contents;
   GtkWidget          *routing_grid;
   GtkWidget          *mixer_grid;
+  GtkWidget          *mixer_glow;
   GList              *mixer_gain_widgets;
   GtkWidget          *routing_lines;
   GtkWidget          *routing_hw_in_grid;
