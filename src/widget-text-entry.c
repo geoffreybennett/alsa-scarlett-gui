@@ -70,6 +70,7 @@ GtkWidget *make_text_entry_alsa_elem(struct alsa_elem *elem) {
   struct text_entry *data = g_malloc0(sizeof(struct text_entry));
   data->elem = elem;
   data->entry = gtk_entry_new();
+  gtk_widget_set_size_request(data->entry, 120, -1);
 
   // connect signal for user changes
   g_signal_connect(
