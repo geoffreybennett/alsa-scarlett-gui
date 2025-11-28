@@ -12,6 +12,7 @@
 #include "iface-waiting.h"
 #include "main.h"
 #include "menu.h"
+#include "routing-lines.h"
 #include "window-iface.h"
 #include "window-startup.h"
 #include "optional-controls.h"
@@ -221,6 +222,9 @@ void create_no_card_window(void) {
 }
 
 void destroy_card_window(struct alsa_card *card) {
+  // clean up routing levels timer before destroying windows
+  routing_levels_cleanup(card);
+
   // remove the windows
   gtk_window_destroy(GTK_WINDOW(card->window_main));
   if (card->window_routing)
