@@ -29,6 +29,7 @@ struct tab_checkbox_data {
   GtkWidget                   *tab_checkbox;
   struct column_checkbox_data *left_column;   // can be NULL if no inputs
   struct column_checkbox_data *right_column;  // can be NULL if no outputs
+  GArray                      *columns;       // array of column_checkbox_data* for multi-column support
   int                          updating;      // flag to prevent recursion
   int                          was_inconsistent;  // track if we were inconsistent before click
 };
@@ -128,7 +129,29 @@ static void column_checkbox_toggled(GtkCheckButton *button, gpointer user_data) 
 static void free_tab_checkbox_data(gpointer data) {
   struct tab_checkbox_data *tcd = data;
   // don't free column data - they're managed by the columns themselves
+  if (tcd->columns)
+    g_array_free(tcd->columns, TRUE);
   g_free(tcd);
+}
+
+// Helper to count column state
+static void count_column_state(
+  struct column_checkbox_data *col,
+  int *all_enabled,
+  int *all_disabled,
+  int *columns_exist
+) {
+  if (!col || !col->child_elems)
+    return;
+
+  (*columns_exist)++;
+  if (gtk_check_button_get_inconsistent(GTK_CHECK_BUTTON(col->column_checkbox))) {
+    // mixed state - don't count as enabled or disabled
+  } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(col->column_checkbox))) {
+    (*all_enabled)++;
+  } else {
+    (*all_disabled)++;
+  }
 }
 
 // Update tab checkbox state based on column checkbox states
@@ -141,26 +164,17 @@ static void update_tab_checkbox_state(struct tab_checkbox_data *data) {
   int all_disabled = 0;
   int columns_exist = 0;
 
-  if (data->left_column && data->left_column->child_elems) {
-    columns_exist++;
-    if (gtk_check_button_get_inconsistent(GTK_CHECK_BUTTON(data->left_column->column_checkbox))) {
-      // mixed state in left column - tab is also mixed
-    } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(data->left_column->column_checkbox))) {
-      all_enabled++;
-    } else {
-      all_disabled++;
+  // Use columns array if present, otherwise fall back to left/right
+  if (data->columns) {
+    for (int i = 0; i < data->columns->len; i++) {
+      struct column_checkbox_data *col = g_array_index(
+        data->columns, struct column_checkbox_data *, i
+      );
+      count_column_state(col, &all_enabled, &all_disabled, &columns_exist);
     }
-  }
-
-  if (data->right_column && data->right_column->child_elems) {
-    columns_exist++;
-    if (gtk_check_button_get_inconsistent(GTK_CHECK_BUTTON(data->right_column->column_checkbox))) {
-      // mixed state in right column - tab is also mixed
-    } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(data->right_column->column_checkbox))) {
-      all_enabled++;
-    } else {
-      all_disabled++;
-    }
+  } else {
+    count_column_state(data->left_column, &all_enabled, &all_disabled, &columns_exist);
+    count_column_state(data->right_column, &all_enabled, &all_disabled, &columns_exist);
   }
 
   if (columns_exist == 0)
@@ -195,6 +209,34 @@ static void tab_child_enable_changed(struct alsa_elem *elem, void *private) {
   update_tab_checkbox_state(data);
 }
 
+// Helper to set column state from tab checkbox toggle
+static void set_column_state(struct column_checkbox_data *col, gboolean new_state) {
+  if (!col || !col->child_elems)
+    return;
+
+  col->was_inconsistent = 0;
+
+  // Directly set all child elements to the target state
+  for (int i = 0; i < col->child_elems->len; i++) {
+    struct alsa_elem *elem = g_array_index(
+      col->child_elems, struct alsa_elem *, i
+    );
+    alsa_set_elem_value(elem, new_state ? 1 : 0);
+  }
+
+  // Update the column checkbox UI to match
+  if (col->column_checkbox) {
+    gtk_check_button_set_inconsistent(
+      GTK_CHECK_BUTTON(col->column_checkbox),
+      FALSE
+    );
+    gtk_check_button_set_active(
+      GTK_CHECK_BUTTON(col->column_checkbox),
+      new_state
+    );
+  }
+}
+
 // Callback when tab checkbox is clicked
 static void tab_checkbox_toggled(GtkCheckButton *button, gpointer user_data) {
   struct tab_checkbox_data *data = user_data;
@@ -217,54 +259,17 @@ static void tab_checkbox_toggled(GtkCheckButton *button, gpointer user_data) {
     new_state = active;  // toggle normally
   }
 
-  // Set both column checkboxes to the same state
-  // Directly update all child elements to ensure consistency
-  if (data->left_column) {
-    data->left_column->was_inconsistent = 0;
-
-    // Directly set all child elements to the target state
-    for (int i = 0; i < data->left_column->child_elems->len; i++) {
-      struct alsa_elem *elem = g_array_index(
-        data->left_column->child_elems, struct alsa_elem *, i
+  // Set all column checkboxes to the same state
+  if (data->columns) {
+    for (int i = 0; i < data->columns->len; i++) {
+      struct column_checkbox_data *col = g_array_index(
+        data->columns, struct column_checkbox_data *, i
       );
-      alsa_set_elem_value(elem, new_state ? 1 : 0);
+      set_column_state(col, new_state);
     }
-
-    // Update the column checkbox UI to match
-    if (data->left_column->column_checkbox) {
-      gtk_check_button_set_inconsistent(
-        GTK_CHECK_BUTTON(data->left_column->column_checkbox),
-        FALSE
-      );
-      gtk_check_button_set_active(
-        GTK_CHECK_BUTTON(data->left_column->column_checkbox),
-        new_state
-      );
-    }
-  }
-
-  if (data->right_column) {
-    data->right_column->was_inconsistent = 0;
-
-    // Directly set all child elements to the target state
-    for (int i = 0; i < data->right_column->child_elems->len; i++) {
-      struct alsa_elem *elem = g_array_index(
-        data->right_column->child_elems, struct alsa_elem *, i
-      );
-      alsa_set_elem_value(elem, new_state ? 1 : 0);
-    }
-
-    // Update the column checkbox UI to match
-    if (data->right_column->column_checkbox) {
-      gtk_check_button_set_inconsistent(
-        GTK_CHECK_BUTTON(data->right_column->column_checkbox),
-        FALSE
-      );
-      gtk_check_button_set_active(
-        GTK_CHECK_BUTTON(data->right_column->column_checkbox),
-        new_state
-      );
-    }
+  } else {
+    set_column_state(data->left_column, new_state);
+    set_column_state(data->right_column, new_state);
   }
 
   // clear tab inconsistent state
@@ -374,6 +379,53 @@ struct mixer_input_label_data {
   struct alsa_card     *card;
 };
 
+// Get the port category and hw_type of the source routed to a mixer sink
+// For fixed mixer inputs, this effectively categorises each mixer input
+static void get_routing_src_info_for_mixer_snk(
+  struct alsa_card   *card,
+  struct routing_snk *snk,
+  int                *port_category,  // output: PC_PCM, PC_HW, etc.
+  int                *hw_type         // output: HW_TYPE_ANALOGUE, etc. (only valid if PC_HW)
+) {
+  int routing_src_idx = alsa_get_elem_value(snk->elem);
+  if (routing_src_idx >= 0 && routing_src_idx < card->routing_srcs->len) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, routing_src_idx
+    );
+    *port_category = r_src->port_category;
+    *hw_type = r_src->hw_type;
+  } else {
+    *port_category = PC_OFF;
+    *hw_type = -1;
+  }
+}
+
+// Check if there are mixer inputs routed from a specific source type
+static int has_mixer_inputs_for_src_type(
+  struct alsa_card *card,
+  int               src_port_category,
+  int               src_hw_type  // only used for PC_HW, -1 for others
+) {
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (snk->elem->port_category != PC_MIX)
+      continue;
+    if (!snk->enable_elem)
+      continue;
+
+    int src_cat, hw_t;
+    get_routing_src_info_for_mixer_snk(card, snk, &src_cat, &hw_t);
+
+    if (src_cat == src_port_category) {
+      if (src_port_category != PC_HW || hw_t == src_hw_type)
+        return 1;
+    }
+  }
+  return 0;
+}
+
 // Get the formatted text for a mixer input label
 // Returns newly allocated string that must be freed
 static char *get_mixer_input_label_text(
@@ -463,8 +515,10 @@ static void add_snk_enables_for_category(
   struct alsa_card            *card,
   GtkWidget                   *grid,
   int                          port_category,
-  int                          hw_type,  // only used for PC_HW, -1 for others
-  struct column_checkbox_data *col_data  // for column checkbox tracking
+  int                          hw_type,  // only used for PC_HW sinks, -1 for others
+  struct column_checkbox_data *col_data,  // for column checkbox tracking
+  int                          src_port_category,  // filter by source type, -1 for no filter
+  int                          src_hw_type  // for PC_HW sources, -1 for no filter
 ) {
   int row = 0;
 
@@ -480,6 +534,16 @@ static void add_snk_enables_for_category(
     // for hardware, also check hw_type
     if (port_category == PC_HW && snk->elem->hw_type != hw_type)
       continue;
+
+    // for mixer inputs with source type filter, check the source type
+    if (port_category == PC_MIX && src_port_category != -1) {
+      int src_cat, src_hw;
+      get_routing_src_info_for_mixer_snk(card, snk, &src_cat, &src_hw);
+      if (src_cat != src_port_category)
+        continue;
+      if (src_port_category == PC_HW && src_hw != src_hw_type)
+        continue;
+    }
 
     // skip if no enable element
     if (!snk->enable_elem)
@@ -686,6 +750,76 @@ static int has_io_for_category(
   }
 
   return 0;
+}
+
+// Create a single column for mixer inputs filtered by source type
+// Returns the column_checkbox_data, adds vbox to parent hbox
+static struct column_checkbox_data *create_mixer_input_column(
+  GtkWidget                *parent_hbox,
+  struct alsa_card         *card,
+  const char               *label_text,
+  int                       src_port_category,
+  int                       src_hw_type,
+  struct tab_checkbox_data *tab_data
+) {
+  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+
+  // Header with checkbox and label
+  GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+  // Create column checkbox data
+  struct column_checkbox_data *col_data = g_malloc0(sizeof(struct column_checkbox_data));
+  col_data->child_elems = g_array_new(FALSE, FALSE, sizeof(struct alsa_elem *));
+  col_data->updating = 0;
+
+  // Column checkbox
+  col_data->column_checkbox = gtk_check_button_new();
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(col_data->column_checkbox), TRUE);
+  g_signal_connect(
+    col_data->column_checkbox,
+    "toggled",
+    G_CALLBACK(column_checkbox_toggled),
+    col_data
+  );
+  gtk_box_append(GTK_BOX(header), col_data->column_checkbox);
+
+  // Label
+  GtkWidget *label = gtk_label_new(NULL);
+  char *markup = g_strdup_printf("<b>%s</b>", label_text);
+  gtk_label_set_markup(GTK_LABEL(label), markup);
+  g_free(markup);
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_box_append(GTK_BOX(header), label);
+
+  gtk_widget_set_halign(header, GTK_ALIGN_START);
+  gtk_box_append(GTK_BOX(vbox), header);
+
+  // Create grid and populate with mixer inputs filtered by source type
+  GtkWidget *grid = create_name_grid();
+  add_snk_enables_for_category(
+    card, grid, PC_MIX, -1, col_data,
+    src_port_category, src_hw_type
+  );
+  gtk_box_append(GTK_BOX(vbox), grid);
+  gtk_box_append(GTK_BOX(parent_hbox), vbox);
+
+  // Register callbacks from children to update tab checkbox
+  for (int i = 0; i < col_data->child_elems->len; i++) {
+    struct alsa_elem *elem = g_array_index(col_data->child_elems, struct alsa_elem *, i);
+    alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+  }
+
+  // Update column checkbox initial state
+  update_column_checkbox_state(col_data);
+
+  // Attach cleanup to the vbox
+  g_object_weak_ref(
+    G_OBJECT(vbox),
+    (GWeakNotify)free_column_checkbox_data,
+    col_data
+  );
+
+  return col_data;
 }
 
 // Create a two-column layout for inputs and outputs with column checkboxes
@@ -1027,15 +1161,6 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
 
   // Mixer tab - special handling for inputs (enable-only, no custom names)
   if (has_io_for_category(card, PC_MIX, -1, 1, 1)) {
-    GtkWidget *left_grid, *right_grid;
-    struct column_checkbox_data *left_col_data, *right_col_data;
-    struct tab_checkbox_data *tab_data;
-    GtkWidget *content = create_two_column_layout(
-      &left_grid, &right_grid,
-      &left_col_data, &right_col_data,
-      &tab_data,
-      1, 1  // show both inputs and outputs
-    );
 
     // Register callbacks on all source custom names to update mixer labels
     // Do this once for all mixer inputs before creating them
@@ -1053,33 +1178,151 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
       }
     }
 
-    // Left column: Mixer Inputs (enable-only, no custom names)
-    if (left_grid)
-      add_snk_enables_for_category(card, left_grid, PC_MIX, -1, left_col_data);
+    GtkWidget *content;
+    struct tab_checkbox_data *tab_data;
 
-    // Right column: Mixer Outputs (with custom names)
-    if (right_grid)
-      add_src_names_for_category(card, right_grid, PC_MIX, -1, right_col_data);
+    if (card->has_fixed_mixer_inputs) {
+      // For fixed mixer inputs, create multiple columns by source type
+      content = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
+      gtk_widget_set_margin_start(content, 20);
+      gtk_widget_set_margin_end(content, 20);
+      gtk_widget_set_margin_top(content, 20);
+      gtk_widget_set_margin_bottom(content, 20);
 
-    // Register callbacks from children to update tab checkbox
-    if (left_col_data) {
-      for (int i = 0; i < left_col_data->child_elems->len; i++) {
-        struct alsa_elem *elem = g_array_index(left_col_data->child_elems, struct alsa_elem *, i);
-        alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+      // Create tab checkbox data structure
+      tab_data = g_malloc0(sizeof(struct tab_checkbox_data));
+      tab_data->updating = 0;
+      tab_data->columns = g_array_new(FALSE, FALSE, sizeof(struct column_checkbox_data *));
+
+      // Labels for hardware input types
+      const char *hw_labels[] = {"Analogue Inputs", "S/PDIF Inputs", "ADAT Inputs"};
+
+      // PCM Outputs column (playback from computer)
+      if (has_mixer_inputs_for_src_type(card, PC_PCM, -1)) {
+        struct column_checkbox_data *col = create_mixer_input_column(
+          content, card, "PCM Outputs", PC_PCM, -1, tab_data
+        );
+        g_array_append_val(tab_data->columns, col);
       }
-    }
-    if (right_col_data) {
-      for (int i = 0; i < right_col_data->child_elems->len; i++) {
-        struct alsa_elem *elem = g_array_index(right_col_data->child_elems, struct alsa_elem *, i);
-        alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
-      }
-    }
 
-    // Update column checkbox initial states
-    if (left_col_data)
-      update_column_checkbox_state(left_col_data);
-    if (right_col_data)
-      update_column_checkbox_state(right_col_data);
+      // Hardware input columns (Analogue, S/PDIF, ADAT)
+      for (int hw_type = 0; hw_type < HW_TYPE_COUNT; hw_type++) {
+        if (has_mixer_inputs_for_src_type(card, PC_HW, hw_type)) {
+          struct column_checkbox_data *col = create_mixer_input_column(
+            content, card, hw_labels[hw_type], PC_HW, hw_type, tab_data
+          );
+          g_array_append_val(tab_data->columns, col);
+        }
+      }
+
+      // DSP Inputs column (if any)
+      if (has_mixer_inputs_for_src_type(card, PC_DSP, -1)) {
+        struct column_checkbox_data *col = create_mixer_input_column(
+          content, card, "DSP Inputs", PC_DSP, -1, tab_data
+        );
+        g_array_append_val(tab_data->columns, col);
+      }
+
+      // Mix Inputs column (if any - mixer feeding back into itself)
+      if (has_mixer_inputs_for_src_type(card, PC_MIX, -1)) {
+        struct column_checkbox_data *col = create_mixer_input_column(
+          content, card, "Mix Inputs", PC_MIX, -1, tab_data
+        );
+        g_array_append_val(tab_data->columns, col);
+      }
+
+      // Outputs column (Mixer Outputs with custom names)
+      if (has_io_for_category(card, PC_MIX, -1, 0, 1)) {
+        GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+
+        // Header with checkbox and label
+        GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+        // Create column checkbox data
+        struct column_checkbox_data *col_data = g_malloc0(sizeof(struct column_checkbox_data));
+        col_data->child_elems = g_array_new(FALSE, FALSE, sizeof(struct alsa_elem *));
+        col_data->updating = 0;
+
+        // Column checkbox
+        col_data->column_checkbox = gtk_check_button_new();
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(col_data->column_checkbox), TRUE);
+        g_signal_connect(
+          col_data->column_checkbox,
+          "toggled",
+          G_CALLBACK(column_checkbox_toggled),
+          col_data
+        );
+        gtk_box_append(GTK_BOX(header), col_data->column_checkbox);
+
+        // Label
+        GtkWidget *label = gtk_label_new(NULL);
+        gtk_label_set_markup(GTK_LABEL(label), "<b>Outputs</b>");
+        gtk_widget_set_halign(label, GTK_ALIGN_START);
+        gtk_box_append(GTK_BOX(header), label);
+
+        gtk_widget_set_halign(header, GTK_ALIGN_START);
+        gtk_box_append(GTK_BOX(vbox), header);
+
+        GtkWidget *grid = create_name_grid();
+        add_src_names_for_category(card, grid, PC_MIX, -1, col_data);
+        gtk_box_append(GTK_BOX(vbox), grid);
+        gtk_box_append(GTK_BOX(content), vbox);
+
+        // Register callbacks from children to update tab checkbox
+        for (int i = 0; i < col_data->child_elems->len; i++) {
+          struct alsa_elem *elem = g_array_index(col_data->child_elems, struct alsa_elem *, i);
+          alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+        }
+
+        update_column_checkbox_state(col_data);
+        g_array_append_val(tab_data->columns, col_data);
+
+        // Attach cleanup to the vbox
+        g_object_weak_ref(
+          G_OBJECT(vbox),
+          (GWeakNotify)free_column_checkbox_data,
+          col_data
+        );
+      }
+    } else {
+      // Non-fixed mixer inputs: single Inputs column with "Mixer X - [Source]" format
+      GtkWidget *left_grid, *right_grid;
+      struct column_checkbox_data *left_col_data, *right_col_data;
+      content = create_two_column_layout(
+        &left_grid, &right_grid,
+        &left_col_data, &right_col_data,
+        &tab_data,
+        1, 1  // show both inputs and outputs
+      );
+
+      // Left column: Mixer Inputs (enable-only, no custom names)
+      if (left_grid)
+        add_snk_enables_for_category(card, left_grid, PC_MIX, -1, left_col_data, -1, -1);
+
+      // Right column: Mixer Outputs (with custom names)
+      if (right_grid)
+        add_src_names_for_category(card, right_grid, PC_MIX, -1, right_col_data);
+
+      // Register callbacks from children to update tab checkbox
+      if (left_col_data) {
+        for (int i = 0; i < left_col_data->child_elems->len; i++) {
+          struct alsa_elem *elem = g_array_index(left_col_data->child_elems, struct alsa_elem *, i);
+          alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+        }
+      }
+      if (right_col_data) {
+        for (int i = 0; i < right_col_data->child_elems->len; i++) {
+          struct alsa_elem *elem = g_array_index(right_col_data->child_elems, struct alsa_elem *, i);
+          alsa_elem_add_callback(elem, tab_child_enable_changed, tab_data, NULL);
+        }
+      }
+
+      // Update column checkbox initial states
+      if (left_col_data)
+        update_column_checkbox_state(left_col_data);
+      if (right_col_data)
+        update_column_checkbox_state(right_col_data);
+    }
 
     // Create custom tab label with checkbox
     GtkWidget *tab_label_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
