@@ -1,9 +1,8 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <string.h>
-
 #include "alsa.h"
+#include "glow.h"
 #include "routing-lines.h"
 #include "port-enable.h"
 
@@ -16,42 +15,6 @@ static const double dash[] = { 4 };
 // is a port category a mixer or DSP port, therefore at the
 // top/bottom?
 #define IS_MIXER(x) ((x) == PC_MIX || (x) == PC_DSP)
-
-// glow effect configuration
-#define GLOW_LAYERS 4
-#define GLOW_MAX_WIDTH 16.0
-#define GLOW_MIN_DB -60.0
-#define GLOW_MAX_DB 0.0
-
-// calculate glow intensity (0 to 1) from dB level, with curve applied
-static double get_glow_intensity(double level_db) {
-  if (level_db < GLOW_MIN_DB)
-    return 0.0;
-
-  double intensity = (level_db - GLOW_MIN_DB) / (GLOW_MAX_DB - GLOW_MIN_DB);
-  if (intensity > 1.0)
-    intensity = 1.0;
-
-  // apply curve so glow ramps up more gradually
-  return intensity * intensity;
-}
-
-// calculate glow layer width and alpha for a given layer and intensity
-static void get_glow_layer_params(
-  int     layer,
-  double  intensity,
-  double *width,
-  double *alpha
-) {
-  double layer_frac = (double)layer / (GLOW_LAYERS - 1);
-
-  // width: minimum of 4 pixels, scaling up to GLOW_MAX_WIDTH
-  // (routing line is 2 pixels, so glow must be > 2 to be visible)
-  *width = 4.0 + (GLOW_MAX_WIDTH - 4.0) * intensity * (0.3 + 0.7 * layer_frac);
-
-  // alpha: minimum of 0.08, scaling up with intensity
-  *alpha = 0.08 + intensity * 0.32 * (1.0 - 0.7 * layer_frac);
-}
 
 static void hsl_to_rgb(
   double h, double s, double l,
@@ -89,106 +52,6 @@ static void choose_line_colour(
     0.5,
     r, g, b
   );
-}
-
-// convert dB level to RGB colour (green → yellow → red)
-static void level_to_colour(double db, double *r, double *g, double *b) {
-  // clamp to range
-  if (db < -18.0) {
-    // green
-    *r = 0.0;
-    *g = 1.0;
-    *b = 0.0;
-  } else if (db < -12.0) {
-    // green → yellow-green
-    double t = (db + 18.0) / 6.0;
-    *r = 0.5 * t;
-    *g = 1.0;
-    *b = 0.0;
-  } else if (db < -6.0) {
-    // yellow-green → yellow
-    double t = (db + 12.0) / 6.0;
-    *r = 0.5 + 0.5 * t;
-    *g = 1.0;
-    *b = 0.0;
-  } else if (db < -3.0) {
-    // yellow → orange
-    double t = (db + 6.0) / 3.0;
-    *r = 1.0;
-    *g = 1.0 - 0.25 * t;
-    *b = 0.0;
-  } else {
-    // orange → red
-    double t = fmin(1.0, (db + 3.0) / 3.0);
-    *r = 1.0;
-    *g = 0.75 - 0.75 * t;
-    *b = 0.0;
-  }
-}
-
-// get the level meter index for a routing source
-// returns -1 if the source has no corresponding level meter
-static int get_routing_src_level_index(
-  struct alsa_card   *card,
-  struct routing_src *r_src
-) {
-  if (!card->level_meter_elem || !card->routing_levels ||
-      r_src->port_category == PC_OFF)
-    return -1;
-
-  // if meter labels are available, search for matching "Source" label
-  if (card->level_meter_elem->meter_labels) {
-    // build the expected label prefix like "Source Analogue" or "Source Mix"
-    // r_src->name is like "Analogue 1", "Mix A", "PCM 1", etc.
-
-    for (int i = 0; i < card->routing_levels_count; i++) {
-      const char *label = card->level_meter_elem->meter_labels[i];
-      if (!label)
-        continue;
-
-      // label format is "Source <type> <num>" or "Sink <type> <num>"
-      // we want Source labels that match r_src->name
-      if (strncmp(label, "Source ", 7) != 0)
-        continue;
-
-      // compare the rest with r_src->name
-      if (strcmp(label + 7, r_src->name) == 0)
-        return i;
-    }
-
-    return -1;
-  }
-
-  // without labels, level meters are ordered by port category
-  // PC_HW, PC_MIX, PC_DSP, PC_PCM (matching routing_out_count order)
-  // but these are output counts, we need to find source position
-
-  int index = 0;
-
-  // add counts from earlier categories
-  for (int cat = PC_HW; cat < r_src->port_category; cat++)
-    index += card->routing_out_count[cat];
-
-  // add the port number within this category
-  index += r_src->port_num;
-
-  // validate index is within bounds
-  if (index >= card->routing_levels_count)
-    return -1;
-
-  return index;
-}
-
-// get level in dB for a routing source (-80 if no level data)
-static double get_routing_src_level_db(
-  struct alsa_card   *card,
-  struct routing_src *r_src
-) {
-  int index = get_routing_src_level_index(card, r_src);
-  if (index < 0)
-    return -80.0;
-
-  return card->routing_levels[index];
 }
 
 // draw a bezier curve given the end and control points
