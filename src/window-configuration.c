@@ -953,6 +953,22 @@ static GtkWidget *create_two_column_layout(
   return hbox;
 }
 
+// Wrap tab content in a scrolled window for vertical scrolling
+static GtkWidget *wrap_tab_content_scrolled(GtkWidget *content) {
+  GtkWidget *scrolled = gtk_scrolled_window_new();
+  gtk_scrolled_window_set_policy(
+    GTK_SCROLLED_WINDOW(scrolled),
+    GTK_POLICY_NEVER,
+    GTK_POLICY_AUTOMATIC
+  );
+  gtk_scrolled_window_set_propagate_natural_height(
+    GTK_SCROLLED_WINDOW(scrolled), TRUE
+  );
+  gtk_widget_set_vexpand(scrolled, TRUE);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled), content);
+  return scrolled;
+}
+
 // Add a hardware tab (Analogue, S/PDIF, or ADAT)
 static void add_hw_tab(
   GtkWidget        *notebook,
@@ -1013,7 +1029,8 @@ static void add_hw_tab(
   GtkWidget *tab_label_text = gtk_label_new(hw_type_names[hw_type]);
   gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
-  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, tab_label_box);
+  GtkWidget *scrolled = wrap_tab_content_scrolled(content);
+  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scrolled, tab_label_box);
 
   // Update tab checkbox initial state
   update_tab_checkbox_state(tab_data);
@@ -1091,7 +1108,8 @@ static void add_category_tab(
   GtkWidget *tab_label_text = gtk_label_new(tab_name);
   gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
-  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, tab_label_box);
+  GtkWidget *scrolled = wrap_tab_content_scrolled(content);
+  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scrolled, tab_label_box);
 
   // Update tab checkbox initial state
   update_tab_checkbox_state(tab_data);
@@ -1339,7 +1357,8 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     GtkWidget *tab_label_text = gtk_label_new("Mixer");
     gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), content, tab_label_box);
+    GtkWidget *scrolled = wrap_tab_content_scrolled(content);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scrolled, tab_label_box);
 
     // Update tab checkbox initial state
     update_tab_checkbox_state(tab_data);
