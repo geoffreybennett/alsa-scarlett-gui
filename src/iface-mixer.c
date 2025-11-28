@@ -3,6 +3,7 @@
 
 #include "gtkhelper.h"
 #include "iface-mixer.h"
+#include "routing-lines.h"
 #include "stringhelper.h"
 #include "tooltips.h"
 #include "widget-boolean.h"
@@ -1092,6 +1093,9 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   GtkWidget *routing_top = create_routing_controls(card);
   if (!routing_top)
     return NULL;
+
+  // initialise level indication for routing lines
+  routing_levels_init(card);
 
   card->window_routing = create_subwindow(
     card, "Routing", G_CALLBACK(window_routing_close_request)

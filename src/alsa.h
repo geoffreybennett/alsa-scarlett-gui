@@ -212,6 +212,9 @@ struct alsa_card {
   struct pollfd       pfd;
   GArray             *elems;
   struct alsa_elem   *sample_capture_elem;
+  struct alsa_elem   *level_meter_elem;
+  double             *routing_levels;
+  int                 routing_levels_count;
   GArray             *routing_srcs;
   GArray             *routing_snks;
   GIOChannel         *io_channel;
