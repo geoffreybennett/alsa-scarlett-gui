@@ -12,3 +12,9 @@ GtkWidget *make_boolean_alsa_elem(
   const char       *disabled_text,
   const char       *enabled_text
 );
+
+void boolean_widget_update_labels(
+  GtkWidget  *widget,
+  const char *disabled_text,
+  const char *enabled_text
+);
