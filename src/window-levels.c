@@ -39,13 +39,15 @@ static int update_levels_controls(void *user_data) {
 
   struct alsa_elem *level_meter_elem = data->level_meter_elem;
 
-  // check if either window needs updates
+  // check which windows need updates
   int levels_visible = gtk_widget_get_visible(GTK_WIDGET(card->window_levels));
   int routing_visible = card->window_routing &&
                         gtk_widget_get_visible(GTK_WIDGET(card->window_routing));
+  int mixer_visible = card->window_mixer &&
+                      gtk_widget_get_visible(GTK_WIDGET(card->window_mixer));
 
-  // skip if neither window is visible
-  if (!levels_visible && !routing_visible)
+  // skip if no window needs level updates
+  if (!levels_visible && !routing_visible && !mixer_visible)
     return 1;
 
   long *values = alsa_get_elem_int_values(level_meter_elem);
@@ -60,15 +62,20 @@ static int update_levels_controls(void *user_data) {
     }
   }
 
-  // update routing levels array if routing window is visible
-  if (routing_visible && card->routing_levels) {
+  // update routing levels array if routing or mixer window is visible
+  if ((routing_visible || mixer_visible) && card->routing_levels) {
     for (int i = 0; i < level_meter_elem->count; i++) {
       if (i < card->routing_levels_count) {
         double value = 20 * log10(values[i] / 4095.0);
         card->routing_levels[i] = value;
       }
     }
-    gtk_widget_queue_draw(card->routing_lines);
+
+    if (routing_visible)
+      gtk_widget_queue_draw(card->routing_lines);
+
+    if (mixer_visible && card->mixer_glow)
+      gtk_widget_queue_draw(card->mixer_glow);
   }
 
   free(values);

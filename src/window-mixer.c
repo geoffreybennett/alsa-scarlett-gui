@@ -3,12 +3,116 @@
 
 #include <gtk/gtk.h>
 
+#include "alsa.h"
 #include "custom-names.h"
+#include "glow.h"
 #include "gtkhelper.h"
 #include "port-enable.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
 #include "window-mixer.h"
+
+// draw a horizontal glow bar behind a label
+static void draw_label_glow(
+  cairo_t   *cr,
+  GtkWidget *label,
+  GtkWidget *parent,
+  double     level_db
+) {
+  if (!label || !gtk_widget_get_visible(label))
+    return;
+
+  double intensity = get_glow_intensity(level_db);
+  if (intensity <= 0)
+    return;
+
+  double r, g, b;
+  level_to_colour(level_db, &r, &g, &b);
+
+  // get label position and size
+  double lw = gtk_widget_get_allocated_width(label);
+  double lh = gtk_widget_get_allocated_height(label);
+  double x, y;
+  gtk_widget_translate_coordinates(label, parent, lw / 2.0, lh / 2.0, &x, &y);
+
+  // scale glow length and height based on intensity
+  double max_half_width = 25.0;
+  double half_width = max_half_width * intensity;
+
+  // minimum visible size
+  if (half_width < 5.0)
+    half_width = 5.0;
+
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+
+  for (int layer = GLOW_LAYERS - 1; layer >= 0; layer--) {
+    double width, alpha;
+    get_glow_layer_params(layer, intensity, &width, &alpha);
+
+    // scale the height too
+    width *= (0.5 + 0.75 * intensity);
+
+    cairo_set_source_rgba(cr, r, g, b, alpha);
+    cairo_set_line_width(cr, width);
+    cairo_move_to(cr, x - half_width, y);
+    cairo_line_to(cr, x + half_width, y);
+    cairo_stroke(cr);
+  }
+}
+
+// draw function for mixer label glow overlay
+static void draw_mixer_glow(
+  GtkDrawingArea *drawing_area,
+  cairo_t        *cr,
+  int             width,
+  int             height,
+  void           *user_data
+) {
+  struct alsa_card *card = user_data;
+  GtkWidget *parent = card->mixer_glow;
+
+  if (!card->routing_srcs)
+    return;
+
+  // draw glow behind mixer output labels (Mix A, Mix B, etc.)
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (r_src->port_category != PC_MIX)
+      continue;
+
+    double level_db = get_routing_src_level_db(card, r_src);
+
+    draw_label_glow(cr, r_src->mixer_label_left, parent, level_db);
+    draw_label_glow(cr, r_src->mixer_label_right, parent, level_db);
+  }
+
+  // draw glow behind mixer input labels (top/bottom)
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    if (!r_snk->elem || r_snk->elem->port_category != PC_MIX)
+      continue;
+
+    // get the source connected to this mixer input
+    int r_src_idx = alsa_get_elem_value(r_snk->elem);
+    if (!r_src_idx)
+      continue;
+
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, r_src_idx
+    );
+
+    double level_db = get_routing_src_level_db(card, r_src);
+
+    draw_label_glow(cr, r_snk->mixer_label_top, parent, level_db);
+    draw_label_glow(cr, r_snk->mixer_label_bottom, parent, level_db);
+  }
+}
 
 // Structure to store mixer gain widget and its coordinates
 struct mixer_gain_widget {
@@ -100,11 +204,16 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   g_list_free(card->mixer_gain_widgets);
   card->mixer_gain_widgets = NULL;
 
+  // create overlay to hold the grid and glow layer
+  GtkWidget *mixer_overlay = gtk_overlay_new();
+  gtk_widget_add_css_class(mixer_overlay, "window-content");
+  gtk_widget_add_css_class(mixer_overlay, "top-level-content");
+  gtk_widget_add_css_class(mixer_overlay, "window-mixer");
+  gtk_frame_set_child(GTK_FRAME(top), mixer_overlay);
+
+  // create grid as base child (determines size)
   GtkWidget *mixer_top = gtk_grid_new();
-  gtk_widget_add_css_class(mixer_top, "window-content");
-  gtk_widget_add_css_class(mixer_top, "top-level-content");
-  gtk_widget_add_css_class(mixer_top, "window-mixer");
-  gtk_frame_set_child(GTK_FRAME(top), mixer_top);
+  gtk_overlay_set_child(GTK_OVERLAY(mixer_overlay), mixer_top);
 
   gtk_widget_set_halign(mixer_top, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(mixer_top, GTK_ALIGN_CENTER);
@@ -112,6 +221,21 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
   // store the grid for later access
   card->mixer_grid = mixer_top;
+
+  // create drawing area for glow effects as underlay
+  // use measure callback to not affect sizing
+  card->mixer_glow = gtk_drawing_area_new();
+  gtk_widget_set_can_target(card->mixer_glow, FALSE);
+  gtk_drawing_area_set_draw_func(
+    GTK_DRAWING_AREA(card->mixer_glow), draw_mixer_glow, card, NULL
+  );
+
+  // insert at position 0 to be behind the grid
+  // but GtkOverlay doesn't support ordering, so we need another approach
+  gtk_overlay_add_overlay(GTK_OVERLAY(mixer_overlay), card->mixer_glow);
+
+  // lower the glow below the grid by reordering
+  gtk_widget_insert_before(card->mixer_glow, mixer_overlay, mixer_top);
 
   GPtrArray *elems = card->elems;
 
