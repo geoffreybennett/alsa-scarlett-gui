@@ -110,6 +110,9 @@ struct routing_src {
   // mixer window labels for mixer outputs (Mix A, Mix B, etc.)
   GtkWidget *mixer_label_left;
   GtkWidget *mixer_label_right;
+
+  // routing window talkback button widget (for mixer outputs with talkback)
+  GtkWidget *talkback_widget;
 };
 
 // entry in alsa_card routing_snks (routing sinks) array for alsa

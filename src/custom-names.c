@@ -7,6 +7,7 @@
 #include "custom-names.h"
 #include "optional-state.h"
 #include "alsa.h"
+#include "widget-boolean.h"
 #include "window-mixer.h"
 
 // Maximum length for custom names
@@ -240,6 +241,34 @@ static void src_custom_name_display_changed(
       }
       g_free(label);
     }
+  }
+
+  // update talkback button label in routing window if it exists
+  if (src->talkback_widget && src->port_category == PC_MIX) {
+    // use custom name if set, otherwise just the letter (e.g., "A")
+    const char *display_name = src->display_name;
+    char *formatted_name = NULL;
+
+    if (src->custom_name_elem) {
+      size_t size;
+      const void *bytes = alsa_get_elem_bytes(src->custom_name_elem, &size);
+      size_t str_len = bytes ? strnlen((const char *)bytes, size) : 0;
+
+      if (str_len > 0) {
+        // custom name - use it as-is
+        formatted_name = g_strdup(display_name);
+      }
+    }
+
+    if (!formatted_name) {
+      // default name - strip "Mix " prefix (src->name is "Mix X")
+      formatted_name = g_strdup(src->name + 4);
+    }
+
+    boolean_widget_update_labels(
+      src->talkback_widget, formatted_name, formatted_name
+    );
+    g_free(formatted_name);
   }
 
   // update routing window labels if widget exists

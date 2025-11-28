@@ -757,10 +757,12 @@ static void make_src_routing_widget(
 
   g_object_set_data(G_OBJECT(box), "routing_src", r_src);
 
-  // create label for mixer inputs (length > 1) and mixer outputs if
-  // not talkback (talkback has a button outside the box instead of a
-  // label inside the box)
-  if (strlen(name) > 1 || !card->has_talkback) {
+  // create label inside the box, except for mixer outputs when
+  // talkback is available (the talkback button serves as the label)
+  int is_mixer_output_with_talkback =
+    r_src->port_category == PC_MIX && card->has_talkback;
+
+  if (!is_mixer_output_with_talkback) {
     GtkWidget *label = gtk_label_new(name);
     gtk_box_append(GTK_BOX(box), label);
     gtk_widget_add_css_class(box, "route-label");
@@ -804,16 +806,27 @@ static void make_src_routing_widget(
 
 static GtkWidget *make_talkback_mix_widget(
   struct alsa_card   *card,
-  struct routing_src *r_src,
-  char               *name
+  struct routing_src *r_src
 ) {
+  // Use lr_num to construct the element name (lr_num 1='A', 2='B', etc.)
   char talkback_elem_name[80];
-  snprintf(talkback_elem_name, 80, "Talkback Mix %s Playback Switch", name);
+  snprintf(
+    talkback_elem_name, 80,
+    "Talkback Mix %c Playback Switch",
+    'A' + r_src->lr_num - 1
+  );
   struct alsa_elem *talkback_elem =
     get_elem_by_name(card->elems, talkback_elem_name);
   if (!talkback_elem)
     return NULL;
-  return make_boolean_alsa_elem(talkback_elem, name, name);
+
+  // Use the formatted display name (e.g., "A" for defaults, custom name if set)
+  char *display_name = get_src_display_name_formatted(r_src);
+  GtkWidget *button = make_boolean_alsa_elem(
+    talkback_elem, display_name, display_name
+  );
+  g_free(display_name);
+  return button;
 }
 
 static void make_snk_routing_widget(
@@ -985,8 +998,11 @@ static void add_routing_widgets(
       );
 
       if (card->has_talkback) {
-        GtkWidget *w = make_talkback_mix_widget(card, r_src, name);
+        GtkWidget *w = make_talkback_mix_widget(card, r_src);
+        if (!w)
+          continue;
 
+        r_src->talkback_widget = w;
         gtk_grid_attach(
           GTK_GRID(card->routing_mixer_out_grid), w,
           r_src->port_num + 1, 1, 1, 1
