@@ -56,9 +56,11 @@ static void on_destroy(struct boolean *data) {
   if (data->source)
     g_source_remove(data->source);
 
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 2; i++) {
     if (data->icons[i])
       g_object_unref(data->icons[i]);
+    g_free((char *)data->text[i]);
+  }
 
   g_free(data);
 }
@@ -93,8 +95,8 @@ GtkWidget *make_boolean_alsa_elem(
     data->button, "clicked", G_CALLBACK(button_clicked), data
   );
   alsa_elem_add_callback(elem, toggle_button_updated, data, NULL);
-  data->text[0] = disabled_text;
-  data->text[1] = enabled_text;
+  data->text[0] = g_strdup(disabled_text);
+  data->text[1] = g_strdup(enabled_text);
   load_icons(data);
 
   // find the maximum width and height of both possible labels
@@ -124,5 +126,31 @@ GtkWidget *make_boolean_alsa_elem(
 
   g_object_weak_ref(G_OBJECT(data->button), (GWeakNotify)on_destroy, data);
 
+  // store the data so we can retrieve it later for updating labels
+  g_object_set_data(G_OBJECT(data->button), "boolean_data", data);
+
   return data->button;
+}
+
+void boolean_widget_update_labels(
+  GtkWidget  *widget,
+  const char *disabled_text,
+  const char *enabled_text
+) {
+  if (!widget)
+    return;
+
+  struct boolean *data = g_object_get_data(G_OBJECT(widget), "boolean_data");
+  if (!data)
+    return;
+
+  // free old text and set new text
+  g_free((char *)data->text[0]);
+  g_free((char *)data->text[1]);
+  data->text[0] = g_strdup(disabled_text);
+  data->text[1] = g_strdup(enabled_text);
+
+  // update the button with the current value
+  int value = !!alsa_get_elem_value(data->elem) ^ data->backwards;
+  toggle_button_set_text(data, value);
 }
