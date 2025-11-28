@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <string.h>
+
 #include "alsa.h"
 #include "routing-lines.h"
 #include "port-enable.h"
@@ -14,6 +16,42 @@ static const double dash[] = { 4 };
 // is a port category a mixer or DSP port, therefore at the
 // top/bottom?
 #define IS_MIXER(x) ((x) == PC_MIX || (x) == PC_DSP)
+
+// glow effect configuration
+#define GLOW_LAYERS 4
+#define GLOW_MAX_WIDTH 16.0
+#define GLOW_MIN_DB -60.0
+#define GLOW_MAX_DB 0.0
+
+// calculate glow intensity (0 to 1) from dB level, with curve applied
+static double get_glow_intensity(double level_db) {
+  if (level_db < GLOW_MIN_DB)
+    return 0.0;
+
+  double intensity = (level_db - GLOW_MIN_DB) / (GLOW_MAX_DB - GLOW_MIN_DB);
+  if (intensity > 1.0)
+    intensity = 1.0;
+
+  // apply curve so glow ramps up more gradually
+  return intensity * intensity;
+}
+
+// calculate glow layer width and alpha for a given layer and intensity
+static void get_glow_layer_params(
+  int     layer,
+  double  intensity,
+  double *width,
+  double *alpha
+) {
+  double layer_frac = (double)layer / (GLOW_LAYERS - 1);
+
+  // width: minimum of 4 pixels, scaling up to GLOW_MAX_WIDTH
+  // (routing line is 2 pixels, so glow must be > 2 to be visible)
+  *width = 4.0 + (GLOW_MAX_WIDTH - 4.0) * intensity * (0.3 + 0.7 * layer_frac);
+
+  // alpha: minimum of 0.08, scaling up with intensity
+  *alpha = 0.08 + intensity * 0.32 * (1.0 - 0.7 * layer_frac);
+}
 
 static void hsl_to_rgb(
   double h, double s, double l,
@@ -51,6 +89,106 @@ static void choose_line_colour(
     0.5,
     r, g, b
   );
+}
+
+// convert dB level to RGB colour (green → yellow → red)
+static void level_to_colour(double db, double *r, double *g, double *b) {
+  // clamp to range
+  if (db < -18.0) {
+    // green
+    *r = 0.0;
+    *g = 1.0;
+    *b = 0.0;
+  } else if (db < -12.0) {
+    // green → yellow-green
+    double t = (db + 18.0) / 6.0;
+    *r = 0.5 * t;
+    *g = 1.0;
+    *b = 0.0;
+  } else if (db < -6.0) {
+    // yellow-green → yellow
+    double t = (db + 12.0) / 6.0;
+    *r = 0.5 + 0.5 * t;
+    *g = 1.0;
+    *b = 0.0;
+  } else if (db < -3.0) {
+    // yellow → orange
+    double t = (db + 6.0) / 3.0;
+    *r = 1.0;
+    *g = 1.0 - 0.25 * t;
+    *b = 0.0;
+  } else {
+    // orange → red
+    double t = fmin(1.0, (db + 3.0) / 3.0);
+    *r = 1.0;
+    *g = 0.75 - 0.75 * t;
+    *b = 0.0;
+  }
+}
+
+// get the level meter index for a routing source
+// returns -1 if the source has no corresponding level meter
+static int get_routing_src_level_index(
+  struct alsa_card   *card,
+  struct routing_src *r_src
+) {
+  if (!card->level_meter_elem || !card->routing_levels ||
+      r_src->port_category == PC_OFF)
+    return -1;
+
+  // if meter labels are available, search for matching "Source" label
+  if (card->level_meter_elem->meter_labels) {
+    // build the expected label prefix like "Source Analogue" or "Source Mix"
+    // r_src->name is like "Analogue 1", "Mix A", "PCM 1", etc.
+
+    for (int i = 0; i < card->routing_levels_count; i++) {
+      const char *label = card->level_meter_elem->meter_labels[i];
+      if (!label)
+        continue;
+
+      // label format is "Source <type> <num>" or "Sink <type> <num>"
+      // we want Source labels that match r_src->name
+      if (strncmp(label, "Source ", 7) != 0)
+        continue;
+
+      // compare the rest with r_src->name
+      if (strcmp(label + 7, r_src->name) == 0)
+        return i;
+    }
+
+    return -1;
+  }
+
+  // without labels, level meters are ordered by port category
+  // PC_HW, PC_MIX, PC_DSP, PC_PCM (matching routing_out_count order)
+  // but these are output counts, we need to find source position
+
+  int index = 0;
+
+  // add counts from earlier categories
+  for (int cat = PC_HW; cat < r_src->port_category; cat++)
+    index += card->routing_out_count[cat];
+
+  // add the port number within this category
+  index += r_src->port_num;
+
+  // validate index is within bounds
+  if (index >= card->routing_levels_count)
+    return -1;
+
+  return index;
+}
+
+// get level in dB for a routing source (-80 if no level data)
+static double get_routing_src_level_db(
+  struct alsa_card   *card,
+  struct routing_src *r_src
+) {
+  int index = get_routing_src_level_index(card, r_src);
+  if (index < 0)
+    return -80.0;
+
+  return card->routing_levels[index];
 }
 
 // draw a bezier curve given the end and control points
@@ -143,16 +281,18 @@ static void arrow(
   cairo_close_path(cr);
 }
 
-// draw a small arrow indicator pointing in a direction from a widget
+// draw a small arrow indicator pointing in a direction from a port
+// port_x, port_y: center of the port widget
 // direction: 0 = right (→), 1 = left (←), 2 = up (↑), 3 = down (↓)
 static void draw_arrow_indicator(
   cairo_t *cr,
-  double   x,
-  double   y,
+  double   port_x,
+  double   port_y,
   int      direction,
   double   r,
   double   g,
-  double   b
+  double   b,
+  double   level_db
 ) {
   double angle;
   switch (direction) {
@@ -166,27 +306,46 @@ static void draw_arrow_indicator(
   // arrow dimensions
   double arrow_len = 12;
   double arrow_width = 4;
+  double line_len = 24;
+
+  // calculate arrow base (end of line, start of triangle)
+  double bx = port_x + cos(angle) * line_len;
+  double by = port_y + sin(angle) * line_len;
 
   // calculate arrow tip
-  double tx = x + cos(angle) * arrow_len;
-  double ty = y + sin(angle) * arrow_len;
+  double tx = bx + cos(angle) * arrow_len;
+  double ty = by + sin(angle) * arrow_len;
 
   // calculate arrow base sides
-  double s1x = x + cos(angle - M_PI_2) * arrow_width;
-  double s1y = y + sin(angle - M_PI_2) * arrow_width;
-  double s2x = x + cos(angle + M_PI_2) * arrow_width;
-  double s2y = y + sin(angle + M_PI_2) * arrow_width;
+  double s1x = bx + cos(angle - M_PI_2) * arrow_width;
+  double s1y = by + sin(angle - M_PI_2) * arrow_width;
+  double s2x = bx + cos(angle + M_PI_2) * arrow_width;
+  double s2y = by + sin(angle + M_PI_2) * arrow_width;
+
+  // draw glow behind arrow if level is high enough
+  double intensity = get_glow_intensity(level_db);
+  if (intensity > 0) {
+    double gr, gg, gb;
+    level_to_colour(level_db, &gr, &gg, &gb);
+
+    cairo_set_dash(cr, NULL, 0, 0);
+    for (int layer = GLOW_LAYERS - 1; layer >= 0; layer--) {
+      double width, alpha;
+      get_glow_layer_params(layer, intensity, &width, &alpha);
+
+      cairo_set_source_rgba(cr, gr, gg, gb, alpha);
+      cairo_set_line_width(cr, width);
+      cairo_move_to(cr, port_x, port_y);
+      cairo_line_to(cr, tx, ty);
+      cairo_stroke(cr);
+    }
+  }
 
   cairo_set_source_rgb(cr, r, g, b);
 
-  // draw line from behind the arrow to the arrow base
-  double line_len = 16;
-  double lx = x - cos(angle) * line_len;
-  double ly = y - sin(angle) * line_len;
-
   cairo_set_line_width(cr, 2);
-  cairo_move_to(cr, lx, ly);
-  cairo_line_to(cr, x, y);
+  cairo_move_to(cr, port_x, port_y);
+  cairo_line_to(cr, bx, by);
   cairo_stroke(cr);
 
   // draw filled triangle
@@ -260,6 +419,68 @@ static void draw_connection(
   cairo_stroke(cr);
 }
 
+// draw a level-based glow behind a routing line
+// level_db should be in dB (-80 to 0)
+static void draw_connection_glow(
+  cairo_t *cr,
+  double   x1,
+  double   y1,
+  int      src_port_category,
+  double   x2,
+  double   y2,
+  int      snk_port_category,
+  double   level_db
+) {
+  double intensity = get_glow_intensity(level_db);
+  if (intensity <= 0)
+    return;
+
+  double r, g, b;
+  level_to_colour(level_db, &r, &g, &b);
+
+  // calculate bezier control points (same logic as draw_connection)
+  double x3 = x1, y3 = y1, x4 = x2, y4 = y2;
+
+  int src_is_mixer = IS_MIXER(src_port_category);
+  int snk_is_mixer = IS_MIXER(snk_port_category);
+
+  if (src_is_mixer == snk_is_mixer) {
+    double f1 = 0.3;
+    double f2 = 1 - f1;
+
+    if (src_is_mixer) {
+      y3 = y1 * f2 + y2 * f1;
+      y4 = y1 * f1 + y2 * f2;
+    } else {
+      x3 = x1 * f2 + x2 * f1;
+      x4 = x1 * f1 + x2 * f2;
+    }
+  } else {
+    double a = fmod((atan2(y1 - y2, x2 - x1) * 180 / M_PI) + 360, 360);
+    double f1 = fabs(fmod(a, 90) - 45) / 90;
+    double f2 = 1 - f1;
+
+    if (src_is_mixer) {
+      y3 = y1 * f2 + y2 * f1;
+      x4 = x1 * f1 + x2 * f2;
+    } else {
+      x3 = x1 * f2 + x2 * f1;
+      y4 = y1 * f1 + y2 * f2;
+    }
+  }
+
+  cairo_set_dash(cr, NULL, 0, 0);
+  for (int layer = GLOW_LAYERS - 1; layer >= 0; layer--) {
+    double width, alpha;
+    get_glow_layer_params(layer, intensity, &width, &alpha);
+
+    cairo_set_source_rgba(cr, r, g, b, alpha);
+    cairo_set_line_width(cr, width);
+    curve(cr, x1, y1, x3, y3, x4, y4, x2, y2);
+    cairo_stroke(cr);
+  }
+}
+
 // locate the center of a widget in the parent coordinates
 // used for drawing lines to/from the "socket" widget of routing
 // sources and sinks
@@ -311,7 +532,60 @@ void draw_routing_lines(
 
   int dragging = card->drag_type != DRAG_TYPE_NONE;
 
-  // go through all the routing sinks
+  // first pass: draw level glows behind all lines
+  if (card->routing_levels) {
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      struct alsa_elem *elem = r_snk->elem;
+
+      // skip read-only mixer sinks
+      if (elem->port_category == PC_MIX && card->has_fixed_mixer_inputs)
+        continue;
+
+      // skip disabled sinks
+      if (!is_routing_snk_enabled(r_snk))
+        continue;
+
+      // skip if being dragged
+      if (dragging && card->snk_drag == r_snk)
+        continue;
+
+      // get the source and skip if it's "Off"
+      int r_src_idx = alsa_get_elem_value(elem);
+      if (!r_src_idx)
+        continue;
+
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, r_src_idx
+      );
+
+      // skip disabled sources
+      if (!is_routing_src_enabled(r_src))
+        continue;
+
+      // get source level and skip if too low
+      double level_db = get_routing_src_level_db(card, r_src);
+      if (level_db < GLOW_MIN_DB)
+        continue;
+
+      // locate the source and sink coordinates
+      double x1, y1, x2, y2;
+      get_src_center(r_src, parent, &x1, &y1);
+      get_snk_center(r_snk, parent, &x2, &y2);
+
+      // draw the glow
+      draw_connection_glow(
+        cr,
+        x1, y1, r_src->port_category,
+        x2, y2, elem->port_category,
+        level_db
+      );
+    }
+  }
+
+  // second pass: draw the routing lines on top
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
@@ -405,25 +679,16 @@ void draw_routing_lines(
     int snk_enabled = is_routing_snk_enabled(r_snk);
     int src_enabled = is_routing_src_enabled(r_src);
 
-    // case 1: enabled sink connected to disabled source → draw ← to sink
+    // case 1: enabled sink connected to disabled source → draw arrow to sink
     if (snk_enabled && !src_enabled) {
       double x, y;
       get_snk_center(r_snk, parent, &x, &y);
 
-      // determine arrow direction based on port category
-      // mixer/DSP ports are at top/bottom, others are left/right
-      int direction;
-      if (IS_MIXER(elem->port_category)) {
-        // mixer sinks are at bottom, arrow points down
-        direction = 3;
-        y += 16;
-      } else {
-        // other sinks are on right side, arrow points left (from source)
-        direction = 1;
-        x -= 16;
-      }
+      // mixer/DSP sinks are at bottom, others are on right side
+      int direction = IS_MIXER(elem->port_category) ? 3 : 1;
 
-      draw_arrow_indicator(cr, x, y, direction, 0.75, 0.25, 0.25);
+      double level_db = get_routing_src_level_db(card, r_src);
+      draw_arrow_indicator(cr, x, y, direction, 0.75, 0.25, 0.25, level_db);
     }
 
     // case 2: disabled sink → mark the source
@@ -448,19 +713,11 @@ void draw_routing_lines(
     double x, y;
     get_src_center(r_src, parent, &x, &y);
 
-    // determine arrow direction based on port category
-    int direction;
-    if (IS_MIXER(r_src->port_category)) {
-      // mixer sources are at top, arrow points up
-      direction = 2;
-      y -= 16;
-    } else {
-      // other sources are on left side, arrow points right (to sink)
-      direction = 0;
-      x += 16;
-    }
+    // mixer/DSP sources are at top, others are on left side
+    int direction = IS_MIXER(r_src->port_category) ? 2 : 0;
 
-    draw_arrow_indicator(cr, x, y, direction, 0.75, 0.25, 0.25);
+    double level_db = get_routing_src_level_db(card, r_src);
+    draw_arrow_indicator(cr, x, y, direction, 0.75, 0.25, 0.25, level_db);
   }
 
   g_free(src_has_disabled_snk);
@@ -536,4 +793,38 @@ void draw_drag_line(
     cairo_line_to(cr, x2, y2);
     cairo_stroke(cr);
   }
+}
+
+// initialise level indication storage for routing lines
+// the actual level updates come from the levels window timer
+void routing_levels_init(struct alsa_card *card) {
+  // find the level meter element
+  card->level_meter_elem = get_elem_by_name(card->elems, "Level Meter");
+  if (!card->level_meter_elem) {
+    card->routing_levels = NULL;
+    card->routing_levels_count = 0;
+    return;
+  }
+
+  // allocate storage for level values (updated by levels window timer)
+  card->routing_levels_count = card->level_meter_elem->count;
+  card->routing_levels = g_malloc0(
+    card->routing_levels_count * sizeof(double)
+  );
+
+  // initialise all levels to minimum
+  for (int i = 0; i < card->routing_levels_count; i++)
+    card->routing_levels[i] = -80.0;
+}
+
+// clean up level indication resources
+void routing_levels_cleanup(struct alsa_card *card) {
+  // free level storage
+  if (card->routing_levels) {
+    g_free(card->routing_levels);
+    card->routing_levels = NULL;
+  }
+
+  card->routing_levels_count = 0;
+  card->level_meter_elem = NULL;
 }
