@@ -420,6 +420,12 @@ button.toggle {
   color: #d0d0d0;
 }
 
+.window-frame notebook.outer-notebook > stack {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
 /* Popover styling */
 .window-frame popover.background {
   background-color: transparent;
