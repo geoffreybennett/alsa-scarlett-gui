@@ -20,6 +20,16 @@ const char *get_routing_src_display_name(struct routing_src *src);
 // Returns custom name if set, otherwise returns the element name
 const char *get_routing_snk_display_name(struct routing_snk *snk);
 
+// Get formatted default name for a routing sink (ignoring custom name)
+// Returns e.g. "Analogue 1", "Mixer 2", "PCM 3"
+// Returns newly allocated string that must be freed
+char *get_snk_default_name_formatted(struct routing_snk *snk);
+
+// Get formatted display name for a routing sink (for UI display)
+// Returns custom name if set, otherwise returns formatted default (e.g. "Analogue 1")
+// Returns newly allocated string that must be freed
+char *get_snk_display_name_formatted(struct routing_snk *snk);
+
 // Get mixer output label for mixer window (returns "Mix A" for defaults)
 // Returns newly allocated string that must be freed
 char *get_mixer_output_label_for_mixer_window(struct routing_src *src);

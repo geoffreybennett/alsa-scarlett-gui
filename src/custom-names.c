@@ -315,14 +315,36 @@ static void src_custom_name_display_changed(
   }
 }
 
-// Get formatted display name for a routing sink (for UI display)
+// Get formatted default name for a routing sink (ignoring custom name)
 // Returns newly allocated string that must be freed
-static char *get_snk_display_name_formatted(struct routing_snk *snk) {
+char *get_snk_default_name_formatted(struct routing_snk *snk) {
   if (!snk || !snk->elem)
     return g_strdup("");
 
-  const char *display_name = snk->display_name;
-  if (!display_name)
+  struct alsa_elem *elem = snk->elem;
+  switch (elem->port_category) {
+    case PC_HW:
+      return g_strdup_printf("%s %d", hw_type_names[elem->hw_type], elem->lr_num);
+
+    case PC_PCM:
+      return g_strdup_printf("PCM %d", elem->lr_num);
+
+    case PC_MIX:
+      return g_strdup_printf("Mixer %d", elem->lr_num);
+
+    case PC_DSP:
+      return g_strdup_printf("DSP %d", elem->lr_num);
+
+    default:
+      return g_strdup(elem->name ? elem->name : "");
+  }
+}
+
+// Get formatted display name for a routing sink (for UI display)
+// Returns custom name if set, otherwise formatted default name
+// Returns newly allocated string that must be freed
+char *get_snk_display_name_formatted(struct routing_snk *snk) {
+  if (!snk || !snk->elem)
     return g_strdup("");
 
   // check if custom name is set
@@ -331,29 +353,13 @@ static char *get_snk_display_name_formatted(struct routing_snk *snk) {
     const void *bytes = alsa_get_elem_bytes(snk->custom_name_elem, &size);
     size_t str_len = bytes ? strnlen((const char *)bytes, size) : 0;
 
-    if (str_len > 0) {
+    if (str_len > 0 && snk->display_name) {
       // custom name - use it as-is
-      return g_strdup(display_name);
+      return g_strdup(snk->display_name);
     }
   }
 
-  // default name - format it based on category
-  struct alsa_elem *elem = snk->elem;
-  switch (elem->port_category) {
-    case PC_DSP:
-    case PC_MIX:
-      // just show the number
-      return g_strdup_printf("%d", elem->lr_num);
-
-    case PC_PCM:
-      return g_strdup_printf("PCM %d", elem->lr_num);
-
-    case PC_HW:
-      return g_strdup_printf("%s %d", hw_type_names[elem->hw_type], elem->lr_num);
-
-    default:
-      return g_strdup(display_name);
-  }
+  return get_snk_default_name_formatted(snk);
 }
 
 // Callback when a routing sink's custom name changes

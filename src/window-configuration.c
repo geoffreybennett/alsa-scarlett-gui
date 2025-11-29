@@ -16,6 +16,13 @@ struct configuration_window {
   GtkWidget        *top;
 };
 
+// Structure to track Main/Alt Group controls for one output
+struct group_output_data {
+  struct alsa_elem *main_elem;
+  struct alsa_elem *alt_elem;
+  // Future: trim_elem, source_elem
+};
+
 // Structure to track a column's enable-all checkbox and its children
 struct column_checkbox_data {
   GtkWidget *column_checkbox;
@@ -285,29 +292,6 @@ static GtkWidget *create_name_grid(void) {
   gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
   gtk_widget_set_margin_start(grid, 16);
   return grid;
-}
-
-// Get a clean label for a routing sink
-// Returns newly allocated string that must be freed
-static char *get_clean_snk_label(struct routing_snk *snk) {
-  struct alsa_elem *elem = snk->elem;
-
-  switch (elem->port_category) {
-    case PC_HW:
-      return g_strdup_printf("%s %d", hw_type_names[elem->hw_type], elem->lr_num);
-
-    case PC_PCM:
-      return g_strdup_printf("PCM %d", elem->lr_num);
-
-    case PC_MIX:
-      return g_strdup_printf("Mixer %d", elem->lr_num);
-
-    case PC_DSP:
-      return g_strdup_printf("DSP %d", elem->lr_num);
-
-    default:
-      return g_strdup(elem->name ? elem->name : "");
-  }
 }
 
 // Callback when enable checkbox is toggled
@@ -694,7 +678,7 @@ static void add_snk_names_for_category(
     if (!snk->custom_name_elem)
       continue;
 
-    char *clean_label = get_clean_snk_label(snk);
+    char *clean_label = get_snk_default_name_formatted(snk);
     add_name_entry_to_grid(
       grid,
       row++,
@@ -1122,38 +1106,201 @@ static void add_category_tab(
   );
 }
 
+// Check if Main/Alt Group controls exist
+static int has_main_alt_group_controls(struct alsa_card *card) {
+  struct alsa_elem *elem = get_elem_by_prefix(
+    card->elems, "Main Group Output"
+  );
+  return elem != NULL;
+}
+
+// Get Main/Alt Group elements for a given output number (1-based)
+static void get_group_output_elems(
+  struct alsa_card        *card,
+  int                      output_num,
+  struct group_output_data *data
+) {
+  char name[64];
+
+  snprintf(name, sizeof(name), "Main Group Output %d Playback Switch", output_num);
+  data->main_elem = get_elem_by_name(card->elems, name);
+
+  snprintf(name, sizeof(name), "Alt Group Output %d Playback Switch", output_num);
+  data->alt_elem = get_elem_by_name(card->elems, name);
+}
+
+// Get the routing sink for an analogue output by number (1-based)
+static struct routing_snk *get_analogue_output_snk(
+  struct alsa_card *card,
+  int               output_num
+) {
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (snk->elem->port_category == PC_HW &&
+        snk->elem->hw_type == HW_TYPE_ANALOGUE &&
+        snk->elem->lr_num == output_num) {
+      return snk;
+    }
+  }
+  return NULL;
+}
+
+// Structure to track group output label and its sink
+struct group_output_label_data {
+  GtkLabel           *label;
+  struct routing_snk *snk;
+};
+
+// Callback to update group output label when custom name changes
+static void group_output_label_updated(struct alsa_elem *elem, void *private) {
+  struct group_output_label_data *data = private;
+  char *text = get_snk_display_name_formatted(data->snk);
+  gtk_label_set_text(data->label, text);
+  g_free(text);
+}
+
+// Free group output label data
+static void free_group_output_label_data(void *data) {
+  g_free(data);
+}
+
+// Create the Main/Alt Group grid
+static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
+  GtkWidget *grid = gtk_grid_new();
+  gtk_grid_set_row_spacing(GTK_GRID(grid), 6);
+  gtk_grid_set_column_spacing(GTK_GRID(grid), 20);
+  gtk_widget_set_margin_top(grid, 10);
+
+  // Column headers
+  GtkWidget *main_header = gtk_label_new(NULL);
+  gtk_label_set_markup(GTK_LABEL(main_header), "<b>Main</b>");
+  gtk_widget_set_halign(main_header, GTK_ALIGN_CENTER);
+  gtk_grid_attach(GTK_GRID(grid), main_header, 1, 0, 1, 1);
+
+  GtkWidget *alt_header = gtk_label_new(NULL);
+  gtk_label_set_markup(GTK_LABEL(alt_header), "<b>Alt</b>");
+  gtk_widget_set_halign(alt_header, GTK_ALIGN_CENTER);
+  gtk_grid_attach(GTK_GRID(grid), alt_header, 2, 0, 1, 1);
+
+  // Add rows for each output
+  int row = 1;
+  for (int i = 1; ; i++) {
+    struct group_output_data data;
+    get_group_output_elems(card, i, &data);
+
+    // Stop when no more outputs exist
+    if (!data.main_elem && !data.alt_elem)
+      break;
+
+    // Row label - use formatted display name (custom name or default)
+    struct routing_snk *snk = get_analogue_output_snk(card, i);
+    char *label_text = snk ? get_snk_display_name_formatted(snk) : g_strdup("");
+    GtkWidget *label = gtk_label_new(label_text);
+    g_free(label_text);
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+
+    // Register callback to update label when custom name changes
+    if (snk && snk->custom_name_elem) {
+      struct group_output_label_data *label_data =
+        g_malloc(sizeof(struct group_output_label_data));
+      label_data->label = GTK_LABEL(label);
+      label_data->snk = snk;
+
+      alsa_elem_add_callback(
+        snk->custom_name_elem,
+        group_output_label_updated,
+        label_data,
+        free_group_output_label_data
+      );
+    }
+
+    // Main checkbox
+    if (data.main_elem) {
+      GtkWidget *main_check = gtk_check_button_new();
+      gtk_widget_set_halign(main_check, GTK_ALIGN_CENTER);
+
+      g_signal_connect(
+        main_check,
+        "toggled",
+        G_CALLBACK(enable_checkbox_toggled),
+        data.main_elem
+      );
+
+      alsa_elem_add_callback(
+        data.main_elem,
+        enable_checkbox_updated,
+        main_check,
+        NULL
+      );
+
+      int value = alsa_get_elem_value(data.main_elem);
+      gtk_check_button_set_active(GTK_CHECK_BUTTON(main_check), value != 0);
+
+      gtk_grid_attach(GTK_GRID(grid), main_check, 1, row, 1, 1);
+    }
+
+    // Alt checkbox
+    if (data.alt_elem) {
+      GtkWidget *alt_check = gtk_check_button_new();
+      gtk_widget_set_halign(alt_check, GTK_ALIGN_CENTER);
+
+      g_signal_connect(
+        alt_check,
+        "toggled",
+        G_CALLBACK(enable_checkbox_toggled),
+        data.alt_elem
+      );
+
+      alsa_elem_add_callback(
+        data.alt_elem,
+        enable_checkbox_updated,
+        alt_check,
+        NULL
+      );
+
+      int value = alsa_get_elem_value(data.alt_elem);
+      gtk_check_button_set_active(GTK_CHECK_BUTTON(alt_check), value != 0);
+
+      gtk_grid_attach(GTK_GRID(grid), alt_check, 2, row, 1, 1);
+    }
+
+    row++;
+  }
+
+  return grid;
+}
+
 GtkWidget *create_configuration_controls(struct alsa_card *card) {
   struct configuration_window *data =
     g_malloc0(sizeof(struct configuration_window));
   data->card = card;
 
-  // create top-level frame with CSS styling
-  GtkWidget *top = gtk_frame_new(NULL);
-  gtk_widget_add_css_class(top, "window-frame");
-
   // create main container
-  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
-  gtk_widget_add_css_class(vbox, "window-content");
-  gtk_frame_set_child(GTK_FRAME(top), vbox);
+  GtkWidget *top = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
+  gtk_widget_add_css_class(top, "window-frame");
+  GtkWidget *vbox = top;
 
   data->top = top;
 
-  // Device Name section
+  // Get the device name element for the Device Name tab
   struct alsa_elem *name_elem = optional_controls_get_name_elem(card);
-  if (name_elem) {
-    GtkWidget *name_section = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
 
-    GtkWidget *name_label = gtk_label_new(NULL);
-    gtk_label_set_markup(
-      GTK_LABEL(name_label),
-      "<b>Device Name</b>"
-    );
-    gtk_widget_set_halign(name_label, GTK_ALIGN_START);
-    gtk_box_append(GTK_BOX(name_section), name_label);
+  // Create top-level notebook for configuration sections
+  GtkWidget *top_notebook = gtk_notebook_new();
+  gtk_notebook_set_tab_pos(GTK_NOTEBOOK(top_notebook), GTK_POS_TOP);
+  gtk_widget_add_css_class(top_notebook, "outer-notebook");
+
+  // Device Name tab
+  if (name_elem) {
+    GtkWidget *name_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_widget_set_margin_top(name_tab_content, 20);
 
     GtkWidget *name_entry = make_text_entry_alsa_elem(name_elem);
     gtk_widget_set_hexpand(name_entry, TRUE);
-    gtk_box_append(GTK_BOX(name_section), name_entry);
+    gtk_box_append(GTK_BOX(name_tab_content), name_entry);
 
     GtkWidget *name_help = gtk_label_new(
       "This name will appear in the window title and can help you\n"
@@ -1161,12 +1308,36 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     );
     gtk_widget_set_halign(name_help, GTK_ALIGN_START);
     gtk_widget_add_css_class(name_help, "dim-label");
-    gtk_box_append(GTK_BOX(name_section), name_help);
+    gtk_box_append(GTK_BOX(name_tab_content), name_help);
 
-    gtk_box_append(GTK_BOX(vbox), name_section);
+    GtkWidget *name_tab_label = gtk_label_new("Device Name");
+    gtk_notebook_append_page(
+      GTK_NOTEBOOK(top_notebook), name_tab_content, name_tab_label
+    );
   }
 
-  // I/O Names section with tabs
+  // Main/Alt Group tab
+  if (has_main_alt_group_controls(card)) {
+    GtkWidget *group_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_widget_set_margin_top(group_tab_content, 20);
+
+    GtkWidget *group_help = gtk_label_new(
+      "Select which outputs are controlled by the main and alt volume groups."
+    );
+    gtk_widget_set_halign(group_help, GTK_ALIGN_START);
+    gtk_widget_add_css_class(group_help, "dim-label");
+    gtk_box_append(GTK_BOX(group_tab_content), group_help);
+
+    GtkWidget *group_grid = create_main_alt_group_grid(card);
+    gtk_box_append(GTK_BOX(group_tab_content), group_grid);
+
+    GtkWidget *group_tab_label = gtk_label_new("Main/Alt Group");
+    gtk_notebook_append_page(
+      GTK_NOTEBOOK(top_notebook), group_tab_content, group_tab_label
+    );
+  }
+
+  // I/O Names tab (contains the sub-notebook with Analogue, S/PDIF, etc.)
   GtkWidget *notebook = gtk_notebook_new();
 
   // Add tabs for each hardware type (Analogue, S/PDIF, ADAT)
@@ -1373,17 +1544,10 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
 
   add_category_tab(notebook, card, PC_DSP, "DSP", 1, 1);
 
-  // Only add the notebook if there are any tabs
+  // I/O Names tab (only if there are any sub-tabs)
   if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) > 0) {
-    GtkWidget *io_section = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-
-    GtkWidget *io_label = gtk_label_new(NULL);
-    gtk_label_set_markup(
-      GTK_LABEL(io_label),
-      "<b>I/O Names</b>"
-    );
-    gtk_widget_set_halign(io_label, GTK_ALIGN_START);
-    gtk_box_append(GTK_BOX(io_section), io_label);
+    GtkWidget *io_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_widget_set_margin_top(io_tab_content, 20);
 
     GtkWidget *io_help = gtk_label_new(
       "Use the checkboxes to hide unused inputs and outputs from the display.\n"
@@ -1391,10 +1555,21 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     );
     gtk_widget_set_halign(io_help, GTK_ALIGN_START);
     gtk_widget_add_css_class(io_help, "dim-label");
-    gtk_box_append(GTK_BOX(io_section), io_help);
+    gtk_box_append(GTK_BOX(io_tab_content), io_help);
 
-    gtk_box_append(GTK_BOX(io_section), notebook);
-    gtk_box_append(GTK_BOX(vbox), io_section);
+    gtk_widget_set_vexpand(notebook, TRUE);
+    gtk_box_append(GTK_BOX(io_tab_content), notebook);
+
+    GtkWidget *io_tab_label = gtk_label_new("I/O Names");
+    gtk_notebook_append_page(
+      GTK_NOTEBOOK(top_notebook), io_tab_content, io_tab_label
+    );
+  }
+
+  // Add top notebook to main container (only if it has pages)
+  if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(top_notebook)) > 0) {
+    gtk_widget_set_vexpand(top_notebook, TRUE);
+    gtk_box_append(GTK_BOX(vbox), top_notebook);
   }
 
   // cleanup on destroy
