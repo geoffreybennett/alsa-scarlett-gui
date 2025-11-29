@@ -508,6 +508,7 @@ void create_sim_from_file(GtkWindow *w, char *fn) {
 
   struct alsa_card *card = card_create(SIMULATED_CARD_NUM);
   card->name = sim_card_name(fn);
+  card->serial = strdup(card->name);
   alsa_config_to_new_card(config, card);
 
   snd_config_delete(config);
