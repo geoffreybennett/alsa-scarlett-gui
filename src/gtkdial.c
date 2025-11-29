@@ -484,6 +484,13 @@ static gboolean circle_contains_point(
 
 // END SECTION HELPERS
 
+static void gtk_dial_state_flags_changed(
+  GtkWidget    *widget,
+  GtkStateFlags previous_flags
+) {
+  gtk_widget_queue_draw(widget);
+}
+
 static void gtk_dial_class_init(GtkDialClass *klass) {
   GtkWidgetClass *w_class = GTK_WIDGET_CLASS(klass);
   GObjectClass *g_class = G_OBJECT_CLASS(klass);
@@ -498,6 +505,7 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
   w_class->snapshot = &dial_snapshot;
   w_class->grab_focus = p_class->grab_focus;
   w_class->focus = p_class->focus;
+  w_class->state_flags_changed = &gtk_dial_state_flags_changed;
 
   klass->move_slider = &gtk_dial_move_slider;
   klass->value_changed = NULL;
@@ -670,14 +678,6 @@ static void gtk_dial_focus_change_cb(
   gtk_widget_queue_draw(GTK_WIDGET(dial));
 }
 
-static void gtk_dial_notify_sensitive_cb(
-  GObject    *object,
-  GParamSpec *pspec,
-  GtkDial    *dial
-) {
-  gtk_widget_queue_draw(GTK_WIDGET(dial));
-}
-
 static void gtk_dial_init(GtkDial *dial) {
   gtk_widget_set_focusable(GTK_WIDGET(dial), TRUE);
 
@@ -730,10 +730,6 @@ static void gtk_dial_init(GtkDial *dial) {
     controller, "leave", G_CALLBACK(gtk_dial_focus_change_cb), dial
   );
   gtk_widget_add_controller(GTK_WIDGET(dial), controller);
-
-  g_signal_connect(
-    dial, "notify::sensitive", G_CALLBACK(gtk_dial_notify_sensitive_cb), dial
-  );
 
   dial->current_peak = -INFINITY;
   dial->hist_head = 0;
