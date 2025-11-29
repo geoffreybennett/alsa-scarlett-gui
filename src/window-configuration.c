@@ -8,6 +8,9 @@
 #include "optional-controls.h"
 #include "custom-names.h"
 #include "port-enable.h"
+#include "widget-drop-down.h"
+#include "widget-drop-down-two-level.h"
+#include "widget-gain.h"
 #include "widget-text-entry.h"
 #include "window-configuration.h"
 
@@ -20,7 +23,10 @@ struct configuration_window {
 struct group_output_data {
   struct alsa_elem *main_elem;
   struct alsa_elem *alt_elem;
-  // Future: trim_elem, source_elem
+  struct alsa_elem *main_source_elem;
+  struct alsa_elem *alt_source_elem;
+  struct alsa_elem *main_trim_elem;
+  struct alsa_elem *alt_trim_elem;
 };
 
 // Structure to track a column's enable-all checkbox and its children
@@ -1127,6 +1133,18 @@ static void get_group_output_elems(
 
   snprintf(name, sizeof(name), "Alt Group Output %d Playback Switch", output_num);
   data->alt_elem = get_elem_by_name(card->elems, name);
+
+  snprintf(name, sizeof(name), "Main Group Output %d Source Playback Enum", output_num);
+  data->main_source_elem = get_elem_by_name(card->elems, name);
+
+  snprintf(name, sizeof(name), "Alt Group Output %d Source Playback Enum", output_num);
+  data->alt_source_elem = get_elem_by_name(card->elems, name);
+
+  snprintf(name, sizeof(name), "Main Group Output %d Trim Playback Volume", output_num);
+  data->main_trim_elem = get_elem_by_name(card->elems, name);
+
+  snprintf(name, sizeof(name), "Alt Group Output %d Trim Playback Volume", output_num);
+  data->alt_trim_elem = get_elem_by_name(card->elems, name);
 }
 
 // Get the routing sink for an analogue output by number (1-based)
@@ -1170,22 +1188,86 @@ static void free_group_output_label_data(void *data) {
 static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid), 6);
-  gtk_grid_set_column_spacing(GTK_GRID(grid), 20);
+  gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
   gtk_widget_set_margin_top(grid, 10);
+  gtk_widget_set_valign(grid, GTK_ALIGN_START);
+  gtk_grid_set_row_homogeneous(GTK_GRID(grid), FALSE);
 
-  // Column headers
+  // Check if source/trim controls exist (check first output)
+  struct group_output_data first_data;
+  get_group_output_elems(card, 1, &first_data);
+  int has_source = first_data.main_source_elem != NULL;
+  int has_trim = first_data.main_trim_elem != NULL;
+
+  // Column layout with separators:
+  // 0: Output label
+  // 1: Separator
+  // 2: Main checkbox
+  // 3: Main Source (if has_source)
+  // 4: Main Trim (if has_trim)
+  // 5: Separator
+  // 6: Alt checkbox
+  // 7: Alt Source (if has_source)
+  // 8: Alt Trim (if has_trim)
+  int sep1_col = 1;
+  int main_col = 2;
+  int main_source_col = has_source ? 3 : -1;
+  int main_trim_col = has_trim ? (has_source ? 4 : 3) : -1;
+  int sep2_col = 2 + 1 + (has_source ? 1 : 0) + (has_trim ? 1 : 0);
+  int alt_col = sep2_col + 1;
+  int alt_source_col = has_source ? alt_col + 1 : -1;
+  int alt_trim_col = has_trim ? alt_col + 1 + (has_source ? 1 : 0) : -1;
+
+  // Calculate column spans for Main and Alt headers
+  int main_span = 1 + (has_source ? 1 : 0) + (has_trim ? 1 : 0);
+  int alt_span = main_span;
+
+  // Row 0: Main group headers
   GtkWidget *main_header = gtk_label_new(NULL);
   gtk_label_set_markup(GTK_LABEL(main_header), "<b>Main</b>");
   gtk_widget_set_halign(main_header, GTK_ALIGN_CENTER);
-  gtk_grid_attach(GTK_GRID(grid), main_header, 1, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), main_header, main_col, 0, main_span, 1);
 
   GtkWidget *alt_header = gtk_label_new(NULL);
   gtk_label_set_markup(GTK_LABEL(alt_header), "<b>Alt</b>");
   gtk_widget_set_halign(alt_header, GTK_ALIGN_CENTER);
-  gtk_grid_attach(GTK_GRID(grid), alt_header, 2, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), alt_header, alt_col, 0, alt_span, 1);
 
-  // Add rows for each output
-  int row = 1;
+  // Row 1: Sub-headings for columns
+  GtkWidget *main_enable_label = gtk_label_new("Enable");
+  gtk_widget_add_css_class(main_enable_label, "dim-label");
+  gtk_grid_attach(GTK_GRID(grid), main_enable_label, main_col, 1, 1, 1);
+
+  if (has_source) {
+    GtkWidget *main_source_label = gtk_label_new("Source");
+    gtk_widget_add_css_class(main_source_label, "dim-label");
+    gtk_grid_attach(GTK_GRID(grid), main_source_label, main_source_col, 1, 1, 1);
+  }
+
+  if (has_trim) {
+    GtkWidget *main_trim_label = gtk_label_new("Trim");
+    gtk_widget_add_css_class(main_trim_label, "dim-label");
+    gtk_grid_attach(GTK_GRID(grid), main_trim_label, main_trim_col, 1, 1, 1);
+  }
+
+  GtkWidget *alt_enable_label = gtk_label_new("Enable");
+  gtk_widget_add_css_class(alt_enable_label, "dim-label");
+  gtk_grid_attach(GTK_GRID(grid), alt_enable_label, alt_col, 1, 1, 1);
+
+  if (has_source) {
+    GtkWidget *alt_source_label = gtk_label_new("Source");
+    gtk_widget_add_css_class(alt_source_label, "dim-label");
+    gtk_grid_attach(GTK_GRID(grid), alt_source_label, alt_source_col, 1, 1, 1);
+  }
+
+  if (has_trim) {
+    GtkWidget *alt_trim_label = gtk_label_new("Trim");
+    gtk_widget_add_css_class(alt_trim_label, "dim-label");
+    gtk_grid_attach(GTK_GRID(grid), alt_trim_label, alt_trim_col, 1, 1, 1);
+  }
+
+  // Add rows for each output (starting after 2 header rows)
+  int row = 2;
   for (int i = 1; ; i++) {
     struct group_output_data data;
     get_group_output_elems(card, i, &data);
@@ -1200,6 +1282,7 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
     GtkWidget *label = gtk_label_new(label_text);
     g_free(label_text);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_widget_set_valign(label, GTK_ALIGN_CENTER);
     gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
 
     // Register callback to update label when custom name changes
@@ -1221,6 +1304,7 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
     if (data.main_elem) {
       GtkWidget *main_check = gtk_check_button_new();
       gtk_widget_set_halign(main_check, GTK_ALIGN_CENTER);
+      gtk_widget_set_valign(main_check, GTK_ALIGN_CENTER);
 
       g_signal_connect(
         main_check,
@@ -1239,13 +1323,37 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
       int value = alsa_get_elem_value(data.main_elem);
       gtk_check_button_set_active(GTK_CHECK_BUTTON(main_check), value != 0);
 
-      gtk_grid_attach(GTK_GRID(grid), main_check, 1, row, 1, 1);
+      gtk_grid_attach(GTK_GRID(grid), main_check, main_col, row, 1, 1);
+    }
+
+    // Main Source dropdown
+    if (data.main_source_elem && main_source_col >= 0) {
+      GtkWidget *main_source = make_drop_down_two_level_alsa_elem(data.main_source_elem);
+      gtk_widget_set_size_request(main_source, 120, -1);
+      gtk_widget_set_hexpand(main_source, FALSE);
+      gtk_widget_set_valign(main_source, GTK_ALIGN_CENTER);
+      gtk_grid_attach(GTK_GRID(grid), main_source, main_source_col, row, 1, 1);
+    }
+
+    // Main Trim
+    if (data.main_trim_elem && main_trim_col >= 0) {
+      GtkWidget *main_trim = make_gain_alsa_elem(
+        data.main_trim_elem,
+        0,                       // zero_is_off
+        WIDGET_GAIN_TAPER_LINEAR,
+        1                        // can_control
+      );
+      gtk_widget_set_size_request(main_trim, 40, 80);
+      gtk_widget_set_hexpand(main_trim, FALSE);
+      gtk_widget_set_valign(main_trim, GTK_ALIGN_CENTER);
+      gtk_grid_attach(GTK_GRID(grid), main_trim, main_trim_col, row, 1, 1);
     }
 
     // Alt checkbox
     if (data.alt_elem) {
       GtkWidget *alt_check = gtk_check_button_new();
       gtk_widget_set_halign(alt_check, GTK_ALIGN_CENTER);
+      gtk_widget_set_valign(alt_check, GTK_ALIGN_CENTER);
 
       g_signal_connect(
         alt_check,
@@ -1264,11 +1372,47 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
       int value = alsa_get_elem_value(data.alt_elem);
       gtk_check_button_set_active(GTK_CHECK_BUTTON(alt_check), value != 0);
 
-      gtk_grid_attach(GTK_GRID(grid), alt_check, 2, row, 1, 1);
+      gtk_grid_attach(GTK_GRID(grid), alt_check, alt_col, row, 1, 1);
+    }
+
+    // Alt Source dropdown
+    if (data.alt_source_elem && alt_source_col >= 0) {
+      GtkWidget *alt_source = make_drop_down_two_level_alsa_elem(data.alt_source_elem);
+      gtk_widget_set_size_request(alt_source, 120, -1);
+      gtk_widget_set_hexpand(alt_source, FALSE);
+      gtk_widget_set_valign(alt_source, GTK_ALIGN_CENTER);
+      gtk_grid_attach(GTK_GRID(grid), alt_source, alt_source_col, row, 1, 1);
+    }
+
+    // Alt Trim
+    if (data.alt_trim_elem && alt_trim_col >= 0) {
+      GtkWidget *alt_trim = make_gain_alsa_elem(
+        data.alt_trim_elem,
+        0,                       // zero_is_off
+        WIDGET_GAIN_TAPER_LINEAR,
+        1                        // can_control
+      );
+      gtk_widget_set_size_request(alt_trim, 40, 80);
+      gtk_widget_set_hexpand(alt_trim, FALSE);
+      gtk_widget_set_valign(alt_trim, GTK_ALIGN_CENTER);
+      gtk_grid_attach(GTK_GRID(grid), alt_trim, alt_trim_col, row, 1, 1);
     }
 
     row++;
   }
+
+  // Add vertical separators spanning all data rows
+  int total_rows = row;
+
+  GtkWidget *sep1 = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+  gtk_widget_set_margin_start(sep1, 10);
+  gtk_widget_set_margin_end(sep1, 10);
+  gtk_grid_attach(GTK_GRID(grid), sep1, sep1_col, 0, 1, total_rows);
+
+  GtkWidget *sep2 = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+  gtk_widget_set_margin_start(sep2, 10);
+  gtk_widget_set_margin_end(sep2, 10);
+  gtk_grid_attach(GTK_GRID(grid), sep2, sep2_col, 0, 1, total_rows);
 
   return grid;
 }
@@ -1319,10 +1463,13 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
   // Main/Alt Group tab
   if (has_main_alt_group_controls(card)) {
     GtkWidget *group_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_widget_set_margin_start(group_tab_content, 20);
+    gtk_widget_set_margin_end(group_tab_content, 20);
     gtk_widget_set_margin_top(group_tab_content, 20);
+    gtk_widget_set_margin_bottom(group_tab_content, 20);
 
     GtkWidget *group_help = gtk_label_new(
-      "Select which outputs are controlled by the main and alt volume groups."
+      "Configure which outputs belong to each volume group, their audio sources, and trim levels."
     );
     gtk_widget_set_halign(group_help, GTK_ALIGN_START);
     gtk_widget_add_css_class(group_help, "dim-label");
@@ -1331,9 +1478,10 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     GtkWidget *group_grid = create_main_alt_group_grid(card);
     gtk_box_append(GTK_BOX(group_tab_content), group_grid);
 
+    GtkWidget *group_scrolled = wrap_tab_content_scrolled(group_tab_content);
     GtkWidget *group_tab_label = gtk_label_new("Main/Alt Group");
     gtk_notebook_append_page(
-      GTK_NOTEBOOK(top_notebook), group_tab_content, group_tab_label
+      GTK_NOTEBOOK(top_notebook), group_scrolled, group_tab_label
     );
   }
 
