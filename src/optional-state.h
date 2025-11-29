@@ -3,23 +3,19 @@
 
 #pragma once
 
-#include <glib.h>
+#include "alsa.h"
 
-// Load the optional control state for a device by serial number
+// Load the optional control state for a device
 // Returns hash table of control_name → value (as string)
 // Caller must free the hash table with g_hash_table_destroy()
-// Returns NULL if file doesn't exist or can't be loaded
-GHashTable *optional_state_load(const char *serial);
+// Returns NULL if card has no serial or file doesn't exist
+GHashTable *optional_state_load(struct alsa_card *card);
 
 // Save a single optional control value to the state file
 // Creates the state file and directory if needed
 // Returns 0 on success, -1 on error
 int optional_state_save(
-  const char *serial,
-  const char *control_name,
-  const char *value
+  struct alsa_card *card,
+  const char       *key,
+  const char       *value
 );
-
-// Get the state file path for a given serial number
-// Returns newly allocated string that must be freed with g_free()
-char *optional_state_get_path(const char *serial);

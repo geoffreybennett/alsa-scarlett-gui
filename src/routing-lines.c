@@ -219,6 +219,34 @@ static void draw_arrow_indicator(
   cairo_fill(cr);
 }
 
+// draw a glow around a source port that isn't connected to anything
+static void draw_source_glow(
+  cairo_t *cr,
+  double   x,
+  double   y,
+  double   level_db
+) {
+  double intensity = get_glow_intensity(level_db);
+  if (intensity <= 0)
+    return;
+
+  double r, g, b;
+  level_to_colour(level_db, &r, &g, &b);
+
+  // draw concentric circles as glow layers, scaled up for visibility
+  cairo_set_dash(cr, NULL, 0, 0);
+  for (int layer = GLOW_LAYERS - 1; layer >= 0; layer--) {
+    double width, alpha;
+    get_glow_layer_params(layer, intensity, &width, &alpha);
+
+    // scale up for better visibility
+    double radius = width * 1.2;
+    cairo_set_source_rgba(cr, r, g, b, alpha * 0.7);
+    cairo_arc(cr, x, y, radius, 0, 2 * M_PI);
+    cairo_fill(cr);
+  }
+}
+
 // draw a nice curved line connecting a source at (x1, y1) and a sink
 // at (x2, y2)
 static void draw_connection(
@@ -416,7 +444,7 @@ void draw_routing_lines(
         continue;
 
       // get the source and skip if it's "Off"
-      int r_src_idx = alsa_get_elem_value(elem);
+      int r_src_idx = r_snk->effective_source_idx;
       if (!r_src_idx)
         continue;
 
@@ -446,6 +474,63 @@ void draw_routing_lines(
         level_db
       );
     }
+
+    // draw glows for unconnected sources that have level meters
+    // first, track which sources have at least one enabled connection
+    int *src_connected = g_malloc0(card->routing_srcs->len * sizeof(int));
+
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      struct alsa_elem *elem = r_snk->elem;
+
+      // skip read-only mixer sinks
+      if (elem->port_category == PC_MIX && card->has_fixed_mixer_inputs)
+        continue;
+
+      // skip disabled sinks
+      if (!is_routing_snk_enabled(r_snk))
+        continue;
+
+      int r_src_idx = r_snk->effective_source_idx;
+      if (r_src_idx > 0 && r_src_idx < card->routing_srcs->len) {
+        struct routing_src *r_src = &g_array_index(
+          card->routing_srcs, struct routing_src, r_src_idx
+        );
+        // only mark as connected if source is enabled
+        if (is_routing_src_enabled(r_src))
+          src_connected[r_src_idx] = 1;
+      }
+    }
+
+    // now draw glows for unconnected sources
+    for (int i = 1; i < card->routing_srcs->len; i++) {
+      if (src_connected[i])
+        continue;
+
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+
+      // skip disabled sources
+      if (!is_routing_src_enabled(r_src))
+        continue;
+
+      // skip if no widget
+      if (!r_src->widget2)
+        continue;
+
+      double level_db = get_routing_src_level_db(card, r_src);
+      if (level_db < GLOW_MIN_DB)
+        continue;
+
+      double x, y;
+      get_src_center(r_src, parent, &x, &y);
+      draw_source_glow(cr, x, y, level_db);
+    }
+
+    g_free(src_connected);
   }
 
   // second pass: draw the routing lines on top
@@ -472,8 +557,8 @@ void draw_routing_lines(
     else
       cairo_set_dash(cr, NULL, 0, 0);
 
-    // get the sink and skip if it's "Off"
-    int r_src_idx = alsa_get_elem_value(elem);
+    // get the source and skip if it's "Off" or muted
+    int r_src_idx = r_snk->effective_source_idx;
     if (!r_src_idx)
       continue;
 
@@ -531,7 +616,7 @@ void draw_routing_lines(
       continue;
 
     // get the source connected to this sink
-    int r_src_idx = alsa_get_elem_value(elem);
+    int r_src_idx = r_snk->effective_source_idx;
     if (!r_src_idx)
       continue;
 

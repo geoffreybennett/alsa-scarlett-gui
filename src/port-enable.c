@@ -14,8 +14,8 @@
 
 // Callback structure to pass data to save callback
 struct port_enable_save_data {
-  char *serial;
-  char *config_key;
+  struct alsa_card *card;
+  char             *config_key;
 };
 
 // Callback when a port enable value changes
@@ -30,7 +30,7 @@ static void port_enable_changed(
   long value = alsa_get_elem_value(elem);
 
   // save as "1" or "0"
-  optional_state_save(data->serial, data->config_key, value ? "1" : "0");
+  optional_state_save(data->card, data->config_key, value ? "1" : "0");
 }
 
 // Flush pending UI updates for a card
@@ -256,7 +256,6 @@ void port_enable_free_callback_data(void *data) {
     return;
 
   struct port_enable_save_data *save_data = data;
-  g_free(save_data->serial);
   g_free(save_data->config_key);
   g_free(save_data);
 }
@@ -419,7 +418,7 @@ static void create_src_enable_elem(
   // register callback to save state on changes
   struct port_enable_save_data *callback_data =
     g_malloc0(sizeof(struct port_enable_save_data));
-  callback_data->serial = g_strdup(card->serial);
+  callback_data->card = card;
   callback_data->config_key = config_key;  // transfer ownership
 
   alsa_elem_add_callback(
@@ -491,7 +490,7 @@ static void create_snk_enable_elem(
   // register callback to save state on changes
   struct port_enable_save_data *callback_data =
     g_malloc0(sizeof(struct port_enable_save_data));
-  callback_data->serial = g_strdup(card->serial);
+  callback_data->card = card;
   callback_data->config_key = config_key;  // transfer ownership
 
   alsa_elem_add_callback(
@@ -517,7 +516,7 @@ void port_enable_init(struct alsa_card *card) {
   }
 
   // load existing state
-  GHashTable *state = optional_state_load(card->serial);
+  GHashTable *state = optional_state_load(card);
   if (!state) {
     state = g_hash_table_new_full(
       g_str_hash, g_str_equal, g_free, g_free

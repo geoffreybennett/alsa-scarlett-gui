@@ -83,6 +83,10 @@ static void draw_mixer_glow(
     if (r_src->port_category != PC_MIX)
       continue;
 
+    // skip disabled ports
+    if (!is_routing_src_enabled(r_src))
+      continue;
+
     double level_db = get_routing_src_level_db(card, r_src);
 
     draw_label_glow(cr, r_src->mixer_label_left, parent, level_db);
@@ -96,6 +100,10 @@ static void draw_mixer_glow(
     );
 
     if (!r_snk->elem || r_snk->elem->port_category != PC_MIX)
+      continue;
+
+    // skip disabled ports
+    if (!is_routing_snk_enabled(r_snk))
       continue;
 
     // get the source connected to this mixer input

@@ -132,6 +132,9 @@ struct routing_snk {
   // socket widget on the routing page
   GtkWidget *socket_widget;
 
+  // label widget on the routing page (for updating text)
+  GtkWidget *label_widget;
+
   // the mixer label widgets for this sink
   GtkWidget *mixer_label_top;
   GtkWidget *mixer_label_bottom;
@@ -145,6 +148,16 @@ struct routing_snk {
   // cached display name (either custom or default)
   // updated by callback when custom name changes
   char *display_name;
+
+  // cached effective source index (accounting for speaker switching)
+  // updated by callback when monitor group controls change
+  int effective_source_idx;
+
+  // pointers to monitor group controls (NULL if not applicable)
+  struct alsa_elem *main_group_switch;
+  struct alsa_elem *alt_group_switch;
+  struct alsa_elem *main_group_source;
+  struct alsa_elem *alt_group_source;
 };
 
 // hold one callback & its data
@@ -220,6 +233,8 @@ struct alsa_card {
   int                 routing_levels_count;
   GArray             *routing_srcs;
   GArray             *routing_snks;
+  int                *monitor_group_src_map;
+  int                 monitor_group_src_map_count;
   GIOChannel         *io_channel;
   guint               event_source_id;
   GtkWidget          *window_main;

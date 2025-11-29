@@ -20,7 +20,7 @@ static char *get_config_dir(void) {
 }
 
 // Get the state file path for a given serial number
-char *optional_state_get_path(const char *serial) {
+static char *get_state_path(const char *serial) {
   char *config_dir = get_config_dir();
   char *filename = g_strdup_printf("%s.conf", serial);
   char *path = g_build_filename(config_dir, filename, NULL);
@@ -47,11 +47,11 @@ static int ensure_config_dir(void) {
 }
 
 // Load optional controls from state file using GKeyFile
-GHashTable *optional_state_load(const char *serial) {
-  if (!serial || !*serial)
+GHashTable *optional_state_load(struct alsa_card *card) {
+  if (!card || !card->serial || !*card->serial)
     return NULL;
 
-  char *path = optional_state_get_path(serial);
+  char *path = get_state_path(card->serial);
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
 
@@ -131,7 +131,7 @@ static gboolean flush_pending_saves(gpointer user_data) {
     const char *serial = serial_key;
     GHashTable *changes = serial_value;
 
-    char *path = optional_state_get_path(serial);
+    char *path = get_state_path(serial);
     GKeyFile *key_file = g_key_file_new();
     GError *error = NULL;
 
@@ -176,12 +176,14 @@ static gboolean flush_pending_saves(gpointer user_data) {
 
 // Save optional control state to file using GKeyFile (debounced)
 int optional_state_save(
-  const char *serial,
-  const char *control_name,
-  const char *value
+  struct alsa_card *card,
+  const char       *key,
+  const char       *value
 ) {
-  if (!serial || !*serial || !control_name || !*control_name)
+  if (!card || !card->serial || !*card->serial || !key || !*key)
     return -1;
+
+  const char *serial = card->serial;
 
   // initialise pending_saves hash table if needed
   if (!pending_saves) {
@@ -204,7 +206,7 @@ int optional_state_save(
   // add/update the pending change
   g_hash_table_insert(
     serial_changes,
-    g_strdup(control_name),
+    g_strdup(key),
     g_strdup(value ? value : "")
   );
 

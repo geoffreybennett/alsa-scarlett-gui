@@ -6,6 +6,7 @@
 #include "alsa.h"
 #include "gtkhelper.h"
 #include "optional-controls.h"
+#include "optional-state.h"
 #include "custom-names.h"
 #include "port-enable.h"
 #include "widget-drop-down.h"
@@ -55,6 +56,65 @@ static void on_destroy(
   GtkWidget                   *widget
 ) {
   g_free(data);
+}
+
+// Keys used to store the configuration window tabs in the state file
+#define CONFIG_TAB_KEY "configuration-tab"
+#define CONFIG_IO_TAB_KEY "configuration-io-tab"
+
+// Data for notebook tab persistence
+struct notebook_tab_data {
+  struct alsa_card *card;
+  const char       *key;
+};
+
+// Callback when a notebook tab changes
+static void on_tab_changed(
+  GtkNotebook *notebook,
+  GtkWidget   *page,
+  guint        page_num,
+  gpointer     user_data
+) {
+  struct notebook_tab_data *data = user_data;
+
+  char value[16];
+  snprintf(value, sizeof(value), "%u", page_num);
+  optional_state_save(data->card, data->key, value);
+}
+
+// Free notebook tab data
+static void free_notebook_tab_data(gpointer data) {
+  g_free(data);
+}
+
+// Restore the saved tab selection and connect signal to save changes
+static void setup_notebook_tab_persistence(
+  GtkNotebook      *notebook,
+  struct alsa_card *card,
+  const char       *key
+) {
+  // Restore saved tab
+  GHashTable *state = optional_state_load(card);
+  if (state) {
+    const char *value = g_hash_table_lookup(state, key);
+    if (value) {
+      int page_num = atoi(value);
+      int n_pages = gtk_notebook_get_n_pages(notebook);
+      if (page_num >= 0 && page_num < n_pages)
+        gtk_notebook_set_current_page(notebook, page_num);
+    }
+    g_hash_table_destroy(state);
+  }
+
+  // Connect signal to save tab changes
+  struct notebook_tab_data *data = g_malloc(sizeof(struct notebook_tab_data));
+  data->card = card;
+  data->key = key;
+
+  g_signal_connect_data(
+    notebook, "switch-page", G_CALLBACK(on_tab_changed), data,
+    (GClosureNotify)free_notebook_tab_data, 0
+  );
 }
 
 // Free column checkbox data
@@ -968,7 +1028,10 @@ static void add_hw_tab(
   struct alsa_card *card,
   int               hw_type
 ) {
-  if (!has_io_for_category(card, PC_HW, hw_type, 1, 1))
+  int has_inputs = has_io_for_category(card, PC_HW, hw_type, 1, 0);
+  int has_outputs = has_io_for_category(card, PC_HW, hw_type, 0, 1);
+
+  if (!has_inputs && !has_outputs)
     return;
 
   GtkWidget *left_grid, *right_grid;
@@ -978,14 +1041,16 @@ static void add_hw_tab(
     &left_grid, &right_grid,
     &left_col_data, &right_col_data,
     &tab_data,
-    1, 1
+    has_inputs, has_outputs
   );
 
   // Left column: Inputs (sources - audio from hardware)
-  add_src_names_for_category(card, left_grid, PC_HW, hw_type, left_col_data);
+  if (left_grid)
+    add_src_names_for_category(card, left_grid, PC_HW, hw_type, left_col_data);
 
   // Right column: Outputs (sinks - audio to hardware)
-  add_snk_names_for_category(card, right_grid, PC_HW, hw_type, right_col_data);
+  if (right_grid)
+    add_snk_names_for_category(card, right_grid, PC_HW, hw_type, right_col_data);
 
   // Register callbacks from children to update tab checkbox
   if (left_col_data) {
@@ -1174,6 +1239,28 @@ struct group_output_label_data {
   struct routing_snk *snk;
 };
 
+// Structure to track widgets that should be enabled/disabled based on group output state
+struct group_enable_data {
+  GtkWidget *source_widget;
+  GtkWidget *trim_widget;
+};
+
+// Callback to update source/trim sensitivity when group output enabled state changes
+static void group_enable_updated(struct alsa_elem *elem, void *private) {
+  struct group_enable_data *data = private;
+  int enabled = alsa_get_elem_value(elem);
+
+  if (data->source_widget)
+    gtk_widget_set_sensitive(data->source_widget, enabled);
+  if (data->trim_widget)
+    gtk_widget_set_sensitive(data->trim_widget, enabled);
+}
+
+// Free group enable data
+static void free_group_enable_data(void *data) {
+  g_free(data);
+}
+
 // Callback to update group output label when custom name changes
 static void group_output_label_updated(struct alsa_elem *elem, void *private) {
   struct group_output_label_data *data = private;
@@ -1303,6 +1390,31 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
       );
     }
 
+    // Main Source dropdown (create before checkbox so we can track it)
+    GtkWidget *main_source = NULL;
+    if (data.main_source_elem && main_source_col >= 0) {
+      main_source = make_drop_down_two_level_alsa_elem(data.main_source_elem);
+      gtk_widget_set_size_request(main_source, 120, -1);
+      gtk_widget_set_hexpand(main_source, FALSE);
+      gtk_widget_set_valign(main_source, GTK_ALIGN_CENTER);
+      gtk_grid_attach(GTK_GRID(grid), main_source, main_source_col, row, 1, 1);
+    }
+
+    // Main Trim (create before checkbox so we can track it)
+    GtkWidget *main_trim = NULL;
+    if (data.main_trim_elem && main_trim_col >= 0) {
+      main_trim = make_gain_alsa_elem(
+        data.main_trim_elem,
+        0,                       // zero_is_off
+        WIDGET_GAIN_TAPER_LINEAR,
+        1                        // can_control
+      );
+      gtk_widget_set_size_request(main_trim, 40, 80);
+      gtk_widget_set_hexpand(main_trim, FALSE);
+      gtk_widget_set_valign(main_trim, GTK_ALIGN_CENTER);
+      gtk_grid_attach(GTK_GRID(grid), main_trim, main_trim_col, row, 1, 1);
+    }
+
     // Main checkbox
     if (data.main_elem) {
       GtkWidget *main_check = gtk_check_button_new();
@@ -1327,29 +1439,52 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
       gtk_check_button_set_active(GTK_CHECK_BUTTON(main_check), value != 0);
 
       gtk_grid_attach(GTK_GRID(grid), main_check, main_col, row, 1, 1);
+
+      // Register callback to enable/disable source and trim when main is toggled
+      if (main_source || main_trim) {
+        struct group_enable_data *enable_data =
+          g_malloc(sizeof(struct group_enable_data));
+        enable_data->source_widget = main_source;
+        enable_data->trim_widget = main_trim;
+
+        alsa_elem_add_callback(
+          data.main_elem,
+          group_enable_updated,
+          enable_data,
+          free_group_enable_data
+        );
+
+        // Set initial sensitivity based on current state
+        if (main_source)
+          gtk_widget_set_sensitive(main_source, value != 0);
+        if (main_trim)
+          gtk_widget_set_sensitive(main_trim, value != 0);
+      }
     }
 
-    // Main Source dropdown
-    if (data.main_source_elem && main_source_col >= 0) {
-      GtkWidget *main_source = make_drop_down_two_level_alsa_elem(data.main_source_elem);
-      gtk_widget_set_size_request(main_source, 120, -1);
-      gtk_widget_set_hexpand(main_source, FALSE);
-      gtk_widget_set_valign(main_source, GTK_ALIGN_CENTER);
-      gtk_grid_attach(GTK_GRID(grid), main_source, main_source_col, row, 1, 1);
+    // Alt Source dropdown (create before checkbox so we can track it)
+    GtkWidget *alt_source = NULL;
+    if (data.alt_source_elem && alt_source_col >= 0) {
+      alt_source = make_drop_down_two_level_alsa_elem(data.alt_source_elem);
+      gtk_widget_set_size_request(alt_source, 120, -1);
+      gtk_widget_set_hexpand(alt_source, FALSE);
+      gtk_widget_set_valign(alt_source, GTK_ALIGN_CENTER);
+      gtk_grid_attach(GTK_GRID(grid), alt_source, alt_source_col, row, 1, 1);
     }
 
-    // Main Trim
-    if (data.main_trim_elem && main_trim_col >= 0) {
-      GtkWidget *main_trim = make_gain_alsa_elem(
-        data.main_trim_elem,
+    // Alt Trim (create before checkbox so we can track it)
+    GtkWidget *alt_trim = NULL;
+    if (data.alt_trim_elem && alt_trim_col >= 0) {
+      alt_trim = make_gain_alsa_elem(
+        data.alt_trim_elem,
         0,                       // zero_is_off
         WIDGET_GAIN_TAPER_LINEAR,
         1                        // can_control
       );
-      gtk_widget_set_size_request(main_trim, 40, 80);
-      gtk_widget_set_hexpand(main_trim, FALSE);
-      gtk_widget_set_valign(main_trim, GTK_ALIGN_CENTER);
-      gtk_grid_attach(GTK_GRID(grid), main_trim, main_trim_col, row, 1, 1);
+      gtk_widget_set_size_request(alt_trim, 40, 80);
+      gtk_widget_set_hexpand(alt_trim, FALSE);
+      gtk_widget_set_valign(alt_trim, GTK_ALIGN_CENTER);
+      gtk_grid_attach(GTK_GRID(grid), alt_trim, alt_trim_col, row, 1, 1);
     }
 
     // Alt checkbox
@@ -1376,29 +1511,27 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
       gtk_check_button_set_active(GTK_CHECK_BUTTON(alt_check), value != 0);
 
       gtk_grid_attach(GTK_GRID(grid), alt_check, alt_col, row, 1, 1);
-    }
 
-    // Alt Source dropdown
-    if (data.alt_source_elem && alt_source_col >= 0) {
-      GtkWidget *alt_source = make_drop_down_two_level_alsa_elem(data.alt_source_elem);
-      gtk_widget_set_size_request(alt_source, 120, -1);
-      gtk_widget_set_hexpand(alt_source, FALSE);
-      gtk_widget_set_valign(alt_source, GTK_ALIGN_CENTER);
-      gtk_grid_attach(GTK_GRID(grid), alt_source, alt_source_col, row, 1, 1);
-    }
+      // Register callback to enable/disable source and trim when alt is toggled
+      if (alt_source || alt_trim) {
+        struct group_enable_data *enable_data =
+          g_malloc(sizeof(struct group_enable_data));
+        enable_data->source_widget = alt_source;
+        enable_data->trim_widget = alt_trim;
 
-    // Alt Trim
-    if (data.alt_trim_elem && alt_trim_col >= 0) {
-      GtkWidget *alt_trim = make_gain_alsa_elem(
-        data.alt_trim_elem,
-        0,                       // zero_is_off
-        WIDGET_GAIN_TAPER_LINEAR,
-        1                        // can_control
-      );
-      gtk_widget_set_size_request(alt_trim, 40, 80);
-      gtk_widget_set_hexpand(alt_trim, FALSE);
-      gtk_widget_set_valign(alt_trim, GTK_ALIGN_CENTER);
-      gtk_grid_attach(GTK_GRID(grid), alt_trim, alt_trim_col, row, 1, 1);
+        alsa_elem_add_callback(
+          data.alt_elem,
+          group_enable_updated,
+          enable_data,
+          free_group_enable_data
+        );
+
+        // Set initial sensitivity based on current state
+        if (alt_source)
+          gtk_widget_set_sensitive(alt_source, value != 0);
+        if (alt_trim)
+          gtk_widget_set_sensitive(alt_trim, value != 0);
+      }
     }
 
     row++;
@@ -1445,10 +1578,6 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     GtkWidget *name_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_widget_set_margin_top(name_tab_content, 20);
 
-    GtkWidget *name_entry = make_text_entry_alsa_elem(name_elem);
-    gtk_widget_set_hexpand(name_entry, TRUE);
-    gtk_box_append(GTK_BOX(name_tab_content), name_entry);
-
     GtkWidget *name_help = gtk_label_new(
       "This name will appear in the window title and can help you\n"
       "identify this device if you have multiple interfaces."
@@ -1457,38 +1586,17 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     gtk_widget_add_css_class(name_help, "dim-label");
     gtk_box_append(GTK_BOX(name_tab_content), name_help);
 
+    GtkWidget *name_entry = make_text_entry_alsa_elem(name_elem);
+    gtk_widget_set_hexpand(name_entry, TRUE);
+    gtk_box_append(GTK_BOX(name_tab_content), name_entry);
+
     GtkWidget *name_tab_label = gtk_label_new("Device Name");
     gtk_notebook_append_page(
       GTK_NOTEBOOK(top_notebook), name_tab_content, name_tab_label
     );
   }
 
-  // Main/Alt Group tab
-  if (has_main_alt_group_controls(card)) {
-    GtkWidget *group_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_widget_set_margin_start(group_tab_content, 20);
-    gtk_widget_set_margin_end(group_tab_content, 20);
-    gtk_widget_set_margin_top(group_tab_content, 20);
-    gtk_widget_set_margin_bottom(group_tab_content, 20);
-
-    GtkWidget *group_help = gtk_label_new(
-      "Configure which outputs belong to each volume group, their audio sources, and trim levels."
-    );
-    gtk_widget_set_halign(group_help, GTK_ALIGN_START);
-    gtk_widget_add_css_class(group_help, "dim-label");
-    gtk_box_append(GTK_BOX(group_tab_content), group_help);
-
-    GtkWidget *group_grid = create_main_alt_group_grid(card);
-    gtk_box_append(GTK_BOX(group_tab_content), group_grid);
-
-    GtkWidget *group_scrolled = wrap_tab_content_scrolled(group_tab_content);
-    GtkWidget *group_tab_label = gtk_label_new("Main/Alt Group");
-    gtk_notebook_append_page(
-      GTK_NOTEBOOK(top_notebook), group_scrolled, group_tab_label
-    );
-  }
-
-  // I/O Names tab (contains the sub-notebook with Analogue, S/PDIF, etc.)
+  // Ports tab (contains the sub-notebook with Analogue, S/PDIF, etc.)
   GtkWidget *notebook = gtk_notebook_new();
 
   // Add tabs for each hardware type (Analogue, S/PDIF, ADAT)
@@ -1695,7 +1803,7 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
 
   add_category_tab(notebook, card, PC_DSP, "DSP", 1, 1);
 
-  // I/O Names tab (only if there are any sub-tabs)
+  // Ports tab (only if there are any sub-tabs)
   if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) > 0) {
     GtkWidget *io_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_widget_set_margin_top(io_tab_content, 20);
@@ -1711,9 +1819,45 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     gtk_widget_set_vexpand(notebook, TRUE);
     gtk_box_append(GTK_BOX(io_tab_content), notebook);
 
-    GtkWidget *io_tab_label = gtk_label_new("I/O Names");
+    // Restore saved I/O tab and connect signal to save tab changes
+    setup_notebook_tab_persistence(
+      GTK_NOTEBOOK(notebook), card, CONFIG_IO_TAB_KEY
+    );
+
+    GtkWidget *io_tab_label = gtk_label_new("I/O Configuration");
     gtk_notebook_append_page(
       GTK_NOTEBOOK(top_notebook), io_tab_content, io_tab_label
+    );
+  }
+
+  // Monitor Groups tab
+  if (has_main_alt_group_controls(card)) {
+    GtkWidget *group_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_widget_set_margin_start(group_tab_content, 20);
+    gtk_widget_set_margin_end(group_tab_content, 20);
+    gtk_widget_set_margin_top(group_tab_content, 20);
+    gtk_widget_set_margin_bottom(group_tab_content, 20);
+
+    GtkWidget *group_help = gtk_label_new(
+      "Monitor groups let you organise outputs (speakers, headphones) into Main and Alt sets.\n"
+      "Switch between them using the Alt button on your interface or the toggle in the main window.\n"
+      "The main volume knob controls the enabled group; use Trim for per-output level calibration.\n\n"
+      "Examples:\n"
+      "  • Connect two sets of speakers for A/B reference mixing\n"
+      "  • Create a surround setup with all speakers in one group\n"
+      "  • Quick DAW/Direct monitoring switch by assigning same output to both groups with different sources"
+    );
+    gtk_widget_set_halign(group_help, GTK_ALIGN_START);
+    gtk_widget_add_css_class(group_help, "dim-label");
+    gtk_box_append(GTK_BOX(group_tab_content), group_help);
+
+    GtkWidget *group_grid = create_main_alt_group_grid(card);
+    gtk_box_append(GTK_BOX(group_tab_content), group_grid);
+
+    GtkWidget *group_scrolled = wrap_tab_content_scrolled(group_tab_content);
+    GtkWidget *group_tab_label = gtk_label_new("Monitor Groups");
+    gtk_notebook_append_page(
+      GTK_NOTEBOOK(top_notebook), group_scrolled, group_tab_label
     );
   }
 
@@ -1721,6 +1865,11 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
   if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(top_notebook)) > 0) {
     gtk_widget_set_vexpand(top_notebook, TRUE);
     gtk_box_append(GTK_BOX(vbox), top_notebook);
+
+    // Restore saved tab and connect signal to save tab changes
+    setup_notebook_tab_persistence(
+      GTK_NOTEBOOK(top_notebook), card, CONFIG_TAB_KEY
+    );
   }
 
   // cleanup on destroy
