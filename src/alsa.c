@@ -742,7 +742,8 @@ static void get_routing_srcs(struct alsa_card *card) {
 static int is_elem_routing_snk(struct alsa_elem *elem) {
   if (strstr(elem->name, "Capture Route") ||
       strstr(elem->name, "Input Playback Route") ||
-      strstr(elem->name, "Source Playback Enu"))
+      (strncmp(elem->name, "Master ", 7) == 0 &&
+       strstr(elem->name, "Source Playback Enu")))
     return 1;
 
   if (strstr(elem->name, "Capture Enum") && (
