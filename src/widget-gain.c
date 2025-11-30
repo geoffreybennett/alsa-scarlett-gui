@@ -6,6 +6,17 @@
 #include "widget-gain.h"
 #include "db.h"
 
+// level meter colours for gain dials with level display
+static const int level_breakpoints[] = { -80, -18, -12, -6, -3, -1 };
+static const double level_colours[] = {
+  0.00, 1.00, 0.00, // -80
+  0.75, 1.00, 0.00, // -18
+  1.00, 1.00, 0.00, // -12
+  1.00, 0.75, 0.00, //  -6
+  1.00, 0.50, 0.00, //  -3
+  1.00, 0.00, 0.00  //  -1
+};
+
 struct gain {
   struct alsa_elem *elem;
   struct alsa_elem *direct_monitor_elem;
@@ -161,12 +172,12 @@ static void find_direct_monitor_controls(struct gain *data) {
   }
 }
 
-//GList *make_gain_alsa_elem(struct alsa_elem *elem) {
 GtkWidget *make_gain_alsa_elem(
   struct alsa_elem *elem,
   int               zero_is_off,
   int               widget_taper,
-  int               can_control
+  int               can_control,
+  gboolean          show_level
 ) {
   struct gain *data = calloc(1, sizeof(struct gain));
   data->elem = elem;
@@ -232,6 +243,19 @@ GtkWidget *make_gain_alsa_elem(
 
   gtk_dial_set_can_control(GTK_DIAL(data->dial), can_control);
 
+  // configure level display if enabled
+  if (show_level) {
+    gtk_dial_set_show_level(GTK_DIAL(data->dial), TRUE);
+    gtk_dial_set_peak_hold(GTK_DIAL(data->dial), 1000);
+    gtk_dial_set_level_meter_colours(
+      GTK_DIAL(data->dial),
+      level_breakpoints,
+      level_colours,
+      sizeof(level_breakpoints) / sizeof(int)
+    );
+    gtk_dial_set_off_db(GTK_DIAL(data->dial), -45);
+  }
+
   data->label = gtk_label_new(NULL);
   gtk_widget_add_css_class(data->label, "gain");
   gtk_widget_set_vexpand(data->dial, TRUE);
@@ -251,5 +275,12 @@ GtkWidget *make_gain_alsa_elem(
   gtk_box_append(GTK_BOX(data->vbox), data->dial);
   gtk_box_append(GTK_BOX(data->vbox), data->label);
 
+  // store dial pointer for level updates
+  g_object_set_data(G_OBJECT(data->vbox), "dial", data->dial);
+
   return data->vbox;
+}
+
+GtkWidget *get_gain_dial(GtkWidget *gain_widget) {
+  return g_object_get_data(G_OBJECT(gain_widget), "dial");
 }

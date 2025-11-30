@@ -17,5 +17,9 @@ GtkWidget *make_gain_alsa_elem(
   struct alsa_elem *elem,
   int               zero_is_off,
   int               taper_type,
-  int               can_control
+  int               can_control,
+  gboolean          show_level
 );
+
+// Get the dial widget from a gain widget container (for level updates)
+GtkWidget *get_gain_dial(GtkWidget *gain_widget);

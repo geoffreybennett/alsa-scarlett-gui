@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "glow.h"
 #include "gtkhelper.h"
 #include "iface-mixer.h"
 #include "routing-lines.h"
@@ -19,6 +20,26 @@
 #include "window-routing.h"
 #include "window-startup.h"
 #include "window-configuration.h"
+
+// find the routing sink for a hardware output by port number
+static struct routing_snk *get_output_r_snk(
+  struct alsa_card *card,
+  int               port_num
+) {
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    struct alsa_elem *elem = r_snk->elem;
+
+    if (elem->port_category != PC_HW)
+      continue;
+
+    if (elem->lr_num == port_num)
+      return r_snk;
+  }
+  return NULL;
+}
 
 static void add_clock_source_control(
   struct alsa_card *card,
@@ -525,14 +546,35 @@ static void create_input_link_control(
 }
 
 static void create_input_gain_control(
+  struct alsa_card *card,
   struct alsa_elem *elem,
   GtkWidget        *grid,
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_gain_alsa_elem(elem, 0, WIDGET_GAIN_TAPER_LINEAR, 1);
+  GtkWidget *w = make_gain_alsa_elem(elem, 0, WIDGET_GAIN_TAPER_LINEAR, 1, TRUE);
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+
+  // find the routing source for this input's port number
+  // input gains correspond to hardware inputs (PC_HW)
+  struct routing_src *r_src = NULL;
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (src->port_category == PC_HW && src->port_num == elem->lr_num - 1) {
+      r_src = src;
+      break;
+    }
+  }
+
+  // store widget in card's list
+  struct input_gain_widget *ig = g_malloc(sizeof(struct input_gain_widget));
+  ig->widget = w;
+  ig->port_num = elem->lr_num;
+  ig->r_src = r_src;
+  card->input_gain_widgets = g_list_append(card->input_gain_widgets, ig);
 }
 
 static void create_input_autogain_control(
@@ -757,6 +799,36 @@ static void create_input_controls_by_type(
     (*current_row)++;
 }
 
+// variant that passes card to the callback
+static void create_input_controls_by_type_with_card(
+  struct alsa_card *card,
+  GPtrArray *elems,
+  GtkWidget *grid,
+  int *current_row,
+  char *control,
+  void (*create_func)(struct alsa_card *, struct alsa_elem *, GtkWidget *, int, int)
+) {
+  int count = 0;
+
+  for (int i = 0; i < elems->len; i++) {
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
+
+    if (!elem->card)
+      continue;
+
+    if (!strstr(elem->name, control))
+      continue;
+
+    int column_num = get_num_from_string(elem->name) - 1;
+    create_func(card, elem, grid, *current_row, column_num);
+
+    count++;
+  }
+
+  if (count)
+    (*current_row)++;
+}
+
 static void create_input_controls(
   struct alsa_card *card,
   GtkWidget        *top,
@@ -829,8 +901,8 @@ static void create_input_controls(
     elems, input_grid, &current_row,
     "Link Capture Switch", create_input_link_control
   );
-  create_input_controls_by_type(
-    elems, input_grid, &current_row,
+  create_input_controls_by_type_with_card(
+    card, elems, input_grid, &current_row,
     "Gain Capture Volume", create_input_gain_control
   );
   create_input_controls_by_type(
@@ -991,7 +1063,7 @@ static void create_output_controls(
     if (strcmp(elem->name, "Master Playback Volume") == 0) {
       GtkWidget *l = gtk_label_new("Master");
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
-      w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0);
+      w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0, FALSE);
       gtk_widget_set_tooltip_text(w, "Master Volume Control");
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
 
@@ -1000,11 +1072,20 @@ static void create_output_controls(
                strncmp(elem->name, "Analogue", 8) == 0) {
 
       if (strstr(elem->name, "Playback Volume")) {
-        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 1);
+        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 1, TRUE);
         setup_output_volume_monitor_group(card, w, elem->lr_num);
         gtk_grid_attach(
           GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 1, 1, 1
         );
+
+        // store widget in card's list for level updates
+        struct routing_snk *r_snk = get_output_r_snk(card, elem->lr_num);
+        struct output_gain_widget *og = g_malloc(sizeof(struct output_gain_widget));
+        og->widget = w;
+        og->port_num = elem->lr_num;
+        og->r_snk = r_snk;
+        card->output_gain_widgets = g_list_append(card->output_gain_widgets, og);
+
       } else if (strstr(elem->name, "Playback Switch")) {
         w = make_boolean_alsa_elem(
           elem, "*audio-volume-high", "*audio-volume-muted"
@@ -1042,9 +1123,9 @@ static void create_output_controls(
       GtkWidget *l = gtk_label_new(gen4 ? "Line 1–2" : "HW");
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
       if (gen4) {
-        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0);
+        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0, FALSE);
       } else {
-        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0);
+        w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0, FALSE);
       }
       gtk_widget_set_tooltip_text(
         w,
@@ -1064,7 +1145,7 @@ static void create_output_controls(
         "This control shows the setting of the headphone volume knob."
       );
       gtk_grid_attach(GTK_GRID(output_grid), l, 1, 0, 1, 1);
-      w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0);
+      w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0, FALSE);
       gtk_grid_attach(GTK_GRID(output_grid), w, 1, 1, 1, 1);
     } else if (strcmp(elem->name, "Mute Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
@@ -1258,6 +1339,19 @@ static void create_scrollable_window(GtkWidget *window, GtkWidget *controls) {
 }
 
 GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
+
+  // clear any existing input gain widgets from previous interface
+  for (GList *l = card->input_gain_widgets; l != NULL; l = l->next)
+    g_free(l->data);
+  g_list_free(card->input_gain_widgets);
+  card->input_gain_widgets = NULL;
+
+  // clear any existing output gain widgets from previous interface
+  for (GList *l = card->output_gain_widgets; l != NULL; l = l->next)
+    g_free(l->data);
+  g_list_free(card->output_gain_widgets);
+  card->output_gain_widgets = NULL;
+
   card->has_speaker_switching =
     get_elem_by_name(card->elems, "Speaker Switching Playback Enum") ||
     get_elem_by_name(card->elems, "Speaker Switching Playback Switch");
