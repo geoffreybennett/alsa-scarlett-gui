@@ -1407,7 +1407,8 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
         data.main_trim_elem,
         0,                       // zero_is_off
         WIDGET_GAIN_TAPER_LINEAR,
-        1                        // can_control
+        1,                       // can_control
+        FALSE                    // show_level
       );
       gtk_widget_set_size_request(main_trim, 40, 80);
       gtk_widget_set_hexpand(main_trim, FALSE);
@@ -1479,7 +1480,8 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
         data.alt_trim_elem,
         0,                       // zero_is_off
         WIDGET_GAIN_TAPER_LINEAR,
-        1                        // can_control
+        1,                       // can_control
+        FALSE                    // show_level
       );
       gtk_widget_set_size_request(alt_trim, 40, 80);
       gtk_widget_set_hexpand(alt_trim, FALSE);
@@ -1839,7 +1841,7 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     gtk_widget_set_margin_bottom(group_tab_content, 20);
 
     GtkWidget *group_help = gtk_label_new(
-      "Monitor groups let you organise outputs (speakers, headphones) into Main and Alt sets.\n"
+      "Monitor groups let you organise your outputs into Main and Alt sets.\n"
       "Switch between them using the Alt button on your interface or the toggle in the main window.\n"
       "The main volume knob controls the enabled group; use Trim for per-output level calibration.\n\n"
       "Examples:\n"

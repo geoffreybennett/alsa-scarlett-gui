@@ -122,14 +122,8 @@ static void draw_mixer_glow(
   }
 }
 
-// Structure to store mixer gain widget and its coordinates
-struct mixer_gain_widget {
-  GtkWidget *widget;
-  int mix_num;    // 0-based mix number (A=0, B=1, etc.)
-  int input_num;  // 0-based input number
-};
-
 // mixer_gain_widgets is stored in card->mixer_gain_widgets
+// struct mixer_gain_widget is declared in window-mixer.h
 
 static void mixer_gain_enter(
   GtkEventControllerMotion *controller,
@@ -357,28 +351,30 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
       continue;
     }
 
-    // create the gain control
-    GtkWidget *w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0);
-
-    // store widget reference so it stays alive when removed from grid
-    g_object_ref(w);
-
-    // store widget in card's list with coordinates
-    struct mixer_gain_widget *mg = g_malloc(sizeof(struct mixer_gain_widget));
-    mg->widget = w;
-    mg->mix_num = mix_num;
-    mg->input_num = input_num;
-    card->mixer_gain_widgets = g_list_append(card->mixer_gain_widgets, mg);
-
-    // attach to the grid initially (will be rebuilt later)
-    gtk_grid_attach(GTK_GRID(mixer_top), w, input_num + 1, mix_num + 2, 1, 1);
-
     // look up the r_snk entry for the mixer input number
     struct routing_snk *r_snk = get_mixer_r_snk(card, input_num + 1);
     if (!r_snk) {
       printf("missing mixer input %d\n", input_num);
       continue;
     }
+
+    // create the gain control with level display enabled
+    GtkWidget *w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0, TRUE);
+
+    // store widget reference so it stays alive when removed from grid
+    g_object_ref(w);
+
+    // store widget in card's list with coordinates and routing info
+    struct mixer_gain_widget *mg = g_malloc(sizeof(struct mixer_gain_widget));
+    mg->widget = w;
+    mg->mix_num = mix_num;
+    mg->input_num = input_num;
+    mg->r_snk = r_snk;
+    mg->elem = elem;
+    card->mixer_gain_widgets = g_list_append(card->mixer_gain_widgets, mg);
+
+    // attach to the grid initially (will be rebuilt later)
+    gtk_grid_attach(GTK_GRID(mixer_top), w, input_num + 1, mix_num + 2, 1, 1);
 
     // Store label references in the gain widget for hover effect
     g_object_set_data(G_OBJECT(w), "mix_label_left", mix_labels_left[mix_num]);
