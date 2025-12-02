@@ -9,19 +9,30 @@ with the big Scarlett 4th Gen interfaces:
 
 ### FCP Driver
 
-The big 4th Gen interfaces are supported by a new “FCP” (Focusrite
-Control Protocol) driver introduced in Linux 6.14. If you haven’t
+The big 4th Gen interfaces are supported by a new "FCP" (Focusrite
+Control Protocol) driver introduced in Linux 6.14. If you haven't
 installed
 [fcp-support](https://github.com/geoffreybennett/fcp-support) yet, you
-need to do that (and update the firmware) before you can use
-alsa-scarlett-gui.
+need to do that before you can use alsa-scarlett-gui.
+
+The current `master` branch of alsa-scarlett-gui requires the 2403
+firmware version available at
+[scarlett4-firmware](https://github.com/geoffreybennett/scarlett4-firmware).
+Alternatively, use the alsa-scarlett-gui `2464` branch which supports
+the latest firmware (see below).
 
 > [!IMPORTANT]
-> The latest firmware version for these interfaces is not yet suppported
-> by the driver. For now, you'll have to install the version in the
-> [scarlett4-firmware](https://github.com/geoffreybennett/scarlett4-firmware)
-> repo using `fcp-tool`. See [#169](https://github.com/geoffreybennett/alsa-scarlett-gui/issues/169)
-> for more details.
+> Support for the latest firmware version (2464) from Focusrite is now
+> available for testing. To try it out, install:
+>
+> - [fcp-support](https://github.com/geoffreybennett/fcp-support) `2464` branch
+> - [scarlett4-firmware](https://github.com/geoffreybennett/scarlett4-firmware) `master` branch
+> - [alsa-scarlett-gui](https://github.com/geoffreybennett/alsa-scarlett-gui) `2464` branch
+>
+> Then update to the 2464 firmware using `fcp-tool`. This enables full
+> functionality including monitor groups and (on the 18i20) 16 ADAT
+> channels. Please report any issues to
+> [#203](https://github.com/geoffreybennett/alsa-scarlett-gui/issues/203).
 
 ## Main Window
 
