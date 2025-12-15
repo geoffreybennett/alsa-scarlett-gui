@@ -213,6 +213,9 @@ struct alsa_elem {
   // for BYTES type elements
   void   *bytes_value;
   size_t  bytes_size;
+
+  // pending idle callback for change notification
+  guint pending_idle;
 };
 
 struct alsa_card {
@@ -275,6 +278,7 @@ struct alsa_card {
   double              drag_x, drag_y;
   int                 pending_ui_updates;
   gboolean            pending_ui_update_idle;
+  guint               levels_timer;
 };
 
 // flags for pending_ui_updates
