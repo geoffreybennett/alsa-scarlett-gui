@@ -34,12 +34,15 @@ struct levels {
   GtkWidget        *top;
   GtkGrid          *grid;
   GtkWidget        *meters[MAX_METERS];
-  guint             timer;
 };
 
 static int update_levels_controls(void *user_data) {
   struct levels *data = user_data;
   struct alsa_card *card = data->card;
+
+  // main window was closed, stop the timer
+  if (!card->window_main)
+    return G_SOURCE_REMOVE;
 
   struct alsa_elem *level_meter_elem = data->level_meter_elem;
 
@@ -184,9 +187,7 @@ static GtkWidget *add_count_label(GtkGrid *grid, int count) {
 }
 
 static void on_destroy(struct levels *data, GtkWidget *widget) {
-  if (data->timer)
-    g_source_remove(data->timer);
-
+  // timer is cancelled in card_destroy_callback before we get here
   g_free(data);
 }
 
@@ -286,7 +287,7 @@ static GtkWidget *create_levels_controls_with_labels(
     gtk_grid_attach(GTK_GRID(data->grid), l, col, 0, 1, 1);
   }
 
-  data->timer = g_timeout_add(50, update_levels_controls, data);
+  card->levels_timer = g_timeout_add(50, update_levels_controls, data);
   g_object_weak_ref(G_OBJECT(data->grid), (GWeakNotify)on_destroy, data);
 
   return data->top;
@@ -373,7 +374,7 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
   }
   data->level_meter_elem->count = elem_count;
 
-  data->timer = g_timeout_add(50, update_levels_controls, data);
+  card->levels_timer = g_timeout_add(50, update_levels_controls, data);
   g_object_weak_ref(G_OBJECT(grid), (GWeakNotify)on_destroy, data);
 
   return top;

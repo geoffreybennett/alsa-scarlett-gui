@@ -14,6 +14,7 @@
 #include "menu.h"
 #include "routing-lines.h"
 #include "window-iface.h"
+#include "window-mixer.h"
 #include "window-startup.h"
 #include "optional-controls.h"
 
@@ -96,6 +97,76 @@ static void update_window_titles(struct alsa_elem *elem, void *private) {
   g_free(title);
 }
 
+// Clean up gain widget lists
+static void cleanup_gain_widget_lists(struct alsa_card *card) {
+  for (GList *l = card->input_gain_widgets; l != NULL; l = l->next)
+    g_free(l->data);
+  g_list_free(card->input_gain_widgets);
+  card->input_gain_widgets = NULL;
+
+  for (GList *l = card->output_gain_widgets; l != NULL; l = l->next)
+    g_free(l->data);
+  g_list_free(card->output_gain_widgets);
+  card->output_gain_widgets = NULL;
+
+  for (GList *l = card->mixer_gain_widgets; l != NULL; l = l->next) {
+    struct mixer_gain_widget *mg = l->data;
+    if (mg->widget)
+      g_object_unref(mg->widget);
+    g_free(mg);
+  }
+  g_list_free(card->mixer_gain_widgets);
+  card->mixer_gain_widgets = NULL;
+}
+
+// Clean up subwindows
+static void cleanup_subwindows(struct alsa_card *card) {
+  if (card->window_routing) {
+    gtk_window_destroy(GTK_WINDOW(card->window_routing));
+    card->window_routing = NULL;
+  }
+  if (card->window_mixer) {
+    gtk_window_destroy(GTK_WINDOW(card->window_mixer));
+    card->window_mixer = NULL;
+  }
+  if (card->window_levels) {
+    gtk_window_destroy(GTK_WINDOW(card->window_levels));
+    card->window_levels = NULL;
+  }
+  if (card->window_configuration) {
+    gtk_window_destroy(GTK_WINDOW(card->window_configuration));
+    card->window_configuration = NULL;
+  }
+  if (card->window_startup) {
+    gtk_window_destroy(GTK_WINDOW(card->window_startup));
+    card->window_startup = NULL;
+  }
+  if (card->window_modal) {
+    gtk_window_destroy(GTK_WINDOW(card->window_modal));
+    card->window_modal = NULL;
+  }
+}
+
+// Handle main window close - clean up before window is destroyed
+static gboolean main_window_close_request(GtkWindow *w, gpointer data) {
+  struct alsa_card *card = data;
+
+  // set to NULL first so timer callbacks can detect cleanup is happening
+  card->window_main = NULL;
+
+  // cancel the levels timer before destroying windows
+  if (card->levels_timer) {
+    g_source_remove(card->levels_timer);
+    card->levels_timer = 0;
+  }
+
+  routing_levels_cleanup(card);
+  cleanup_gain_widget_lists(card);
+  cleanup_subwindows(card);
+
+  return FALSE;
+}
+
 void create_card_window(struct alsa_card *card) {
   if (no_cards_window) {
     gtk_window_destroy(GTK_WINDOW(no_cards_window));
@@ -126,6 +197,11 @@ void create_card_window(struct alsa_card *card) {
     char *title = get_card_window_title(card);
     gtk_window_set_title(GTK_WINDOW(card->window_main), title);
     g_free(title);
+
+    g_signal_connect(
+      card->window_main, "close-request",
+      G_CALLBACK(main_window_close_request), card
+    );
 
     gtk_window_set_child(GTK_WINDOW(card->window_main), card->window_main_contents);
     gtk_widget_set_visible(card->window_main, TRUE);
@@ -192,6 +268,11 @@ void create_card_window(struct alsa_card *card) {
   gtk_window_set_title(GTK_WINDOW(card->window_main), title);
   g_free(title);
 
+  g_signal_connect(
+    card->window_main, "close-request",
+    G_CALLBACK(main_window_close_request), card
+  );
+
   gtk_application_window_set_show_menubar(
     GTK_APPLICATION_WINDOW(card->window_main), TRUE
   );
@@ -222,23 +303,15 @@ void create_no_card_window(void) {
 }
 
 void destroy_card_window(struct alsa_card *card) {
-  // clean up routing levels timer before destroying windows
+  // clean up first (close-request is not emitted by gtk_window_destroy,
+  // only by user-initiated close)
   routing_levels_cleanup(card);
+  cleanup_gain_widget_lists(card);
+  cleanup_subwindows(card);
 
-  // remove the windows
-  gtk_window_destroy(GTK_WINDOW(card->window_main));
-  if (card->window_routing)
-    gtk_window_destroy(GTK_WINDOW(card->window_routing));
-  if (card->window_mixer)
-    gtk_window_destroy(GTK_WINDOW(card->window_mixer));
-  if (card->window_levels)
-    gtk_window_destroy(GTK_WINDOW(card->window_levels));
-  if (card->window_configuration)
-    gtk_window_destroy(GTK_WINDOW(card->window_configuration));
-  if (card->window_startup)
-    gtk_window_destroy(GTK_WINDOW(card->window_startup));
-  if (card->window_modal) {
-    gtk_window_destroy(GTK_WINDOW(card->window_modal));
+  if (card->window_main) {
+    gtk_window_destroy(GTK_WINDOW(card->window_main));
+    card->window_main = NULL;
   }
 
   // if last window, display the "no card found" blank window

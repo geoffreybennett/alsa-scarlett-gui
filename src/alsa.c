@@ -391,6 +391,7 @@ const void *alsa_get_elem_bytes(struct alsa_elem *elem, size_t *size) {
 // idle callback to trigger element change
 static gboolean alsa_elem_change_idle(gpointer user_data) {
   struct alsa_elem *elem = user_data;
+  elem->pending_idle = 0;
   alsa_elem_change(elem);
   return G_SOURCE_REMOVE;
 }
@@ -413,7 +414,8 @@ void alsa_set_elem_bytes(struct alsa_elem *elem, const void *data, size_t size) 
     elem->count = size;  // update actual length
 
     // schedule callback from idle to avoid GTK warnings
-    g_idle_add(alsa_elem_change_idle, elem);
+    if (!elem->pending_idle)
+      elem->pending_idle = g_idle_add(alsa_elem_change_idle, elem);
     return;
   }
 
@@ -951,6 +953,12 @@ void alsa_elem_change(struct alsa_elem *elem) {
 static void card_destroy_callback(void *data) {
   struct alsa_card *card = data;
 
+  // cancel the levels timer first to prevent it firing with freed data
+  if (card->levels_timer) {
+    g_source_remove(card->levels_timer);
+    card->levels_timer = 0;
+  }
+
   // close the windows associated with this card
   destroy_card_window(card);
 
@@ -970,6 +978,10 @@ static void card_destroy_callback(void *data) {
         free(cb);
       }
       g_list_free(elem->callbacks);
+
+      // cancel pending idle callback
+      if (elem->pending_idle)
+        g_source_remove(elem->pending_idle);
 
       // free element data
       if (elem->name)
