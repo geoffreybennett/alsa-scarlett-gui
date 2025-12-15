@@ -41,6 +41,10 @@ static int update_levels_controls(void *user_data) {
   struct levels *data = user_data;
   struct alsa_card *card = data->card;
 
+  // main window was closed, stop the timer
+  if (!card->window_main)
+    return G_SOURCE_REMOVE;
+
   struct alsa_elem *level_meter_elem = data->level_meter_elem;
 
   // check which windows need updates
