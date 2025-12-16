@@ -45,7 +45,7 @@ static void add_clock_source_control(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   struct alsa_elem *clock_source = get_elem_by_prefix(elems, "Clock Source");
 
@@ -78,7 +78,7 @@ static void add_sync_status_control(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   struct alsa_elem *sync_status = get_elem_by_name(elems, "Sync Status");
 
@@ -119,7 +119,7 @@ static void add_power_status_control(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   struct alsa_elem *power_status = get_elem_by_name(
     elems, "Power Status Card Enum"
@@ -173,7 +173,7 @@ static void add_speaker_switching_controls_enum(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   struct alsa_elem *speaker_switching = get_elem_by_name(
     elems, "Speaker Switching Playback Enum"
@@ -201,7 +201,7 @@ static void add_speaker_switching_controls_switches(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   struct alsa_elem *enable = get_elem_by_name(
     elems, "Speaker Switching Playback Switch"
@@ -262,7 +262,7 @@ static void add_speaker_switching_controls_gen4(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   // Check if this is Gen 4 (has Main/Alt Group controls)
   struct alsa_elem *main_group = get_elem_by_prefix(
@@ -415,7 +415,7 @@ static void add_talkback_controls_enum(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   struct alsa_elem *talkback = get_elem_by_name(
     elems, "Talkback Playback Enum"
@@ -444,7 +444,7 @@ static void add_talkback_controls_switches(
   struct alsa_card *card,
   GtkWidget        *global_controls
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   struct alsa_elem *enable = get_elem_by_name(
     elems, "Talkback Enable Playback Switch"
@@ -500,7 +500,7 @@ static GtkWidget *create_global_box(GtkWidget *grid, int *x, int orient) {
 
 /* 4th Gen Solo Mix switch */
 static void create_input_select_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *input_grid,
   int       *current_row
 ) {
@@ -766,7 +766,7 @@ static void create_input_phantom_control(
 }
 
 static void create_input_controls_by_type(
-  GArray *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int *current_row,
   char *control,
@@ -775,7 +775,7 @@ static void create_input_controls_by_type(
   int count = 0;
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     // if no card entry, it's an empty slot
     if (!elem->card)
@@ -802,7 +802,7 @@ static void create_input_controls_by_type(
 // variant that passes card to the callback
 static void create_input_controls_by_type_with_card(
   struct alsa_card *card,
-  GArray *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int *current_row,
   char *control,
@@ -811,7 +811,7 @@ static void create_input_controls_by_type_with_card(
   int count = 0;
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -835,7 +835,7 @@ static void create_input_controls(
   int              *x,
   int              input_count
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   // Only the 18i20 Gen 2 has no input controls
   if (!input_count)
@@ -973,7 +973,7 @@ static void create_output_controls(
   int              x_span,
   int              output_count
 ) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 
@@ -1050,7 +1050,7 @@ static void create_output_controls(
   }
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
     GtkWidget *w;
 
     // if no card entry, it's an empty slot

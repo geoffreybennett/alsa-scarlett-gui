@@ -226,7 +226,7 @@ struct alsa_card {
   int                 best_firmware_version;
   snd_ctl_t          *handle;
   struct pollfd       pfd;
-  GArray             *elems;
+  GPtrArray          *elems;
   struct alsa_elem   *sample_capture_elem;
   struct alsa_elem   *level_meter_elem;
   double             *routing_levels;
@@ -285,11 +285,11 @@ struct alsa_card {
 void fatal_alsa_error(const char *msg, int err);
 
 // locate elements or get information about them
-struct alsa_elem *get_elem_by_name(GArray *elems, const char *name);
-struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix);
-struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr);
+struct alsa_elem *get_elem_by_name(GPtrArray *elems, const char *name);
+struct alsa_elem *get_elem_by_prefix(GPtrArray *elems, const char *prefix);
+struct alsa_elem *get_elem_by_substr(GPtrArray *elems, const char *substr);
 int get_max_elem_by_name(
-  GArray *elems,
+  GPtrArray *elems,
   const char *prefix,
   const char *needle
 );
@@ -335,7 +335,6 @@ struct alsa_card *card_create(int card_num);
 // parse elements (used by alsa-sim.c)
 void alsa_set_lr_nums(struct alsa_card *card);
 void alsa_get_routing_controls(struct alsa_card *card);
-void refresh_routing_elem_pointers(struct alsa_card *card);
 
 // init
 void alsa_init(void);

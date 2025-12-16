@@ -418,9 +418,10 @@ static int alsa_config_to_new_elem(
     if (count > 1)
       elem.value = int_values[i];
 
-    int array_len = card->elems->len;
-    g_array_set_size(card->elems, array_len + 1);
-    g_array_index(card->elems, struct alsa_elem, array_len) = elem;
+    // allocate new element and copy data
+    struct alsa_elem *new_elem = malloc(sizeof(struct alsa_elem));
+    *new_elem = elem;
+    g_ptr_array_add(card->elems, new_elem);
   }
 
   free(iface);
@@ -515,9 +516,6 @@ void create_sim_from_file(GtkWindow *w, char *fn) {
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
   optional_controls_init(card);
-  // refresh routing_snk elem pointers after adding simulated elements
-  // (which may have caused card->elems array to be reallocated)
-  refresh_routing_elem_pointers(card);
   custom_names_init(card);
   port_enable_init(card);
 

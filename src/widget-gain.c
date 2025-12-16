@@ -115,7 +115,7 @@ static void gain_updated(
 // later enabled again.
 static void find_direct_monitor_controls(struct gain *data) {
   struct alsa_elem *elem = data->elem;
-  GArray *elems = elem->card->elems;
+  GPtrArray *elems = elem->card->elems;
 
   // Card has no direct monitor control?
   struct alsa_elem *direct_monitor_elem = get_elem_by_prefix(

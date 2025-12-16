@@ -67,9 +67,9 @@ void fatal_alsa_error(const char *msg, int err) {
 //
 
 // return the element with the exact matching name
-struct alsa_elem *get_elem_by_name(GArray *elems, const char *name) {
+struct alsa_elem *get_elem_by_name(GPtrArray *elems, const char *name) {
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -82,11 +82,11 @@ struct alsa_elem *get_elem_by_name(GArray *elems, const char *name) {
 }
 
 // return the first element with a name starting with the given prefix
-struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix) {
+struct alsa_elem *get_elem_by_prefix(GPtrArray *elems, const char *prefix) {
   int prefix_len = strlen(prefix);
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -99,9 +99,9 @@ struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix) {
 }
 
 // return the first element with a name containing the given substring
-struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr) {
+struct alsa_elem *get_elem_by_substr(GPtrArray *elems, const char *substr) {
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -119,7 +119,7 @@ struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr) {
 // will return 8 when the last pad capture switch is
 // "Line In 8 Pad Capture Switch"
 int get_max_elem_by_name(
-  GArray *elems,
+  GPtrArray *elems,
   const char *prefix,
   const char *needle
 ) {
@@ -127,7 +127,7 @@ int get_max_elem_by_name(
   int l = strlen(prefix);
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
     int num;
 
     if (!elem->card)
@@ -433,35 +433,32 @@ struct alsa_elem *alsa_create_optional_elem(
   int               type,
   size_t            max_size
 ) {
-  // create a new element
-  struct alsa_elem new_elem = { 0 };
+  // allocate new element
+  struct alsa_elem *elem = calloc(1, sizeof(struct alsa_elem));
 
-  new_elem.card = card;
-  new_elem.numid = 0;  // simulated elements have no numid
-  new_elem.name = strdup(name);
-  new_elem.type = type;
-  new_elem.count = 1;
-  new_elem.index = 0;
+  elem->card = card;
+  elem->numid = 0;  // simulated elements have no numid
+  elem->name = strdup(name);
+  elem->type = type;
+  elem->count = 1;
+  elem->index = 0;
 
   // mark as simulated
-  new_elem.is_simulated = 1;
-  new_elem.is_writable = 1;
-  new_elem.is_volatile = 0;
+  elem->is_simulated = 1;
+  elem->is_writable = 1;
+  elem->is_volatile = 0;
 
   // for BYTES elements, allocate buffer at max size
   if (type == SND_CTL_ELEM_TYPE_BYTES) {
-    new_elem.bytes_value = malloc(max_size);
-    new_elem.count = 0;  // actual length, starts at 0
-    new_elem.bytes_size = max_size;  // max capacity
+    elem->bytes_value = malloc(max_size);
+    elem->count = 0;  // actual length, starts at 0
+    elem->bytes_size = max_size;  // max capacity
   }
 
   // add to card->elems array
-  int array_len = card->elems->len;
-  g_array_set_size(card->elems, array_len + 1);
-  g_array_index(card->elems, struct alsa_elem, array_len) = new_elem;
+  g_ptr_array_add(card->elems, elem);
 
-  // return pointer to the new element
-  return &g_array_index(card->elems, struct alsa_elem, array_len);
+  return elem;
 }
 
 //
@@ -620,9 +617,10 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
   for (int i = 0; i < count; i++, alsa_elem.lr_num++) {
     alsa_elem.index = i;
 
-    int array_len = card->elems->len;
-    g_array_set_size(card->elems, array_len + 1);
-    g_array_index(card->elems, struct alsa_elem, array_len) = alsa_elem;
+    // allocate new element and copy data
+    struct alsa_elem *elem = malloc(sizeof(struct alsa_elem));
+    *elem = alsa_elem;
+    g_ptr_array_add(card->elems, elem);
   }
 }
 
@@ -672,7 +670,7 @@ static void alsa_set_elem_lr_num(struct alsa_elem *elem) {
 
 void alsa_set_lr_nums(struct alsa_card *card) {
   for (int i = 0; i < card->elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
     alsa_set_elem_lr_num(elem);
   }
@@ -768,13 +766,13 @@ static int is_elem_routing_snk(struct alsa_elem *elem) {
 }
 
 static void get_routing_snks(struct alsa_card *card) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   int count = 0;
 
   // count and label routing snks
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -829,7 +827,7 @@ static void get_routing_snks(struct alsa_card *card) {
   int j = 0;
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->is_routing_snk)
       continue;
@@ -871,44 +869,6 @@ static void get_routing_snks(struct alsa_card *card) {
   }
 
   assert(j == count);
-}
-
-// Refresh routing_snk elem pointers after card->elems array may have been
-// reallocated. Routing snks only point to real ALSA elements which have
-// is_routing_snk=1 and matching port info.
-void refresh_routing_elem_pointers(struct alsa_card *card) {
-  if (!card->routing_snks)
-    return;
-
-  // refresh routing_snk elem pointers
-  for (int i = 0; i < card->routing_snks->len; i++) {
-    struct routing_snk *snk = &g_array_index(
-      card->routing_snks, struct routing_snk, i
-    );
-
-    // find the element by is_routing_snk flag and matching idx
-    int old_port_num = snk->idx;  // use idx as a temporary match key
-    snk->elem = NULL;
-
-    // find the routing snk element by counting through is_routing_snk elements
-    int j_count = 0;
-    for (int j = 0; j < card->elems->len; j++) {
-      struct alsa_elem *elem = &g_array_index(
-        card->elems, struct alsa_elem, j
-      );
-      if (elem->is_routing_snk) {
-        if (j_count == old_port_num) {
-          snk->elem = elem;
-          break;
-        }
-        j_count++;
-      }
-    }
-
-    if (!snk->elem) {
-      fprintf(stderr, "Failed to refresh elem pointer for routing snk %d\n", i);
-    }
-  }
 }
 
 // Build lookup table mapping monitor group source enum values to routing
@@ -997,7 +957,7 @@ static void card_destroy_callback(void *data) {
   // free all elements and their callbacks
   if (card->elems) {
     for (int i = 0; i < card->elems->len; i++) {
-      struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+      struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
       // free callback list
       for (GList *l = elem->callbacks; l; l = l->next) {
@@ -1026,8 +986,11 @@ static void card_destroy_callback(void *data) {
           free(elem->item_names[j]);
         free(elem->item_names);
       }
+
+      // free the element struct itself
+      free(elem);
     }
-    g_array_free(card->elems, TRUE);
+    g_ptr_array_free(card->elems, TRUE);
   }
 
   // free routing arrays
@@ -1082,9 +1045,6 @@ static void complete_card_init(struct alsa_card *card) {
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
   optional_controls_init(card);
-  // refresh routing_snk elem pointers after adding simulated elements
-  // (which may have caused card->elems array to be reallocated)
-  refresh_routing_elem_pointers(card);
   custom_names_init(card);
   port_enable_init(card);
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
@@ -1198,7 +1158,7 @@ static gboolean alsa_card_callback(
     return 1;
 
   for (int i = 0; i < card->elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
     if (elem->numid == numid)
       alsa_elem_change(elem);
@@ -1246,7 +1206,7 @@ struct alsa_card *card_create(int card_num) {
   *card_ptr = calloc(1, sizeof(struct alsa_card));
   struct alsa_card *card = *card_ptr;
   card->num = card_num;
-  card->elems = g_array_new(FALSE, TRUE, sizeof(struct alsa_elem));
+  card->elems = g_ptr_array_new();
 
   return card;
 }

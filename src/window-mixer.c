@@ -239,7 +239,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   // lower the glow below the grid by reordering
   gtk_widget_insert_before(card->mixer_glow, mixer_overlay, mixer_top);
 
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   GtkWidget *mix_labels_left[MAX_MIX_OUT];
   GtkWidget *mix_labels_right[MAX_MIX_OUT];
@@ -324,7 +324,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
   // go through each element and create the mixer
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     // if no card entry, it's an empty slot
     if (!elem->card)
