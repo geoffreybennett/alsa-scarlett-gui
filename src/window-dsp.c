@@ -43,6 +43,13 @@ struct filter_stage {
   int                  band_index;
 };
 
+// Data for connecting filter stages to a response widget
+#define MAX_FILTER_STAGES 8
+struct filter_response_stages {
+  struct filter_stage *stages[MAX_FILTER_STAGES];
+  int                  num_stages;
+};
+
 static void int_slider_changed(GtkRange *range, struct int_slider *data) {
   int value = (int)gtk_range_get_value(range);
   alsa_set_elem_value(data->elem, value);
@@ -265,6 +272,63 @@ static double q_to_slider(double q) {
   return (log_q - log_min) / (log_max - log_min) * 1000.0;
 }
 
+// Forward declarations for response_filter_changed callback
+static void filter_stage_update_coeffs(struct filter_stage *stage);
+static void format_freq_label(GtkWidget *label, double freq);
+static void filter_freq_changed(GtkRange *range, struct filter_stage *stage);
+static void filter_q_changed(GtkRange *range, struct filter_stage *stage);
+static void filter_gain_changed(GtkRange *range, struct filter_stage *stage);
+
+// Callback for filter-changed signal from response widget
+static void response_filter_changed(
+  GtkFilterResponse           *response,
+  int                          band,
+  const struct biquad_params  *params,
+  struct filter_response_stages *data
+) {
+  if (band < 0 || band >= data->num_stages)
+    return;
+
+  struct filter_stage *stage = data->stages[band];
+  if (!stage)
+    return;
+
+  // Update stage params
+  stage->params.freq = params->freq;
+  stage->params.q = params->q;
+  stage->params.gain_db = params->gain_db;
+
+  // Update sliders (block signals to avoid feedback loop)
+  g_signal_handlers_block_by_func(stage->freq_scale, filter_freq_changed, stage);
+  g_signal_handlers_block_by_func(stage->q_scale, filter_q_changed, stage);
+  g_signal_handlers_block_by_func(stage->gain_scale, filter_gain_changed, stage);
+
+  gtk_range_set_value(GTK_RANGE(stage->freq_scale), freq_to_slider(params->freq));
+  gtk_range_set_value(GTK_RANGE(stage->q_scale), q_to_slider(params->q));
+  gtk_range_set_value(GTK_RANGE(stage->gain_scale), params->gain_db);
+
+  g_signal_handlers_unblock_by_func(stage->freq_scale, filter_freq_changed, stage);
+  g_signal_handlers_unblock_by_func(stage->q_scale, filter_q_changed, stage);
+  g_signal_handlers_unblock_by_func(stage->gain_scale, filter_gain_changed, stage);
+
+  // Update labels
+  format_freq_label(stage->freq_label, params->freq);
+
+  char text[16];
+  snprintf(text, sizeof(text), "%.2f", params->q);
+  gtk_label_set_text(GTK_LABEL(stage->q_label), text);
+
+  snprintf(text, sizeof(text), "%+.1f dB", params->gain_db);
+  gtk_label_set_text(GTK_LABEL(stage->gain_label), text);
+
+  // Update hardware
+  filter_stage_update_coeffs(stage);
+}
+
+static void filter_response_stages_destroy(struct filter_response_stages *data) {
+  g_free(data);
+}
+
 static void filter_stage_destroy(struct filter_stage *stage) {
   g_free(stage);
 }
@@ -290,13 +354,16 @@ static void filter_stage_leave(
 
 // Create controls for one filter stage
 static GtkWidget *make_filter_stage(
-  struct alsa_elem  *coeff_elem,
-  int                band_index,
-  GtkFilterResponse *response,
-  const char        *label_text,
-  BiquadFilterType   default_type
+  struct alsa_elem   *coeff_elem,
+  int                 band_index,
+  GtkFilterResponse  *response,
+  const char         *label_text,
+  BiquadFilterType    default_type,
+  struct filter_stage **stage_out
 ) {
   struct filter_stage *stage = g_malloc0(sizeof(struct filter_stage));
+  if (stage_out)
+    *stage_out = stage;
   stage->coeff_elem = coeff_elem;
   stage->band_index = band_index;
   stage->response = response;
@@ -540,6 +607,10 @@ static void add_channel_controls(
     enable_switch_updated(precomp_enable, en_data);
 
     // Filter stages
+    struct filter_response_stages *precomp_stages = g_malloc0(
+      sizeof(struct filter_response_stages)
+    );
+
     for (int i = 1; i <= 2; i++) {
       name = g_strdup_printf("%sPre-Comp Coefficients %d", prefix, i);
       elem = get_elem_by_name(elems, name);
@@ -548,12 +619,22 @@ static void add_channel_controls(
       if (elem) {
         char stage_label[16];
         snprintf(stage_label, sizeof(stage_label), "Stage %d", i);
+        struct filter_stage *stage;
         w = make_filter_stage(
-          elem, i - 1, precomp_response, stage_label, BIQUAD_TYPE_HIGHPASS
+          elem, i - 1, precomp_response, stage_label, BIQUAD_TYPE_HIGHPASS,
+          &stage
         );
+        precomp_stages->stages[i - 1] = stage;
+        precomp_stages->num_stages = i;
         gtk_box_append(GTK_BOX(precomp_box), w);
       }
     }
+
+    // Connect signal for drag updates
+    g_signal_connect(precomp_response, "filter-changed",
+                     G_CALLBACK(response_filter_changed), precomp_stages);
+    g_object_weak_ref(G_OBJECT(precomp_response_widget),
+                      (GWeakNotify)filter_response_stages_destroy, precomp_stages);
   }
 
   // === Compressor section ===
@@ -678,6 +759,10 @@ static void add_channel_controls(
     enable_switch_updated(peq_enable, en_data);
 
     // Filter bands
+    struct filter_response_stages *peq_stages = g_malloc0(
+      sizeof(struct filter_response_stages)
+    );
+
     for (int i = 1; i <= 3; i++) {
       name = g_strdup_printf("%sPEQ Coefficients %d", prefix, i);
       elem = get_elem_by_name(elems, name);
@@ -686,12 +771,22 @@ static void add_channel_controls(
       if (elem) {
         char band_label[16];
         snprintf(band_label, sizeof(band_label), "Band %d", i);
+        struct filter_stage *stage;
         w = make_filter_stage(
-          elem, i - 1, peq_response, band_label, BIQUAD_TYPE_PEAKING
+          elem, i - 1, peq_response, band_label, BIQUAD_TYPE_PEAKING,
+          &stage
         );
+        peq_stages->stages[i - 1] = stage;
+        peq_stages->num_stages = i;
         gtk_box_append(GTK_BOX(peq_box), w);
       }
     }
+
+    // Connect signal for drag updates
+    g_signal_connect(peq_response, "filter-changed",
+                     G_CALLBACK(response_filter_changed), peq_stages);
+    g_object_weak_ref(G_OBJECT(peq_response_widget),
+                      (GWeakNotify)filter_response_stages_destroy, peq_stages);
   }
 
   g_free(prefix);
