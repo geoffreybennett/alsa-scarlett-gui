@@ -879,14 +879,14 @@ static void draw_peak(GtkDial *dial, cairo_t *cr, double radius) {
   const double *colours = &dial->level_colours[i * 3];
 
   cairo_set_source_rgba_dim(
-    cr, colours[0], colours[1], colours[2], 0.5, dial->dim
+    cr, colours[0], colours[1], colours[2], 0.5, 0
   );
   cairo_set_line_width(cr, 2);
   cairo_arc(cr, dial->cx, dial->cy, radius, ANGLE_START, dial->peak_angle);
   cairo_stroke(cr);
 
   cairo_set_source_rgba_dim(
-    cr, colours[0], colours[1], colours[2], 1, dial->dim
+    cr, colours[0], colours[1], colours[2], 1, 0
   );
   cairo_set_line_width(cr, 4);
   cairo_arc(cr, dial->cx, dial->cy, radius, angle_start, dial->peak_angle);
@@ -910,7 +910,7 @@ static void show_peak_value(GtkDial *dial, cairo_t *cr) {
   int width, height;
   pango_layout_get_pixel_size(dial->peak_layout, &width, &height);
 
-  cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.5, dial->dim);
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.5, 0);
 
   cairo_move_to(
     cr,
@@ -935,7 +935,7 @@ static void draw_level_arc(
 
   if (!count) {
     cairo_arc(cr, dial->cx, dial->cy, radius, ANGLE_START, dial->level_angle);
-    cairo_set_source_rgba_dim(cr, 1, 1, 1, alpha, dial->dim);
+    cairo_set_source_rgba_dim(cr, 1, 1, 1, alpha, 0);
     cairo_stroke(cr);
     return;
   }
@@ -950,7 +950,7 @@ static void draw_level_arc(
       cr,
       colours[0], colours[1], colours[2],
       alpha,
-      dial->dim
+      0
     );
 
     cairo_arc(cr, dial->cx, dial->cy, radius, ANGLE_START, ANGLE_END);
@@ -965,7 +965,7 @@ static void draw_level_arc(
       cr,
       colours[0], colours[1], colours[2],
       alpha,
-      dial->dim
+      0
     );
 
     double angle_start = dial->level_breakpoint_angles[i];

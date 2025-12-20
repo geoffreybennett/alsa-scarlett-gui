@@ -11,16 +11,16 @@
 // Table of optional control definitions
 // These are controls that may or may not exist on the device
 // If they don't exist, we create simulated elements and persist values
+// Config key uses element name (ALSA-style naming)
 const struct optional_control_def optional_controls[] = {
   {
     .alsa_name = "Name",
-    .config_key = "name",
     .alsa_type = SND_CTL_ELEM_TYPE_BYTES,
     .max_size = 32,
-    .default_value = NULL,  // use card->name as default
+    .default_value = NULL,
     .type = OPTIONAL_CONTROL_NAME
   },
-  { NULL }  // terminator
+  { NULL }
 };
 
 // Callback structure to pass data to save callback
@@ -49,13 +49,19 @@ static void optional_control_changed(
       // only save if valid UTF-8
       if (str_len > 0 && g_utf8_validate((const char *)bytes, str_len, NULL)) {
         char *str = g_strndup((const char *)bytes, str_len);
-        optional_state_save(data->card, data->config_key, str);
+        optional_state_save(
+          data->card, CONFIG_SECTION_CONTROLS, data->config_key, str
+        );
         g_free(str);
       } else {
-        optional_state_save(data->card, data->config_key, "");
+        optional_state_save(
+          data->card, CONFIG_SECTION_CONTROLS, data->config_key, ""
+        );
       }
     } else {
-      optional_state_save(data->card, data->config_key, "");
+      optional_state_save(
+        data->card, CONFIG_SECTION_CONTROLS, data->config_key, ""
+      );
     }
   }
 }
@@ -82,8 +88,8 @@ void optional_controls_init(struct alsa_card *card) {
     return;
   }
 
-  // load existing state
-  GHashTable *state = optional_state_load(card);
+  // load existing state from [controls] section
+  GHashTable *state = optional_state_load(card, CONFIG_SECTION_CONTROLS);
   if (!state) {
     state = g_hash_table_new_full(
       g_str_hash, g_str_equal, g_free, g_free
@@ -115,25 +121,23 @@ void optional_controls_init(struct alsa_card *card) {
       continue;
     }
 
-    // load value from state file or use default
-    const char *value = g_hash_table_lookup(state, def->config_key);
+    // load value from state file (use element name as config key)
+    const char *value = g_hash_table_lookup(state, def->alsa_name);
 
-    if (!value && def->default_value) {
+    if (!value && def->default_value)
       value = def->default_value;
-    }
 
     // set the initial value
     if (value && *value) {
-      if (def->alsa_type == SND_CTL_ELEM_TYPE_BYTES) {
+      if (def->alsa_type == SND_CTL_ELEM_TYPE_BYTES)
         alsa_set_elem_bytes(elem, value, strlen(value));
-      }
     }
 
     // register callback to save state on changes
     struct optional_control_save_data *callback_data =
       g_malloc0(sizeof(struct optional_control_save_data));
     callback_data->card = card;
-    callback_data->config_key = g_strdup(def->config_key);
+    callback_data->config_key = g_strdup(def->alsa_name);
 
     alsa_elem_add_callback(
       elem, optional_control_changed, callback_data,

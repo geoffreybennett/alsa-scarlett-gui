@@ -81,7 +81,7 @@ static void on_tab_changed(
 
   char value[16];
   snprintf(value, sizeof(value), "%u", page_num);
-  optional_state_save(data->card, data->key, value);
+  optional_state_save(data->card, CONFIG_SECTION_UI, data->key, value);
 }
 
 // Free notebook tab data
@@ -95,8 +95,8 @@ static void setup_notebook_tab_persistence(
   struct alsa_card *card,
   const char       *key
 ) {
-  // Restore saved tab
-  GHashTable *state = optional_state_load(card);
+  // Restore saved tab from [ui] section
+  GHashTable *state = optional_state_load(card, CONFIG_SECTION_UI);
   if (state) {
     const char *value = g_hash_table_lookup(state, key);
     if (value) {
@@ -652,8 +652,10 @@ static void add_snk_enables_for_category(
         free_mixer_input_label_data
       );
     } else {
-      // For other categories, use display_name
-      label = gtk_label_new(snk->display_name);
+      // For other categories, use formatted default name
+      char *label_text = get_snk_default_name_formatted(snk);
+      label = gtk_label_new(label_text);
+      g_free(label_text);
     }
 
     gtk_widget_set_halign(label, GTK_ALIGN_START);
@@ -1126,8 +1128,13 @@ static void add_category_tab(
   );
 
   // Left column: Inputs (sinks - audio into the subsystem)
-  if (show_inputs && left_grid)
-    add_snk_names_for_category(card, left_grid, port_category, -1, left_col_data);
+  if (show_inputs && left_grid) {
+    // DSP inputs only get enable checkboxes (no custom names)
+    if (port_category == PC_DSP)
+      add_snk_enables_for_category(card, left_grid, port_category, -1, left_col_data, -1, -1);
+    else
+      add_snk_names_for_category(card, left_grid, port_category, -1, left_col_data);
+  }
 
   // Right column: Outputs (sources - audio from the subsystem)
   if (show_outputs && right_grid)

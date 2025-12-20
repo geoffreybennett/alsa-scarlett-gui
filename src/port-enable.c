@@ -27,7 +27,9 @@ static void port_enable_changed(
   long value = alsa_get_elem_value(elem);
 
   // save as "1" or "0"
-  optional_state_save(data->card, data->config_key, value ? "1" : "0");
+  optional_state_save(
+    data->card, CONFIG_SECTION_CONTROLS, data->config_key, value ? "1" : "0"
+  );
 }
 
 // Flush pending UI updates for a card
@@ -261,16 +263,18 @@ static char *get_src_enable_elem_name(struct routing_src *src) {
   switch (src->port_category) {
     case PC_HW:
       category_name = hw_type_names[src->hw_type];
-      return g_strdup_printf("%s In %d Enable", category_name, src->lr_num);
+      return g_strdup_printf(
+        "%s In %d Switch", category_name, src->lr_num
+      );
 
     case PC_PCM:
-      return g_strdup_printf("PCM In %d Enable", src->lr_num);
+      return g_strdup_printf("PCM Out %d Switch", src->lr_num);
 
     case PC_MIX:
-      return g_strdup_printf("Mix In %d Enable", src->lr_num);
+      return g_strdup_printf("Mixer Out %d Switch", src->lr_num);
 
     case PC_DSP:
-      return g_strdup_printf("DSP In %d Enable", src->lr_num);
+      return g_strdup_printf("DSP Out %d Switch", src->lr_num);
 
     default:
       return NULL;
@@ -286,65 +290,18 @@ static char *get_snk_enable_elem_name(struct routing_snk *snk) {
   switch (elem->port_category) {
     case PC_HW:
       category_name = hw_type_names[elem->hw_type];
-      return g_strdup_printf("%s Out %d Enable", category_name, elem->lr_num);
+      return g_strdup_printf(
+        "%s Out %d Switch", category_name, elem->lr_num
+      );
 
     case PC_PCM:
-      return g_strdup_printf("PCM Out %d Enable", elem->lr_num);
+      return g_strdup_printf("PCM In %d Switch", elem->lr_num);
 
     case PC_MIX:
-      return g_strdup_printf("Mix Out %d Enable", elem->lr_num);
+      return g_strdup_printf("Mixer In %d Switch", elem->lr_num);
 
     case PC_DSP:
-      return g_strdup_printf("DSP Out %d Enable", elem->lr_num);
-
-    default:
-      return NULL;
-  }
-}
-
-// Generate config key for a routing source
-// Returns newly allocated string that must be freed
-static char *get_src_enable_config_key(struct routing_src *src) {
-  const char *category_prefix = NULL;
-
-  switch (src->port_category) {
-    case PC_HW:
-      category_prefix = hw_type_names[src->hw_type];
-      return g_strdup_printf("%s_in_%d_enable", category_prefix, src->lr_num);
-
-    case PC_PCM:
-      return g_strdup_printf("pcm_in_%d_enable", src->lr_num);
-
-    case PC_MIX:
-      return g_strdup_printf("mix_in_%d_enable", src->lr_num);
-
-    case PC_DSP:
-      return g_strdup_printf("dsp_in_%d_enable", src->lr_num);
-
-    default:
-      return NULL;
-  }
-}
-
-// Generate config key for a routing sink
-// Returns newly allocated string that must be freed
-static char *get_snk_enable_config_key(struct routing_snk *snk) {
-  struct alsa_elem *elem = snk->elem;
-  const char *category_prefix = NULL;
-
-  switch (elem->port_category) {
-    case PC_HW:
-      category_prefix = hw_type_names[elem->hw_type];
-      return g_strdup_printf("%s_out_%d_enable", category_prefix, elem->lr_num);
-
-    case PC_PCM:
-      return g_strdup_printf("pcm_out_%d_enable", elem->lr_num);
-
-    case PC_MIX:
-      return g_strdup_printf("mix_out_%d_enable", elem->lr_num);
-
-    case PC_DSP:
-      return g_strdup_printf("dsp_out_%d_enable", elem->lr_num);
+      return g_strdup_printf("DSP In %d Switch", elem->lr_num);
 
     default:
       return NULL;
@@ -392,8 +349,8 @@ static void create_src_enable_elem(
 
   src->enable_elem = elem;
 
-  // generate config key
-  char *config_key = get_src_enable_config_key(src);
+  // use element name as config key
+  char *config_key = get_src_enable_elem_name(src);
   if (!config_key)
     return;
 
@@ -464,8 +421,8 @@ static void create_snk_enable_elem(
 
   snk->enable_elem = elem;
 
-  // generate config key
-  char *config_key = get_snk_enable_config_key(snk);
+  // use element name as config key
+  char *config_key = get_snk_enable_elem_name(snk);
   if (!config_key)
     return;
 
@@ -508,8 +465,8 @@ void port_enable_init(struct alsa_card *card) {
     return;
   }
 
-  // load existing state
-  GHashTable *state = optional_state_load(card);
+  // load existing state from [controls] section
+  GHashTable *state = optional_state_load(card, CONFIG_SECTION_CONTROLS);
   if (!state) {
     state = g_hash_table_new_full(
       g_str_hash, g_str_equal, g_free, g_free

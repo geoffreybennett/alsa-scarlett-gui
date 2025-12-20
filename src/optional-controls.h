@@ -11,9 +11,9 @@ typedef enum {
 } OptionalControlType;
 
 // Definition of an optional control
+// Config key uses alsa_name (ALSA-style naming)
 struct optional_control_def {
   const char          *alsa_name;     // ALSA element name (e.g., "Name")
-  const char          *config_key;    // Config file key (e.g., "name")
   int                  alsa_type;     // SND_CTL_ELEM_TYPE_*
   size_t               max_size;      // For BYTES: max string length
   const char          *default_value; // Default string value
