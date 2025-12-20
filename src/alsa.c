@@ -326,6 +326,18 @@ int alsa_get_elem_count(struct alsa_elem *elem) {
   return snd_ctl_elem_info_get_count(elem_info);
 }
 
+// get the integer element's min and max values
+static void alsa_get_elem_int_range(struct alsa_elem *elem) {
+  snd_ctl_elem_info_t *elem_info;
+
+  snd_ctl_elem_info_alloca(&elem_info);
+  snd_ctl_elem_info_set_numid(elem_info, elem->numid);
+  snd_ctl_elem_info(elem->card->handle, elem_info);
+
+  elem->min_val = snd_ctl_elem_info_get_min(elem_info);
+  elem->max_val = snd_ctl_elem_info_get_max(elem_info);
+}
+
 // get the number of items this enum element has
 int alsa_get_item_count(struct alsa_elem *elem) {
   if (elem->card->num == SIMULATED_CARD_NUM)
@@ -603,6 +615,11 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
     return;
 
   alsa_get_elem_tlv(&alsa_elem);
+
+  // get integer range if not set by TLV
+  if (alsa_elem.type == SND_CTL_ELEM_TYPE_INTEGER &&
+      alsa_elem.min_val >= alsa_elem.max_val)
+    alsa_get_elem_int_range(&alsa_elem);
 
   // Scarlett 1st Gen driver puts two volume controls/mutes in the
   // same element, so split them out to match the other series

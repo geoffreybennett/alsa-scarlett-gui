@@ -14,12 +14,13 @@
 #include "widget-input-select.h"
 #include "widget-label.h"
 #include "widget-sample-rate.h"
+#include "window-configuration.h"
+#include "window-dsp.h"
 #include "window-helper.h"
 #include "window-levels.h"
 #include "window-mixer.h"
 #include "window-routing.h"
 #include "window-startup.h"
-#include "window-configuration.h"
 
 // find the routing sink for a hardware output by port number
 static struct routing_snk *get_output_r_snk(
@@ -1316,6 +1317,15 @@ static gboolean window_levels_close_request(GtkWindow *w, gpointer data) {
   return true;
 }
 
+static gboolean window_dsp_close_request(GtkWindow *w, gpointer data) {
+  struct alsa_card *card = data;
+
+  gtk_widget_activate_action(
+    GTK_WIDGET(card->window_main), "win.dsp", NULL
+  );
+  return true;
+}
+
 // wrap a scrolled window around the controls
 static void create_scrollable_window(GtkWidget *window, GtkWidget *controls) {
   GtkWidget *scrolled_window = gtk_scrolled_window_new();
@@ -1408,6 +1418,16 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
 
   GtkWidget *configuration = create_configuration_controls(card);
   gtk_window_set_child(GTK_WINDOW(card->window_configuration), configuration);
+
+  // create DSP window if DSP controls are available
+  if (get_elem_by_name(card->elems, "Line In 1 DSP Capture Switch")) {
+    card->window_dsp = create_subwindow(
+      card, "DSP", G_CALLBACK(window_dsp_close_request)
+    );
+
+    GtkWidget *dsp = create_dsp_controls(card);
+    gtk_window_set_child(GTK_WINDOW(card->window_dsp), dsp);
+  }
 
   return top;
 }
