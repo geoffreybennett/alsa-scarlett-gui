@@ -447,6 +447,45 @@ static void response_drag_end(
   response->drag_band = -1;
 }
 
+// Scroll callback to adjust Q for filters with gain
+static gboolean response_scroll(
+  GtkEventControllerScroll *controller,
+  double                    dx,
+  double                    dy,
+  GtkFilterResponse        *response
+) {
+  // Only adjust if hovering over a band
+  if (response->internal_highlight < 0)
+    return FALSE;
+
+  int band = response->internal_highlight;
+  struct biquad_params *params = &response->bands[band];
+
+  // Only adjust Q for filters with gain
+  if (!biquad_type_uses_gain(params->type))
+    return FALSE;
+
+  // Adjust Q logarithmically (scroll up = higher Q = narrower)
+  double factor = (dy > 0) ? 0.9 : 1.1;
+  double new_q = params->q * factor;
+
+  // Clamp Q
+  if (new_q < Q_MIN) new_q = Q_MIN;
+  if (new_q > Q_MAX) new_q = Q_MAX;
+
+  params->q = new_q;
+
+  // Recalculate coefficients
+  biquad_calculate(params, SAMPLE_RATE, &response->coeffs[band]);
+
+  // Emit signal to notify external code
+  g_signal_emit(response, signals[SIGNAL_FILTER_CHANGED], 0, band, params);
+
+  gtk_widget_queue_draw(GTK_WIDGET(response));
+
+  return TRUE;
+}
+
 // Calculate combined response at a frequency (includes all enabled bands)
 static double combined_response_db(GtkFilterResponse *response, double freq) {
   double total_db = 0.0;
@@ -734,6 +773,13 @@ static void gtk_filter_response_init(GtkFilterResponse *response) {
   g_signal_connect(drag, "drag-update", G_CALLBACK(response_drag_update), response);
   g_signal_connect(drag, "drag-end", G_CALLBACK(response_drag_end), response);
   gtk_widget_add_controller(GTK_WIDGET(response), GTK_EVENT_CONTROLLER(drag));
+
+  // Add scroll controller for Q adjustment
+  GtkEventController *scroll = gtk_event_controller_scroll_new(
+    GTK_EVENT_CONTROLLER_SCROLL_VERTICAL
+  );
+  g_signal_connect(scroll, "scroll", G_CALLBACK(response_scroll), response);
+  gtk_widget_add_controller(GTK_WIDGET(response), scroll);
 }
 
 GtkWidget *gtk_filter_response_new(int num_bands) {
