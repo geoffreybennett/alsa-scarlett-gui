@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <math.h>
+#include <pango/pangocairo.h>
 #include "peq-response.h"
 
 // Preferred widget size
@@ -123,6 +124,101 @@ static void draw_filter_response(
   cairo_restore(cr);
 }
 
+// Draw filter handle showing freq/gain and Q
+static void draw_filter_handle(
+  cairo_t                    *cr,
+  const struct graph_area    *ga,
+  const struct biquad_params *params,
+  const struct biquad_coeffs *coeffs,
+  int                         band_num,
+  double                      r,
+  double                      g,
+  double                      b,
+  double                      alpha,
+  gboolean                    highlighted,
+  gboolean                    enabled
+) {
+  cairo_save(cr);
+  cairo_new_path(cr);
+
+  double x = freq_to_x(ga, params->freq);
+  double y;
+
+  // Determine Y position based on filter type
+  if (biquad_type_uses_gain(params->type)) {
+    y = db_to_y(ga, params->gain_db);
+  } else {
+    // For LP/HP/BP/Notch, show at the response at center freq
+    double db = biquad_response_db(coeffs, params->freq, SAMPLE_RATE);
+    y = db_to_y(ga, db);
+  }
+
+  double radius = highlighted ? 12 : 10;
+  double line_width = highlighted ? 2 : 1.5;
+
+  // Draw Q whiskers for filters with gain
+  if (biquad_type_uses_gain(params->type)) {
+    // Calculate bandwidth as ratio for log scale symmetry
+    double ratio = pow(2.0, 0.5 / params->q);
+    double freq_lo = params->freq / ratio;
+    double freq_hi = params->freq * ratio;
+    if (freq_lo < FREQ_MIN) freq_lo = FREQ_MIN;
+    if (freq_hi > FREQ_MAX) freq_hi = FREQ_MAX;
+    double x_lo = freq_to_x(ga, freq_lo) - radius;
+    double x_hi = freq_to_x(ga, freq_hi) + radius;
+
+    cairo_set_source_rgba(cr, r, g, b, alpha * 0.8);
+    cairo_set_line_width(cr, line_width);
+    cairo_move_to(cr, x_lo, y);
+    cairo_line_to(cr, x_hi, y);
+    cairo_stroke(cr);
+
+    // Draw small vertical ticks at bandwidth edges
+    double tick_size = highlighted ? 4 : 3;
+    cairo_move_to(cr, x_lo, y - tick_size);
+    cairo_line_to(cr, x_lo, y + tick_size);
+    cairo_move_to(cr, x_hi, y - tick_size);
+    cairo_line_to(cr, x_hi, y + tick_size);
+    cairo_stroke(cr);
+  }
+
+  // Draw center circle (dark grey background)
+  cairo_arc(cr, x, y, radius, 0, 2 * M_PI);
+  cairo_set_source_rgba(cr, 0.2, 0.2, 0.2, alpha);
+  cairo_fill_preserve(cr);
+  cairo_set_source_rgba(cr, r, g, b, alpha);
+  cairo_set_line_width(cr, 1.5);
+  if (!enabled) {
+    double dashes[] = { 3.0, 3.0 };
+    cairo_set_dash(cr, dashes, 2, 0);
+  }
+  cairo_stroke(cr);
+  cairo_set_dash(cr, NULL, 0, 0);
+
+  // Draw band number in band color using Pango for proper centering
+  char label[12];
+  snprintf(label, sizeof(label), "%d", band_num);
+
+  PangoLayout *layout = pango_cairo_create_layout(cr);
+  PangoFontDescription *font_desc = pango_font_description_from_string(
+    highlighted ? "Sans Bold 10" : "Sans Bold 9"
+  );
+  pango_layout_set_font_description(layout, font_desc);
+  pango_layout_set_text(layout, label, -1);
+
+  int text_width, text_height;
+  pango_layout_get_pixel_size(layout, &text_width, &text_height);
+
+  cairo_set_source_rgba(cr, r, g, b, alpha);
+  cairo_move_to(cr, x - text_width / 2.0, y - text_height / 2.0);
+  pango_cairo_show_layout(cr, layout);
+
+  pango_font_description_free(font_desc);
+  g_object_unref(layout);
+
+  cairo_restore(cr);
+}
+
 // Calculate combined response at a frequency (includes all enabled bands)
 static double combined_response_db(GtkFilterResponse *response, double freq) {
   double total_db = 0.0;
@@ -238,6 +334,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   }
 
   // Draw combined response curve (white solid if enabled, grey dashed if disabled)
+  cairo_save(cr);
   cairo_set_line_width(cr, 2);
   if (response->enabled) {
     cairo_set_source_rgb(cr, 1, 1, 1);
@@ -261,6 +358,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     }
   }
   cairo_stroke(cr);
+  cairo_restore(cr);
 
   // Draw highlighted band last (on top of everything) with full opacity
   if (response->highlight_band >= 0 &&
@@ -276,6 +374,56 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
       band_on ? 1.0 : 0.6,
       !band_on
     );
+  }
+
+  // Draw filter handles (freq/gain bubbles with Q whiskers)
+  if (response->highlight_band >= 0) {
+    // When highlighted, draw non-highlighted first, then highlighted on top
+    for (int i = 0; i < response->num_bands; i++) {
+      if (i == response->highlight_band)
+        continue;
+      int color_idx = i % 8;
+      gboolean band_on = response->band_enabled[i];
+      double alpha = band_on ? 0.7 : 0.4;
+      draw_filter_handle(
+        cr, &g, &response->bands[i], &response->coeffs[i],
+        i + 1,
+        band_colors[color_idx][0],
+        band_colors[color_idx][1],
+        band_colors[color_idx][2],
+        alpha, FALSE, band_on
+      );
+    }
+    // Highlighted handle last
+    if (response->highlight_band < response->num_bands) {
+      int i = response->highlight_band;
+      int color_idx = i % 8;
+      gboolean band_on = response->band_enabled[i];
+      double alpha = band_on ? 1.0 : 0.6;
+      draw_filter_handle(
+        cr, &g, &response->bands[i], &response->coeffs[i],
+        i + 1,
+        band_colors[color_idx][0],
+        band_colors[color_idx][1],
+        band_colors[color_idx][2],
+        alpha, TRUE, band_on
+      );
+    }
+  } else {
+    // No highlight: draw in reverse order so 1 is on top
+    for (int i = response->num_bands - 1; i >= 0; i--) {
+      int color_idx = i % 8;
+      gboolean band_on = response->band_enabled[i];
+      double alpha = band_on ? 0.7 : 0.4;
+      draw_filter_handle(
+        cr, &g, &response->bands[i], &response->coeffs[i],
+        i + 1,
+        band_colors[color_idx][0],
+        band_colors[color_idx][1],
+        band_colors[color_idx][2],
+        alpha, FALSE, band_on
+      );
+    }
   }
 
   cairo_restore(cr);
