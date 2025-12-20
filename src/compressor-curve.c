@@ -18,6 +18,8 @@ struct _GtkCompressorCurve {
   int ratio;        // 2-100 (divide by 2 for actual ratio)
   int knee_width;   // 0-10 dB
   int makeup_gain;  // 0-24 dB
+  gboolean enabled;     // section enable
+  gboolean dsp_enabled; // overall DSP enable
 };
 
 G_DEFINE_TYPE(GtkCompressorCurve, gtk_compressor_curve, GTK_TYPE_WIDGET)
@@ -153,17 +155,30 @@ static void curve_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_line_to(cr, thresh_x, GRAPH_BOTTOM);
   cairo_stroke(cr);
 
-  // Transfer curve - draw in two passes: white for normal, red for clipped
+  // Transfer curve
+  // When enabled: white for normal, red for clipped
+  // When disabled: grey dashed
   cairo_set_line_width(cr, 2);
 
-  // First pass: white portion (output <= 0dB)
-  cairo_set_source_rgb(cr, 1, 1, 1);
+  gboolean is_enabled = curve->enabled && curve->dsp_enabled;
+
+  if (!is_enabled) {
+    double dashes[] = { 6.0, 4.0 };
+    cairo_set_dash(cr, dashes, 2, 0);
+  }
+
+  // First pass: white/grey portion (output <= 0dB)
+  if (is_enabled)
+    cairo_set_source_rgb(cr, 1, 1, 1);
+  else
+    cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
+
   gboolean first = TRUE;
   for (double in_db = DB_MIN; in_db <= DB_MAX; in_db += 0.5) {
     double out_db = calculate_output(curve, in_db);
 
     if (out_db > DB_MAX) {
-      // End white segment here
+      // End segment here
       if (!first)
         cairo_stroke(cr);
       first = TRUE;
@@ -186,14 +201,18 @@ static void curve_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   if (!first)
     cairo_stroke(cr);
 
-  // Second pass: red portion (output > 0dB, clamped to 0dB line)
-  cairo_set_source_rgb(cr, 1, 0.3, 0.3);
+  // Second pass: red/grey portion (output > 0dB, clamped to 0dB line)
+  if (is_enabled)
+    cairo_set_source_rgb(cr, 1, 0.3, 0.3);
+  else
+    cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
+
   first = TRUE;
   for (double in_db = DB_MIN; in_db <= DB_MAX; in_db += 0.5) {
     double out_db = calculate_output(curve, in_db);
 
     if (out_db <= DB_MAX) {
-      // End red segment here
+      // End segment here
       if (!first)
         cairo_stroke(cr);
       first = TRUE;
@@ -244,6 +263,8 @@ static void gtk_compressor_curve_init(GtkCompressorCurve *curve) {
   curve->ratio = 8;      // 4:1
   curve->knee_width = 3;
   curve->makeup_gain = 5;
+  curve->enabled = TRUE;
+  curve->dsp_enabled = TRUE;
 }
 
 GtkWidget *gtk_compressor_curve_new(void) {
@@ -274,6 +295,20 @@ void gtk_compressor_curve_set_knee_width(GtkCompressorCurve *curve, int knee_wid
 void gtk_compressor_curve_set_makeup_gain(GtkCompressorCurve *curve, int makeup_gain) {
   if (curve->makeup_gain != makeup_gain) {
     curve->makeup_gain = makeup_gain;
+    gtk_widget_queue_draw(GTK_WIDGET(curve));
+  }
+}
+
+void gtk_compressor_curve_set_enabled(GtkCompressorCurve *curve, gboolean enabled) {
+  if (curve->enabled != enabled) {
+    curve->enabled = enabled;
+    gtk_widget_queue_draw(GTK_WIDGET(curve));
+  }
+}
+
+void gtk_compressor_curve_set_dsp_enabled(GtkCompressorCurve *curve, gboolean enabled) {
+  if (curve->dsp_enabled != enabled) {
+    curve->dsp_enabled = enabled;
     gtk_widget_queue_draw(GTK_WIDGET(curve));
   }
 }

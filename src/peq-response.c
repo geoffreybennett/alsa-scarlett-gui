@@ -49,6 +49,7 @@ struct _GtkFilterResponse {
   struct biquad_coeffs coeffs[FILTER_RESPONSE_MAX_BANDS];
   gboolean band_enabled[FILTER_RESPONSE_MAX_BANDS];
   gboolean enabled;
+  gboolean dsp_enabled;  // overall DSP enable state
   int highlight_band;  // -1 for none
   int internal_highlight;  // -1 for none, set by hover
 
@@ -579,25 +580,27 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_clip(cr);
 
   // Draw individual filter curves (skip highlighted band for now)
+  // When DSP is disabled, all curves are muted
   for (int i = 0; i < response->num_bands; i++) {
     if (i == response->highlight_band)
       continue;
     int color_idx = i % 8;
-    gboolean band_on = response->band_enabled[i];
+    gboolean band_on = response->band_enabled[i] && response->dsp_enabled;
     draw_filter_response(
       cr, &g, &response->coeffs[i],
       band_colors[color_idx][0],
       band_colors[color_idx][1],
       band_colors[color_idx][2],
       band_on ? 0.5 : 0.3,
-      !band_on  // dashed if band disabled
+      !band_on  // dashed if band or DSP disabled
     );
   }
 
-  // Draw combined response curve (white solid if enabled, grey dashed if disabled)
+  // Draw combined response curve
+  // White solid if fully enabled, grey dashed if section or DSP disabled
   cairo_save(cr);
   cairo_set_line_width(cr, 2);
-  if (response->enabled) {
+  if (response->enabled && response->dsp_enabled) {
     cairo_set_source_rgb(cr, 1, 1, 1);
   } else {
     cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
@@ -626,7 +629,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
       response->highlight_band < response->num_bands) {
     int i = response->highlight_band;
     int color_idx = i % 8;
-    gboolean band_on = response->band_enabled[i];
+    gboolean band_on = response->band_enabled[i] && response->dsp_enabled;
     draw_filter_response(
       cr, &g, &response->coeffs[i],
       band_colors[color_idx][0],
@@ -644,7 +647,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
       if (i == response->highlight_band)
         continue;
       int color_idx = i % 8;
-      gboolean band_on = response->band_enabled[i];
+      gboolean band_on = response->band_enabled[i] && response->dsp_enabled;
       double alpha = band_on ? 0.7 : 0.4;
       draw_filter_handle(
         cr, &g, &response->bands[i], &response->coeffs[i],
@@ -659,7 +662,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     if (response->highlight_band < response->num_bands) {
       int i = response->highlight_band;
       int color_idx = i % 8;
-      gboolean band_on = response->band_enabled[i];
+      gboolean band_on = response->band_enabled[i] && response->dsp_enabled;
       double alpha = band_on ? 1.0 : 0.6;
       draw_filter_handle(
         cr, &g, &response->bands[i], &response->coeffs[i],
@@ -674,7 +677,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     // No highlight: draw in reverse order so 1 is on top
     for (int i = response->num_bands - 1; i >= 0; i--) {
       int color_idx = i % 8;
-      gboolean band_on = response->band_enabled[i];
+      gboolean band_on = response->band_enabled[i] && response->dsp_enabled;
       double alpha = band_on ? 0.7 : 0.4;
       draw_filter_handle(
         cr, &g, &response->bands[i], &response->coeffs[i],
@@ -749,6 +752,7 @@ static void gtk_filter_response_class_init(GtkFilterResponseClass *klass) {
 static void gtk_filter_response_init(GtkFilterResponse *response) {
   response->num_bands = 0;
   response->enabled = TRUE;
+  response->dsp_enabled = TRUE;
   response->highlight_band = -1;
   response->internal_highlight = -1;
   response->drag_band = -1;
@@ -835,6 +839,16 @@ void gtk_filter_response_set_enabled(
 ) {
   if (response->enabled != enabled) {
     response->enabled = enabled;
+    gtk_widget_queue_draw(GTK_WIDGET(response));
+  }
+}
+
+void gtk_filter_response_set_dsp_enabled(
+  GtkFilterResponse *response,
+  gboolean           enabled
+) {
+  if (response->dsp_enabled != enabled) {
+    response->dsp_enabled = enabled;
     gtk_widget_queue_draw(GTK_WIDGET(response));
   }
 }

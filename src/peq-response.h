@@ -43,6 +43,12 @@ void gtk_filter_response_set_enabled(
   gboolean           enabled
 );
 
+// Overall DSP enable (e.g., when all DSP is disabled)
+void gtk_filter_response_set_dsp_enabled(
+  GtkFilterResponse *response,
+  gboolean           enabled
+);
+
 // Set highlighted band (-1 for none)
 void gtk_filter_response_set_highlight(
   GtkFilterResponse *response,

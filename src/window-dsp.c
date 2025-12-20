@@ -542,6 +542,49 @@ static void enable_switch_destroy(struct enable_switch_data *data) {
   g_free(data);
 }
 
+// Callback data for compressor enable switch
+struct comp_enable_data {
+  GtkCompressorCurve *curve;
+};
+
+static void comp_enable_updated(
+  struct alsa_elem *elem,
+  void             *private
+) {
+  struct comp_enable_data *data = private;
+  gboolean enabled = alsa_get_elem_value(elem);
+  gtk_compressor_curve_set_enabled(data->curve, enabled);
+}
+
+static void comp_enable_destroy(struct comp_enable_data *data) {
+  g_free(data);
+}
+
+// Callback data for DSP enable switch (affects all visualizations)
+struct dsp_enable_data {
+  GtkFilterResponse  *precomp_response;
+  GtkCompressorCurve *comp_curve;
+  GtkFilterResponse  *peq_response;
+};
+
+static void dsp_enable_updated(
+  struct alsa_elem *elem,
+  void             *private
+) {
+  struct dsp_enable_data *data = private;
+  gboolean enabled = alsa_get_elem_value(elem);
+  if (data->precomp_response)
+    gtk_filter_response_set_dsp_enabled(data->precomp_response, enabled);
+  if (data->comp_curve)
+    gtk_compressor_curve_set_dsp_enabled(data->comp_curve, enabled);
+  if (data->peq_response)
+    gtk_filter_response_set_dsp_enabled(data->peq_response, enabled);
+}
+
+static void dsp_enable_destroy(struct dsp_enable_data *data) {
+  g_free(data);
+}
+
 // Create a section box with header, enable, and content
 static GtkWidget *create_section_box(
   const char       *title,
@@ -582,6 +625,11 @@ static void add_channel_controls(
   char *name;
   struct alsa_elem *elem;
 
+  // Keep track of visualization widgets for DSP enable callback
+  GtkFilterResponse *precomp_response = NULL;
+  GtkCompressorCurve *comp_curve = NULL;
+  GtkFilterResponse *peq_response = NULL;
+
   // DSP header row with enable
   name = g_strdup_printf("%sDSP Capture Switch", prefix);
   struct alsa_elem *dsp_enable = get_elem_by_name(elems, name);
@@ -620,8 +668,7 @@ static void add_channel_controls(
 
     // Response widget
     GtkWidget *precomp_response_widget = gtk_filter_response_new(2);
-    GtkFilterResponse *precomp_response =
-      GTK_FILTER_RESPONSE(precomp_response_widget);
+    precomp_response = GTK_FILTER_RESPONSE(precomp_response_widget);
     gtk_box_append(GTK_BOX(precomp_box), precomp_response_widget);
 
     // Connect enable to response widget
@@ -677,8 +724,17 @@ static void add_channel_controls(
 
     // Curve widget
     GtkWidget *curve_widget = gtk_compressor_curve_new();
-    GtkCompressorCurve *curve = GTK_COMPRESSOR_CURVE(curve_widget);
+    comp_curve = GTK_COMPRESSOR_CURVE(curve_widget);
     gtk_box_append(GTK_BOX(comp_box), curve_widget);
+
+    // Connect enable to curve widget
+    struct comp_enable_data *comp_en_data = g_malloc0(
+      sizeof(struct comp_enable_data)
+    );
+    comp_en_data->curve = comp_curve;
+    alsa_elem_add_callback(comp_enable, comp_enable_updated, comp_en_data,
+                           (GDestroyNotify)comp_enable_destroy);
+    comp_enable_updated(comp_enable, comp_en_data);
 
     // Sliders grid
     GtkWidget *slider_grid = gtk_grid_new();
@@ -696,7 +752,7 @@ static void add_channel_controls(
       w = gtk_label_new("Thresh");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
-      w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_threshold);
+      w = make_int_slider_with_curve(elem, " dB", 1, comp_curve, update_curve_threshold);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
 
@@ -708,7 +764,7 @@ static void add_channel_controls(
       w = gtk_label_new("Ratio");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
-      w = make_int_slider_with_curve(elem, NULL, 2, curve, update_curve_ratio);
+      w = make_int_slider_with_curve(elem, NULL, 2, comp_curve, update_curve_ratio);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
 
@@ -720,7 +776,7 @@ static void add_channel_controls(
       w = gtk_label_new("Knee");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
-      w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_knee);
+      w = make_int_slider_with_curve(elem, " dB", 1, comp_curve, update_curve_knee);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
 
@@ -756,7 +812,7 @@ static void add_channel_controls(
       w = gtk_label_new("Makeup");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
-      w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_makeup);
+      w = make_int_slider_with_curve(elem, " dB", 1, comp_curve, update_curve_makeup);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
   }
@@ -773,8 +829,7 @@ static void add_channel_controls(
 
     // Response widget
     GtkWidget *peq_response_widget = gtk_filter_response_new(3);
-    GtkFilterResponse *peq_response =
-      GTK_FILTER_RESPONSE(peq_response_widget);
+    peq_response = GTK_FILTER_RESPONSE(peq_response_widget);
     gtk_widget_set_hexpand(peq_response_widget, TRUE);
     gtk_box_append(GTK_BOX(peq_box), peq_response_widget);
 
@@ -818,6 +873,17 @@ static void add_channel_controls(
                      G_CALLBACK(response_highlight_changed), peq_stages);
     g_object_weak_ref(G_OBJECT(peq_response_widget),
                       (GWeakNotify)filter_response_stages_destroy, peq_stages);
+  }
+
+  // Connect DSP enable switch to all visualization widgets
+  if (dsp_enable) {
+    struct dsp_enable_data *dsp_data = g_malloc0(sizeof(struct dsp_enable_data));
+    dsp_data->precomp_response = precomp_response;
+    dsp_data->comp_curve = comp_curve;
+    dsp_data->peq_response = peq_response;
+    alsa_elem_add_callback(dsp_enable, dsp_enable_updated, dsp_data,
+                           (GDestroyNotify)dsp_enable_destroy);
+    dsp_enable_updated(dsp_enable, dsp_data);
   }
 
   g_free(prefix);
