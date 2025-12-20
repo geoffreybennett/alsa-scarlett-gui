@@ -30,6 +30,7 @@ struct filter_stage {
   struct alsa_elem    *coeff_elem;
   struct biquad_params params;
   gboolean             enabled;
+  GtkWidget           *box;
   GtkWidget           *enable_check;
   GtkWidget           *type_dropdown;
   GtkWidget           *freq_scale;
@@ -329,6 +330,25 @@ static void filter_response_stages_destroy(struct filter_response_stages *data) 
   g_free(data);
 }
 
+// Callback for highlight-changed signal from response widget
+static void response_highlight_changed(
+  GtkFilterResponse           *response,
+  int                          band,
+  struct filter_response_stages *data
+) {
+  // Remove highlight from all stages
+  for (int i = 0; i < data->num_stages; i++) {
+    if (data->stages[i] && data->stages[i]->box)
+      gtk_widget_remove_css_class(data->stages[i]->box, "filter-stage-hover");
+  }
+
+  // Add highlight to the selected stage
+  if (band >= 0 && band < data->num_stages &&
+      data->stages[band] && data->stages[band]->box) {
+    gtk_widget_add_css_class(data->stages[band]->box, "filter-stage-hover");
+  }
+}
+
 static void filter_stage_destroy(struct filter_stage *stage) {
   g_free(stage);
 }
@@ -342,6 +362,9 @@ static void filter_stage_enter(
 ) {
   if (stage->response)
     gtk_filter_response_set_highlight(stage->response, stage->band_index);
+
+  GtkWidget *box = gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
+  gtk_widget_add_css_class(box, "filter-stage-hover");
 }
 
 static void filter_stage_leave(
@@ -350,6 +373,9 @@ static void filter_stage_leave(
 ) {
   if (stage->response)
     gtk_filter_response_set_highlight(stage->response, -1);
+
+  GtkWidget *box = gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
+  gtk_widget_remove_css_class(box, "filter-stage-hover");
 }
 
 // Create controls for one filter stage
@@ -376,6 +402,7 @@ static GtkWidget *make_filter_stage(
   stage->params.gain_db = 0.0;
 
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  stage->box = box;
 
   // Enable checkbox with stage label
   stage->enable_check = gtk_check_button_new_with_label(label_text);
@@ -630,9 +657,11 @@ static void add_channel_controls(
       }
     }
 
-    // Connect signal for drag updates
+    // Connect signals for drag and highlight updates
     g_signal_connect(precomp_response, "filter-changed",
                      G_CALLBACK(response_filter_changed), precomp_stages);
+    g_signal_connect(precomp_response, "highlight-changed",
+                     G_CALLBACK(response_highlight_changed), precomp_stages);
     g_object_weak_ref(G_OBJECT(precomp_response_widget),
                       (GWeakNotify)filter_response_stages_destroy, precomp_stages);
   }
@@ -782,9 +811,11 @@ static void add_channel_controls(
       }
     }
 
-    // Connect signal for drag updates
+    // Connect signals for drag and highlight updates
     g_signal_connect(peq_response, "filter-changed",
                      G_CALLBACK(response_filter_changed), peq_stages);
+    g_signal_connect(peq_response, "highlight-changed",
+                     G_CALLBACK(response_highlight_changed), peq_stages);
     g_object_weak_ref(G_OBJECT(peq_response_widget),
                       (GWeakNotify)filter_response_stages_destroy, peq_stages);
   }
