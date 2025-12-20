@@ -1,11 +1,15 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "biquad.h"
 #include "compressor-curve.h"
 #include "gtkhelper.h"
+#include "peq-response.h"
 #include "stringhelper.h"
 #include "widget-boolean.h"
 #include "window-dsp.h"
+
+#define SAMPLE_RATE 48000.0
 
 // Compressor curve update function type
 typedef void (*curve_update_fn)(GtkCompressorCurve *curve, int value);
@@ -19,6 +23,24 @@ struct int_slider {
   int                 divisor;  // for ratio display (divide value by this)
   GtkCompressorCurve *curve;    // optional curve to update
   curve_update_fn     curve_fn; // function to update curve
+};
+
+// Data for a filter stage
+struct filter_stage {
+  struct alsa_elem    *coeff_elem;
+  struct biquad_params params;
+  gboolean             enabled;
+  GtkWidget           *enable_check;
+  GtkWidget           *type_dropdown;
+  GtkWidget           *freq_scale;
+  GtkWidget           *freq_label;
+  GtkWidget           *q_scale;
+  GtkWidget           *q_label;
+  GtkWidget           *gain_scale;
+  GtkWidget           *gain_label;
+  GtkWidget           *gain_box;
+  GtkFilterResponse   *response;
+  int                  band_index;
 };
 
 static void int_slider_changed(GtkRange *range, struct int_slider *data) {
@@ -92,8 +114,9 @@ static GtkWidget *make_int_slider_with_curve(
   gtk_box_append(GTK_BOX(box), data->scale);
   gtk_box_append(GTK_BOX(box), data->label);
 
-  g_signal_connect(data->scale, "value-changed",
-                   G_CALLBACK(int_slider_changed), data);
+  g_signal_connect(
+    data->scale, "value-changed", G_CALLBACK(int_slider_changed), data
+  );
   alsa_elem_add_callback(elem, int_slider_updated, data, NULL);
   int_slider_updated(elem, data);
 
@@ -128,6 +151,305 @@ static void update_curve_makeup(GtkCompressorCurve *curve, int value) {
   gtk_compressor_curve_set_makeup_gain(curve, value);
 }
 
+// Update coefficients and send to ALSA
+static void filter_stage_update_coeffs(struct filter_stage *stage) {
+  long fixed[5];
+
+  if (stage->enabled) {
+    struct biquad_coeffs coeffs;
+    biquad_calculate(&stage->params, SAMPLE_RATE, &coeffs);
+    biquad_to_fixed_point(&coeffs, fixed);
+  } else {
+    // Identity filter: b0=1, b1=0, b2=0, a1=0, a2=0
+    fixed[0] = BIQUAD_FIXED_POINT_SCALE;  // b0 = 1.0
+    fixed[1] = 0;
+    fixed[2] = 0;
+    fixed[3] = 0;
+    fixed[4] = 0;
+  }
+
+  alsa_set_elem_int_values(stage->coeff_elem, fixed, 5);
+
+  // Update response graph
+  if (stage->response) {
+    gtk_filter_response_set_filter(
+      stage->response, stage->band_index, &stage->params
+    );
+    gtk_filter_response_set_band_enabled(
+      stage->response, stage->band_index, stage->enabled
+    );
+  }
+}
+
+// Show/hide gain control based on filter type
+static void filter_stage_update_gain_visibility(struct filter_stage *stage) {
+  gboolean show = biquad_type_uses_gain(stage->params.type);
+  gtk_widget_set_visible(stage->gain_box, show);
+}
+
+// Enable checkbox callback
+static void filter_enable_toggled(GtkCheckButton *check, struct filter_stage *stage) {
+  stage->enabled = gtk_check_button_get_active(check);
+  filter_stage_update_coeffs(stage);
+}
+
+// Format frequency for display
+static void format_freq_label(GtkWidget *label, double freq) {
+  char text[32];
+  if (freq >= 1000)
+    snprintf(text, sizeof(text), "%.1f kHz", freq / 1000.0);
+  else
+    snprintf(text, sizeof(text), "%.0f Hz", freq);
+  gtk_label_set_text(GTK_LABEL(label), text);
+}
+
+// Callbacks for filter stage controls
+static void filter_type_changed(GtkDropDown *dropdown, GParamSpec *pspec,
+                                struct filter_stage *stage) {
+  int selected = gtk_drop_down_get_selected(dropdown);
+  if (selected >= 0 && selected < BIQUAD_TYPE_COUNT) {
+    stage->params.type = (BiquadFilterType)selected;
+    filter_stage_update_gain_visibility(stage);
+    filter_stage_update_coeffs(stage);
+  }
+}
+
+static void filter_freq_changed(GtkRange *range, struct filter_stage *stage) {
+  // Log scale: slider value 0-1000 maps to 20-20000 Hz
+  double slider_val = gtk_range_get_value(range);
+  double log_min = log10(20.0);
+  double log_max = log10(20000.0);
+  double log_freq = log_min + (slider_val / 1000.0) * (log_max - log_min);
+  stage->params.freq = pow(10.0, log_freq);
+
+  format_freq_label(stage->freq_label, stage->params.freq);
+  filter_stage_update_coeffs(stage);
+}
+
+static void filter_q_changed(GtkRange *range, struct filter_stage *stage) {
+  // Log scale for Q: slider 0-1000 maps to 0.1-10
+  double slider_val = gtk_range_get_value(range);
+  double log_min = log10(0.1);
+  double log_max = log10(10.0);
+  double log_q = log_min + (slider_val / 1000.0) * (log_max - log_min);
+  stage->params.q = pow(10.0, log_q);
+
+  char text[16];
+  snprintf(text, sizeof(text), "%.2f", stage->params.q);
+  gtk_label_set_text(GTK_LABEL(stage->q_label), text);
+  filter_stage_update_coeffs(stage);
+}
+
+static void filter_gain_changed(GtkRange *range, struct filter_stage *stage) {
+  stage->params.gain_db = gtk_range_get_value(range);
+
+  char text[16];
+  snprintf(text, sizeof(text), "%+.1f dB", stage->params.gain_db);
+  gtk_label_set_text(GTK_LABEL(stage->gain_label), text);
+  filter_stage_update_coeffs(stage);
+}
+
+// Convert frequency to slider value (0-1000)
+static double freq_to_slider(double freq) {
+  double log_min = log10(20.0);
+  double log_max = log10(20000.0);
+  double log_freq = log10(freq);
+  return (log_freq - log_min) / (log_max - log_min) * 1000.0;
+}
+
+// Convert Q to slider value (0-1000)
+static double q_to_slider(double q) {
+  double log_min = log10(0.1);
+  double log_max = log10(10.0);
+  double log_q = log10(q);
+  return (log_q - log_min) / (log_max - log_min) * 1000.0;
+}
+
+static void filter_stage_destroy(struct filter_stage *stage) {
+  g_free(stage);
+}
+
+// Create controls for one filter stage
+static GtkWidget *make_filter_stage(
+  struct alsa_elem  *coeff_elem,
+  int                band_index,
+  GtkFilterResponse *response,
+  const char        *label_text,
+  BiquadFilterType   default_type
+) {
+  struct filter_stage *stage = g_malloc0(sizeof(struct filter_stage));
+  stage->coeff_elem = coeff_elem;
+  stage->band_index = band_index;
+  stage->response = response;
+
+  // Default parameters
+  stage->enabled = TRUE;
+  stage->params.type = default_type;
+  stage->params.freq = 1000.0;
+  stage->params.q = 0.707;
+  stage->params.gain_db = 0.0;
+
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+  // Enable checkbox with stage label
+  stage->enable_check = gtk_check_button_new_with_label(label_text);
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(stage->enable_check), TRUE);
+  gtk_widget_set_size_request(stage->enable_check, 70, -1);
+  gtk_box_append(GTK_BOX(box), stage->enable_check);
+
+  // Filter type dropdown (NULL-terminated array for gtk_string_list_new)
+  const char *type_names[BIQUAD_TYPE_COUNT + 1];
+  for (int i = 0; i < BIQUAD_TYPE_COUNT; i++)
+    type_names[i] = biquad_type_name(i);
+  type_names[BIQUAD_TYPE_COUNT] = NULL;
+
+  GtkStringList *type_list = gtk_string_list_new(type_names);
+  stage->type_dropdown = gtk_drop_down_new(
+    G_LIST_MODEL(type_list), NULL
+  );
+  gtk_drop_down_set_selected(
+    GTK_DROP_DOWN(stage->type_dropdown), stage->params.type
+  );
+  gtk_widget_set_size_request(stage->type_dropdown, 90, -1);
+  gtk_box_append(GTK_BOX(box), stage->type_dropdown);
+
+  // Frequency slider
+  GtkWidget *freq_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  GtkWidget *freq_lbl = gtk_label_new("Freq");
+  gtk_box_append(GTK_BOX(freq_box), freq_lbl);
+
+  stage->freq_scale = gtk_scale_new_with_range(
+    GTK_ORIENTATION_HORIZONTAL, 0, 1000, 1
+  );
+  gtk_scale_set_draw_value(GTK_SCALE(stage->freq_scale), FALSE);
+  gtk_widget_set_size_request(stage->freq_scale, 100, -1);
+  gtk_range_set_value(
+    GTK_RANGE(stage->freq_scale), freq_to_slider(stage->params.freq)
+  );
+  gtk_box_append(GTK_BOX(freq_box), stage->freq_scale);
+
+  stage->freq_label = gtk_label_new("");
+  gtk_widget_set_size_request(stage->freq_label, 60, -1);
+  format_freq_label(stage->freq_label, stage->params.freq);
+  gtk_box_append(GTK_BOX(freq_box), stage->freq_label);
+  gtk_box_append(GTK_BOX(box), freq_box);
+
+  // Q slider
+  GtkWidget *q_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  GtkWidget *q_lbl = gtk_label_new("Q");
+  gtk_box_append(GTK_BOX(q_box), q_lbl);
+
+  stage->q_scale = gtk_scale_new_with_range(
+    GTK_ORIENTATION_HORIZONTAL, 0, 1000, 1
+  );
+  gtk_scale_set_draw_value(GTK_SCALE(stage->q_scale), FALSE);
+  gtk_widget_set_size_request(stage->q_scale, 80, -1);
+  gtk_range_set_value(
+    GTK_RANGE(stage->q_scale), q_to_slider(stage->params.q)
+  );
+  gtk_box_append(GTK_BOX(q_box), stage->q_scale);
+
+  stage->q_label = gtk_label_new("0.71");
+  gtk_widget_set_size_request(stage->q_label, 40, -1);
+  gtk_box_append(GTK_BOX(q_box), stage->q_label);
+  gtk_box_append(GTK_BOX(box), q_box);
+
+  // Gain slider (shown only for peaking/shelving types)
+  stage->gain_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  GtkWidget *gain_lbl = gtk_label_new("Gain");
+  gtk_box_append(GTK_BOX(stage->gain_box), gain_lbl);
+
+  stage->gain_scale = gtk_scale_new_with_range(
+    GTK_ORIENTATION_HORIZONTAL, -18, 18, 0.5
+  );
+  gtk_scale_set_draw_value(GTK_SCALE(stage->gain_scale), FALSE);
+  gtk_widget_set_size_request(stage->gain_scale, 80, -1);
+  gtk_range_set_value(GTK_RANGE(stage->gain_scale), stage->params.gain_db);
+  gtk_box_append(GTK_BOX(stage->gain_box), stage->gain_scale);
+
+  stage->gain_label = gtk_label_new("+0.0 dB");
+  gtk_widget_set_size_request(stage->gain_label, 55, -1);
+  gtk_box_append(GTK_BOX(stage->gain_box), stage->gain_label);
+  gtk_box_append(GTK_BOX(box), stage->gain_box);
+
+  // Update gain visibility
+  filter_stage_update_gain_visibility(stage);
+
+  // Connect signals
+  g_signal_connect(
+    stage->enable_check, "toggled",
+    G_CALLBACK(filter_enable_toggled), stage
+  );
+  g_signal_connect(
+    stage->type_dropdown, "notify::selected",
+    G_CALLBACK(filter_type_changed), stage
+  );
+  g_signal_connect(
+    stage->freq_scale, "value-changed",
+    G_CALLBACK(filter_freq_changed), stage
+  );
+  g_signal_connect(
+    stage->q_scale, "value-changed",
+    G_CALLBACK(filter_q_changed), stage
+  );
+  g_signal_connect(
+    stage->gain_scale, "value-changed",
+    G_CALLBACK(filter_gain_changed), stage
+  );
+
+  g_object_weak_ref(G_OBJECT(box), (GWeakNotify)filter_stage_destroy, stage);
+
+  // Initial coefficient update
+  filter_stage_update_coeffs(stage);
+
+  return box;
+}
+
+// Callback data for enable switches that update the response widget
+struct enable_switch_data {
+  GtkFilterResponse *response;
+};
+
+static void enable_switch_updated(
+  struct alsa_elem *elem,
+  void             *private
+) {
+  struct enable_switch_data *data = private;
+  gboolean enabled = alsa_get_elem_value(elem);
+  gtk_filter_response_set_enabled(data->response, enabled);
+}
+
+static void enable_switch_destroy(struct enable_switch_data *data) {
+  g_free(data);
+}
+
+// Create a section box with header, enable, and content
+static GtkWidget *create_section_box(
+  const char       *title,
+  struct alsa_elem *enable_elem
+) {
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_margin_start(box, 5);
+  gtk_widget_set_margin_end(box, 5);
+
+  // Header with enable
+  GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_append(GTK_BOX(box), header_box);
+
+  GtkWidget *label = gtk_label_new(NULL);
+  char *markup = g_strdup_printf("<b>%s</b>", title);
+  gtk_label_set_markup(GTK_LABEL(label), markup);
+  g_free(markup);
+  gtk_box_append(GTK_BOX(header_box), label);
+
+  if (enable_elem) {
+    GtkWidget *enable = make_boolean_alsa_elem(enable_elem, "Off", "On");
+    gtk_box_append(GTK_BOX(header_box), enable);
+  }
+
+  return box;
+}
+
 // Create controls for one line input channel
 static void add_channel_controls(
   struct alsa_card *card,
@@ -138,89 +460,109 @@ static void add_channel_controls(
   GPtrArray *elems = card->elems;
   char *prefix = g_strdup_printf("Line In %d ", channel);
   GtkWidget *w;
+  char *name;
+  struct alsa_elem *elem;
 
-  // channel header
-  char *header = g_strdup_printf("Line In %d", channel);
+  // DSP header row with enable
+  name = g_strdup_printf("%sDSP Capture Switch", prefix);
+  struct alsa_elem *dsp_enable = get_elem_by_name(elems, name);
+  g_free(name);
+
+  GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_set_margin_top(header_box, *grid_y > 0 ? 15 : 0);
+  gtk_grid_attach(GTK_GRID(grid), header_box, 0, (*grid_y)++, 1, 1);
+
+  char *header = g_strdup_printf("DSP %d", channel);
   w = gtk_label_new(NULL);
   char *markup = g_strdup_printf("<b>%s</b>", header);
   gtk_label_set_markup(GTK_LABEL(w), markup);
   g_free(markup);
   g_free(header);
-  gtk_widget_set_halign(w, GTK_ALIGN_START);
-  gtk_widget_set_margin_top(w, *grid_y > 0 ? 15 : 0);
-  gtk_grid_attach(GTK_GRID(grid), w, 0, (*grid_y)++, 3, 1);
+  gtk_box_append(GTK_BOX(header_box), w);
 
-  // DSP Capture Switch
-  char *name = g_strdup_printf("%sDSP Capture Switch", prefix);
-  struct alsa_elem *elem = get_elem_by_name(elems, name);
-  g_free(name);
-  if (elem) {
-    w = gtk_label_new("DSP");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
-
-    w = make_boolean_alsa_elem(elem, "Off", "On");
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 1, 1);
+  if (dsp_enable) {
+    w = make_boolean_alsa_elem(dsp_enable, "Off", "On");
+    gtk_box_append(GTK_BOX(header_box), w);
   }
 
-  // Pre-Comp Filter Enable
+  // Horizontal box for the three sections
+  GtkWidget *sections_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_set_hexpand(sections_box, TRUE);
+  gtk_grid_attach(GTK_GRID(grid), sections_box, 0, (*grid_y)++, 1, 1);
+
+  // === Pre-Comp Filter section ===
   name = g_strdup_printf("%sPre-Comp Filter Enable", prefix);
-  elem = get_elem_by_name(elems, name);
+  struct alsa_elem *precomp_enable = get_elem_by_name(elems, name);
   g_free(name);
-  if (elem) {
-    w = gtk_label_new("Pre-Comp Filter");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
 
-    w = make_boolean_alsa_elem(elem, "Off", "On");
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 1, 1);
+  if (precomp_enable) {
+    GtkWidget *precomp_box = create_section_box("Pre-Compressor Filter", precomp_enable);
+    gtk_box_append(GTK_BOX(sections_box), precomp_box);
+
+    // Response widget
+    GtkWidget *precomp_response_widget = gtk_filter_response_new(2);
+    GtkFilterResponse *precomp_response =
+      GTK_FILTER_RESPONSE(precomp_response_widget);
+    gtk_box_append(GTK_BOX(precomp_box), precomp_response_widget);
+
+    // Connect enable to response widget
+    struct enable_switch_data *en_data = g_malloc0(
+      sizeof(struct enable_switch_data)
+    );
+    en_data->response = precomp_response;
+    alsa_elem_add_callback(precomp_enable, enable_switch_updated, en_data,
+                           (GDestroyNotify)enable_switch_destroy);
+    enable_switch_updated(precomp_enable, en_data);
+
+    // Filter stages
+    for (int i = 1; i <= 2; i++) {
+      name = g_strdup_printf("%sPre-Comp Coefficients %d", prefix, i);
+      elem = get_elem_by_name(elems, name);
+      g_free(name);
+
+      if (elem) {
+        char stage_label[16];
+        snprintf(stage_label, sizeof(stage_label), "Stage %d", i);
+        w = make_filter_stage(
+          elem, i - 1, precomp_response, stage_label, BIQUAD_TYPE_HIGHPASS
+        );
+        gtk_box_append(GTK_BOX(precomp_box), w);
+      }
+    }
   }
 
-  // Compressor section with curve display
+  // === Compressor section ===
   name = g_strdup_printf("%sCompressor Enable", prefix);
   struct alsa_elem *comp_enable = get_elem_by_name(elems, name);
   g_free(name);
 
   if (comp_enable) {
-    // Compressor header and enable
-    w = gtk_label_new("Compressor");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
+    GtkWidget *comp_box = create_section_box("Compressor", comp_enable);
+    gtk_box_append(GTK_BOX(sections_box), comp_box);
 
-    w = make_boolean_alsa_elem(comp_enable, "Off", "On");
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 1, 1);
-
-    // Create curve widget
+    // Curve widget
     GtkWidget *curve_widget = gtk_compressor_curve_new();
     GtkCompressorCurve *curve = GTK_COMPRESSOR_CURVE(curve_widget);
-
-    // Create a horizontal box to hold curve and sliders
-    GtkWidget *comp_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-    gtk_grid_attach(GTK_GRID(grid), comp_box, 0, *grid_y, 3, 1);
-
-    // Add curve to the left
     gtk_box_append(GTK_BOX(comp_box), curve_widget);
 
-    // Create a grid for the sliders on the right
+    // Sliders grid
     GtkWidget *slider_grid = gtk_grid_new();
-    gtk_grid_set_column_spacing(GTK_GRID(slider_grid), 10);
-    gtk_grid_set_row_spacing(GTK_GRID(slider_grid), 5);
-    gtk_widget_set_hexpand(slider_grid, TRUE);
+    gtk_grid_set_column_spacing(GTK_GRID(slider_grid), 5);
+    gtk_grid_set_row_spacing(GTK_GRID(slider_grid), 3);
     gtk_box_append(GTK_BOX(comp_box), slider_grid);
 
-    int slider_row = 0;
+    int row = 0;
 
     // Threshold
     name = g_strdup_printf("%sCompressor Threshold", prefix);
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
-      w = gtk_label_new("Threshold");
+      w = gtk_label_new("Thresh");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
-
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_threshold);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
 
     // Ratio
@@ -230,78 +572,101 @@ static void add_channel_controls(
     if (elem) {
       w = gtk_label_new("Ratio");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
-
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, NULL, 2, curve, update_curve_ratio);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
 
-    // Knee Width
+    // Knee
     name = g_strdup_printf("%sCompressor Knee Width", prefix);
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
-      w = gtk_label_new("Knee Width");
+      w = gtk_label_new("Knee");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
-
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_knee);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
 
-    // Attack (no curve update)
+    // Attack
     name = g_strdup_printf("%sCompressor Attack", prefix);
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
       w = gtk_label_new("Attack");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
-
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider(elem, " ms", 1);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
 
-    // Release (no curve update)
+    // Release
     name = g_strdup_printf("%sCompressor Release", prefix);
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
       w = gtk_label_new("Release");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
-
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider(elem, " ms", 1);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
 
-    // Makeup Gain
+    // Makeup
     name = g_strdup_printf("%sCompressor Makeup Gain", prefix);
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
       w = gtk_label_new("Makeup");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
-
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_makeup);
-      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
-
-    (*grid_y)++;
   }
 
-  // PEQ Filter Enable
+  // === PEQ Filter section ===
   name = g_strdup_printf("%sPEQ Filter Enable", prefix);
-  elem = get_elem_by_name(elems, name);
+  struct alsa_elem *peq_enable = get_elem_by_name(elems, name);
   g_free(name);
-  if (elem) {
-    w = gtk_label_new("PEQ Filter");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
 
-    w = make_boolean_alsa_elem(elem, "Off", "On");
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 1, 1);
+  if (peq_enable) {
+    GtkWidget *peq_box = create_section_box("Parametric EQ Filter", peq_enable);
+    gtk_widget_set_hexpand(peq_box, TRUE);
+    gtk_box_append(GTK_BOX(sections_box), peq_box);
+
+    // Response widget
+    GtkWidget *peq_response_widget = gtk_filter_response_new(3);
+    GtkFilterResponse *peq_response =
+      GTK_FILTER_RESPONSE(peq_response_widget);
+    gtk_widget_set_hexpand(peq_response_widget, TRUE);
+    gtk_box_append(GTK_BOX(peq_box), peq_response_widget);
+
+    // Connect enable to response widget
+    struct enable_switch_data *en_data = g_malloc0(
+      sizeof(struct enable_switch_data)
+    );
+    en_data->response = peq_response;
+    alsa_elem_add_callback(peq_enable, enable_switch_updated, en_data,
+                           (GDestroyNotify)enable_switch_destroy);
+    enable_switch_updated(peq_enable, en_data);
+
+    // Filter bands
+    for (int i = 1; i <= 3; i++) {
+      name = g_strdup_printf("%sPEQ Coefficients %d", prefix, i);
+      elem = get_elem_by_name(elems, name);
+      g_free(name);
+
+      if (elem) {
+        char band_label[16];
+        snprintf(band_label, sizeof(band_label), "Band %d", i);
+        w = make_filter_stage(
+          elem, i - 1, peq_response, band_label, BIQUAD_TYPE_PEAKING
+        );
+        gtk_box_append(GTK_BOX(peq_box), w);
+      }
+    }
   }
 
   g_free(prefix);
