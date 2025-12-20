@@ -62,6 +62,7 @@ G_DEFINE_TYPE(GtkFilterResponse, gtk_filter_response, GTK_TYPE_WIDGET)
 
 enum {
   SIGNAL_FILTER_CHANGED,
+  SIGNAL_HIGHLIGHT_CHANGED,
   N_SIGNALS
 };
 
@@ -330,6 +331,7 @@ static void response_motion(
   if (band != response->internal_highlight) {
     response->internal_highlight = band;
     response->highlight_band = band;
+    g_signal_emit(response, signals[SIGNAL_HIGHLIGHT_CHANGED], 0, band);
     gtk_widget_queue_draw(GTK_WIDGET(response));
   }
 }
@@ -341,6 +343,7 @@ static void response_leave(
   if (response->internal_highlight != -1) {
     response->internal_highlight = -1;
     response->highlight_band = -1;
+    g_signal_emit(response, signals[SIGNAL_HIGHLIGHT_CHANGED], 0, -1);
     gtk_widget_queue_draw(GTK_WIDGET(response));
   }
 }
@@ -688,6 +691,19 @@ static void gtk_filter_response_class_init(GtkFilterResponseClass *klass) {
     2,
     G_TYPE_INT,     // band index
     G_TYPE_POINTER  // biquad_params pointer
+  );
+
+  // Signal emitted when highlight changes (from hover in response widget)
+  signals[SIGNAL_HIGHLIGHT_CHANGED] = g_signal_new(
+    "highlight-changed",
+    G_TYPE_FROM_CLASS(klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    NULL,
+    G_TYPE_NONE,
+    1,
+    G_TYPE_INT  // band index (-1 for none)
   );
 }
 

@@ -73,6 +73,11 @@
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
 }
 
+.filter-stage-hover {
+  background: #282828;
+  border-radius: 5px;
+}
+
 label.gain {
   font-size: smaller;
 }
