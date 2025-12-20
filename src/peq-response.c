@@ -48,9 +48,20 @@ struct _GtkFilterResponse {
   gboolean band_enabled[FILTER_RESPONSE_MAX_BANDS];
   gboolean enabled;
   int highlight_band;  // -1 for none
+  int internal_highlight;  // -1 for none, set by hover
 };
 
 G_DEFINE_TYPE(GtkFilterResponse, gtk_filter_response, GTK_TYPE_WIDGET)
+
+// Calculate graph area from widget dimensions
+static void calc_graph_area(int width, int height, struct graph_area *g) {
+  g->left = LABEL_MARGIN_LEFT;
+  g->right = width - PADDING;
+  g->top = PADDING;
+  g->bottom = height - LABEL_MARGIN_BOTTOM;
+  g->width = g->right - g->left;
+  g->height = g->bottom - g->top;
+}
 
 // Convert frequency to X coordinate (log scale)
 static double freq_to_x(const struct graph_area *g, double freq) {
@@ -219,6 +230,76 @@ static void draw_filter_handle(
   cairo_restore(cr);
 }
 
+// Find which band handle (if any) is at the given position
+// Returns band index (0-based) or -1 if none
+static int find_band_at_position(
+  GtkFilterResponse *response,
+  double             mx,
+  double             my
+) {
+  int width = gtk_widget_get_width(GTK_WIDGET(response));
+  int height = gtk_widget_get_height(GTK_WIDGET(response));
+
+  struct graph_area g;
+  calc_graph_area(width, height, &g);
+
+  double hit_radius = 12;  // slightly larger than visual radius for easier targeting
+  int closest_band = -1;
+  double closest_dist = hit_radius * hit_radius;
+
+  for (int i = 0; i < response->num_bands; i++) {
+    const struct biquad_params *params = &response->bands[i];
+
+    double x = freq_to_x(&g, params->freq);
+    double y;
+
+    if (biquad_type_uses_gain(params->type)) {
+      y = db_to_y(&g, params->gain_db);
+    } else {
+      double db = biquad_response_db(&response->coeffs[i], params->freq, SAMPLE_RATE);
+      y = db_to_y(&g, db);
+    }
+
+    double dx = mx - x;
+    double dy = my - y;
+    double dist_sq = dx * dx + dy * dy;
+
+    if (dist_sq < closest_dist) {
+      closest_dist = dist_sq;
+      closest_band = i;
+    }
+  }
+
+  return closest_band;
+}
+
+// Motion event callbacks
+static void response_motion(
+  GtkEventControllerMotion *controller,
+  double                    x,
+  double                    y,
+  GtkFilterResponse        *response
+) {
+  int band = find_band_at_position(response, x, y);
+
+  if (band != response->internal_highlight) {
+    response->internal_highlight = band;
+    response->highlight_band = band;
+    gtk_widget_queue_draw(GTK_WIDGET(response));
+  }
+}
+
+static void response_leave(
+  GtkEventControllerMotion *controller,
+  GtkFilterResponse        *response
+) {
+  if (response->internal_highlight != -1) {
+    response->internal_highlight = -1;
+    response->highlight_band = -1;
+    gtk_widget_queue_draw(GTK_WIDGET(response));
+  }
+}
+
 // Calculate combined response at a frequency (includes all enabled bands)
 static double combined_response_db(GtkFilterResponse *response, double freq) {
   double total_db = 0.0;
@@ -237,14 +318,8 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   int width = gtk_widget_get_width(widget);
   int height = gtk_widget_get_height(widget);
 
-  // Calculate graph area from actual widget size
   struct graph_area g;
-  g.left = LABEL_MARGIN_LEFT;
-  g.right = width - PADDING;
-  g.top = PADDING;
-  g.bottom = height - LABEL_MARGIN_BOTTOM;
-  g.width = g.right - g.left;
-  g.height = g.bottom - g.top;
+  calc_graph_area(width, height, &g);
 
   cairo_t *cr = gtk_snapshot_append_cairo(
     snapshot,
@@ -462,6 +537,7 @@ static void gtk_filter_response_init(GtkFilterResponse *response) {
   response->num_bands = 0;
   response->enabled = TRUE;
   response->highlight_band = -1;
+  response->internal_highlight = -1;
 
   for (int i = 0; i < FILTER_RESPONSE_MAX_BANDS; i++) {
     response->band_enabled[i] = TRUE;
@@ -470,6 +546,12 @@ static void gtk_filter_response_init(GtkFilterResponse *response) {
     response->bands[i].q = 1.0;
     response->bands[i].gain_db = 0.0;
   }
+
+  // Add motion controller for hover detection
+  GtkEventController *motion = gtk_event_controller_motion_new();
+  g_signal_connect(motion, "motion", G_CALLBACK(response_motion), response);
+  g_signal_connect(motion, "leave", G_CALLBACK(response_leave), response);
+  gtk_widget_add_controller(GTK_WIDGET(response), motion);
 }
 
 GtkWidget *gtk_filter_response_new(int num_bands) {
