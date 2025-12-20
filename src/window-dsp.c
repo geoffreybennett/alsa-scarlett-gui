@@ -1,18 +1,24 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "compressor-curve.h"
 #include "gtkhelper.h"
 #include "stringhelper.h"
 #include "widget-boolean.h"
 #include "window-dsp.h"
 
+// Compressor curve update function type
+typedef void (*curve_update_fn)(GtkCompressorCurve *curve, int value);
+
 // Data for an integer slider control
 struct int_slider {
-  struct alsa_elem *elem;
-  GtkWidget        *scale;
-  GtkWidget        *label;
-  const char       *suffix;
-  int               divisor;  // for ratio display (divide value by this)
+  struct alsa_elem   *elem;
+  GtkWidget          *scale;
+  GtkWidget          *label;
+  const char         *suffix;
+  int                 divisor;  // for ratio display (divide value by this)
+  GtkCompressorCurve *curve;    // optional curve to update
+  curve_update_fn     curve_fn; // function to update curve
 };
 
 static void int_slider_changed(GtkRange *range, struct int_slider *data) {
@@ -40,6 +46,10 @@ static void int_slider_updated(struct alsa_elem *elem, void *private) {
   g_free(text);
 
   gtk_widget_set_sensitive(data->scale, alsa_get_elem_writable(elem));
+
+  // Update curve if connected
+  if (data->curve && data->curve_fn)
+    data->curve_fn(data->curve, value);
 }
 
 static void int_slider_destroy(struct int_slider *data) {
@@ -47,15 +57,19 @@ static void int_slider_destroy(struct int_slider *data) {
 }
 
 // Create an integer slider control with value label
-static GtkWidget *make_int_slider(
-  struct alsa_elem *elem,
-  const char       *suffix,
-  int               divisor
+static GtkWidget *make_int_slider_with_curve(
+  struct alsa_elem   *elem,
+  const char         *suffix,
+  int                 divisor,
+  GtkCompressorCurve *curve,
+  curve_update_fn     curve_fn
 ) {
   struct int_slider *data = g_malloc0(sizeof(struct int_slider));
   data->elem = elem;
   data->suffix = suffix;
   data->divisor = divisor;
+  data->curve = curve;
+  data->curve_fn = curve_fn;
 
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
 
@@ -86,6 +100,32 @@ static GtkWidget *make_int_slider(
   g_object_weak_ref(G_OBJECT(box), (GWeakNotify)int_slider_destroy, data);
 
   return box;
+}
+
+// Simple wrapper without curve
+static GtkWidget *make_int_slider(
+  struct alsa_elem *elem,
+  const char       *suffix,
+  int               divisor
+) {
+  return make_int_slider_with_curve(elem, suffix, divisor, NULL, NULL);
+}
+
+// Curve update wrapper functions
+static void update_curve_threshold(GtkCompressorCurve *curve, int value) {
+  gtk_compressor_curve_set_threshold(curve, value);
+}
+
+static void update_curve_ratio(GtkCompressorCurve *curve, int value) {
+  gtk_compressor_curve_set_ratio(curve, value);
+}
+
+static void update_curve_knee(GtkCompressorCurve *curve, int value) {
+  gtk_compressor_curve_set_knee_width(curve, value);
+}
+
+static void update_curve_makeup(GtkCompressorCurve *curve, int value) {
+  gtk_compressor_curve_set_makeup_gain(curve, value);
 }
 
 // Create controls for one line input channel
@@ -136,95 +176,119 @@ static void add_channel_controls(
     gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 1, 1);
   }
 
-  // Compressor section
+  // Compressor section with curve display
   name = g_strdup_printf("%sCompressor Enable", prefix);
-  elem = get_elem_by_name(elems, name);
+  struct alsa_elem *comp_enable = get_elem_by_name(elems, name);
   g_free(name);
-  if (elem) {
+
+  if (comp_enable) {
+    // Compressor header and enable
     w = gtk_label_new("Compressor");
     gtk_widget_set_halign(w, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
 
-    w = make_boolean_alsa_elem(elem, "Off", "On");
+    w = make_boolean_alsa_elem(comp_enable, "Off", "On");
     gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 1, 1);
-  }
 
-  // Compressor Threshold
-  name = g_strdup_printf("%sCompressor Threshold", prefix);
-  elem = get_elem_by_name(elems, name);
-  g_free(name);
-  if (elem) {
-    w = gtk_label_new("Threshold");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
+    // Create curve widget
+    GtkWidget *curve_widget = gtk_compressor_curve_new();
+    GtkCompressorCurve *curve = GTK_COMPRESSOR_CURVE(curve_widget);
 
-    w = make_int_slider(elem, " dB", 1);
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 2, 1);
-  }
+    // Create a horizontal box to hold curve and sliders
+    GtkWidget *comp_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_grid_attach(GTK_GRID(grid), comp_box, 0, *grid_y, 3, 1);
 
-  // Compressor Ratio
-  name = g_strdup_printf("%sCompressor Ratio", prefix);
-  elem = get_elem_by_name(elems, name);
-  g_free(name);
-  if (elem) {
-    w = gtk_label_new("Ratio");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
+    // Add curve to the left
+    gtk_box_append(GTK_BOX(comp_box), curve_widget);
 
-    w = make_int_slider(elem, NULL, 2);  // divisor=2 for ratio display
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 2, 1);
-  }
+    // Create a grid for the sliders on the right
+    GtkWidget *slider_grid = gtk_grid_new();
+    gtk_grid_set_column_spacing(GTK_GRID(slider_grid), 10);
+    gtk_grid_set_row_spacing(GTK_GRID(slider_grid), 5);
+    gtk_widget_set_hexpand(slider_grid, TRUE);
+    gtk_box_append(GTK_BOX(comp_box), slider_grid);
 
-  // Compressor Knee Width
-  name = g_strdup_printf("%sCompressor Knee Width", prefix);
-  elem = get_elem_by_name(elems, name);
-  g_free(name);
-  if (elem) {
-    w = gtk_label_new("Knee Width");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
+    int slider_row = 0;
 
-    w = make_int_slider(elem, " dB", 1);
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 2, 1);
-  }
+    // Threshold
+    name = g_strdup_printf("%sCompressor Threshold", prefix);
+    elem = get_elem_by_name(elems, name);
+    g_free(name);
+    if (elem) {
+      w = gtk_label_new("Threshold");
+      gtk_widget_set_halign(w, GTK_ALIGN_END);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
 
-  // Compressor Attack
-  name = g_strdup_printf("%sCompressor Attack", prefix);
-  elem = get_elem_by_name(elems, name);
-  g_free(name);
-  if (elem) {
-    w = gtk_label_new("Attack");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
+      w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_threshold);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+    }
 
-    w = make_int_slider(elem, " ms", 1);
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 2, 1);
-  }
+    // Ratio
+    name = g_strdup_printf("%sCompressor Ratio", prefix);
+    elem = get_elem_by_name(elems, name);
+    g_free(name);
+    if (elem) {
+      w = gtk_label_new("Ratio");
+      gtk_widget_set_halign(w, GTK_ALIGN_END);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
 
-  // Compressor Release
-  name = g_strdup_printf("%sCompressor Release", prefix);
-  elem = get_elem_by_name(elems, name);
-  g_free(name);
-  if (elem) {
-    w = gtk_label_new("Release");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
+      w = make_int_slider_with_curve(elem, NULL, 2, curve, update_curve_ratio);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+    }
 
-    w = make_int_slider(elem, " ms", 1);
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 2, 1);
-  }
+    // Knee Width
+    name = g_strdup_printf("%sCompressor Knee Width", prefix);
+    elem = get_elem_by_name(elems, name);
+    g_free(name);
+    if (elem) {
+      w = gtk_label_new("Knee Width");
+      gtk_widget_set_halign(w, GTK_ALIGN_END);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
 
-  // Compressor Makeup Gain
-  name = g_strdup_printf("%sCompressor Makeup Gain", prefix);
-  elem = get_elem_by_name(elems, name);
-  g_free(name);
-  if (elem) {
-    w = gtk_label_new("Makeup Gain");
-    gtk_widget_set_halign(w, GTK_ALIGN_END);
-    gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y, 1, 1);
+      w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_knee);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+    }
 
-    w = make_int_slider(elem, " dB", 1);
-    gtk_grid_attach(GTK_GRID(grid), w, 1, (*grid_y)++, 2, 1);
+    // Attack (no curve update)
+    name = g_strdup_printf("%sCompressor Attack", prefix);
+    elem = get_elem_by_name(elems, name);
+    g_free(name);
+    if (elem) {
+      w = gtk_label_new("Attack");
+      gtk_widget_set_halign(w, GTK_ALIGN_END);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
+
+      w = make_int_slider(elem, " ms", 1);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+    }
+
+    // Release (no curve update)
+    name = g_strdup_printf("%sCompressor Release", prefix);
+    elem = get_elem_by_name(elems, name);
+    g_free(name);
+    if (elem) {
+      w = gtk_label_new("Release");
+      gtk_widget_set_halign(w, GTK_ALIGN_END);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
+
+      w = make_int_slider(elem, " ms", 1);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+    }
+
+    // Makeup Gain
+    name = g_strdup_printf("%sCompressor Makeup Gain", prefix);
+    elem = get_elem_by_name(elems, name);
+    g_free(name);
+    if (elem) {
+      w = gtk_label_new("Makeup");
+      gtk_widget_set_halign(w, GTK_ALIGN_END);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 0, slider_row, 1, 1);
+
+      w = make_int_slider_with_curve(elem, " dB", 1, curve, update_curve_makeup);
+      gtk_grid_attach(GTK_GRID(slider_grid), w, 1, slider_row++, 1, 1);
+    }
+
+    (*grid_y)++;
   }
 
   // PEQ Filter Enable
