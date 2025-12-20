@@ -23,5 +23,7 @@ void gtk_compressor_curve_set_threshold(GtkCompressorCurve *curve, int threshold
 void gtk_compressor_curve_set_ratio(GtkCompressorCurve *curve, int ratio);
 void gtk_compressor_curve_set_knee_width(GtkCompressorCurve *curve, int knee_width);
 void gtk_compressor_curve_set_makeup_gain(GtkCompressorCurve *curve, int makeup_gain);
+void gtk_compressor_curve_set_enabled(GtkCompressorCurve *curve, gboolean enabled);
+void gtk_compressor_curve_set_dsp_enabled(GtkCompressorCurve *curve, gboolean enabled);
 
 G_END_DECLS
