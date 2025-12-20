@@ -246,6 +246,23 @@ long *alsa_get_elem_int_values(struct alsa_elem *elem) {
   return values;
 }
 
+// set multiple int values for an element (e.g., biquad coefficients)
+void alsa_set_elem_int_values(struct alsa_elem *elem, const long *values, int count) {
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
+    return;
+
+  snd_ctl_elem_value_t *elem_value;
+
+  snd_ctl_elem_value_alloca(&elem_value);
+  snd_ctl_elem_value_set_numid(elem_value, elem->numid);
+
+  int n = count < elem->count ? count : elem->count;
+  for (int i = 0; i < n; i++)
+    snd_ctl_elem_value_set_integer(elem_value, i, values[i]);
+
+  snd_ctl_elem_write(elem->card->handle, elem_value);
+}
+
 // set the element value
 // boolean, enum, or int all set from long ints
 void alsa_set_elem_value(struct alsa_elem *elem, long value) {
