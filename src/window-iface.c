@@ -94,6 +94,12 @@ static void update_window_titles(struct alsa_elem *elem, void *private) {
     g_free(startup_title);
   }
 
+  if (card->window_dsp) {
+    char *dsp_title = g_strdup_printf("%s - DSP", title);
+    gtk_window_set_title(GTK_WINDOW(card->window_dsp), dsp_title);
+    g_free(dsp_title);
+  }
+
   g_free(title);
 }
 
@@ -144,6 +150,10 @@ static void cleanup_subwindows(struct alsa_card *card) {
   if (card->window_modal) {
     gtk_window_destroy(GTK_WINDOW(card->window_modal));
     card->window_modal = NULL;
+  }
+  if (card->window_dsp) {
+    gtk_window_destroy(GTK_WINDOW(card->window_dsp));
+    card->window_dsp = NULL;
   }
 }
 
@@ -281,6 +291,8 @@ void create_card_window(struct alsa_card *card) {
     add_startup_action_map(card);
   if (has_mixer)
     add_mixer_action_map(card);
+  if (card->window_dsp)
+    add_dsp_action_map(card);
   if (card->device)
     add_load_save_action_map(card);
 

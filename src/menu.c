@@ -86,6 +86,16 @@ static void activate_startup(
   update_visibility(action, card->window_startup);
 }
 
+static void activate_dsp(
+  GSimpleAction *action,
+  GVariant      *parameter,
+  gpointer       data
+) {
+  struct alsa_card *card = data;
+
+  update_visibility(action, card->window_dsp);
+}
+
 static const GActionEntry app_entries[] = {
   {"hardware", activate_hardware, NULL, "false"},
   {"quit",     activate_quit},
@@ -119,6 +129,7 @@ static const struct menu_data menus[] = {
       { "_Routing",       "win.routing",       { "<Control>R", NULL } },
       { "_Mixer",         "win.mixer",         { "<Control>M", NULL } },
       { "_Levels",        "win.levels",        { "<Control>L", NULL } },
+      { "_DSP",           "win.dsp",           { "<Control>D", NULL } },
       { "_Configuration", "win.configuration", { "<Control>G", NULL } },
       { "_Startup",       "win.startup",       { "<Control>T", NULL } },
       {}
@@ -243,6 +254,19 @@ void add_mixer_action_map(struct alsa_card *card) {
     G_ACTION_MAP(card->window_main),
     configuration_entries,
     G_N_ELEMENTS(configuration_entries),
+    card
+  );
+}
+
+static const GActionEntry dsp_entries[] = {
+  {"dsp", activate_dsp, NULL, "false"}
+};
+
+void add_dsp_action_map(struct alsa_card *card) {
+  g_action_map_add_action_entries(
+    G_ACTION_MAP(card->window_main),
+    dsp_entries,
+    G_N_ELEMENTS(dsp_entries),
     card
   );
 }
