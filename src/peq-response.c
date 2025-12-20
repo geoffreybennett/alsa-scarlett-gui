@@ -18,6 +18,8 @@
 #define FREQ_MAX 20000.0
 #define DB_MIN -24.0
 #define DB_MAX  24.0
+#define Q_MIN 0.1
+#define Q_MAX 10.0
 
 #define SAMPLE_RATE 48000.0
 
@@ -49,9 +51,21 @@ struct _GtkFilterResponse {
   gboolean enabled;
   int highlight_band;  // -1 for none
   int internal_highlight;  // -1 for none, set by hover
+
+  // Drag state
+  int drag_band;  // -1 for none
+  double drag_offset_x;  // offset from handle center to click point
+  double drag_offset_y;
 };
 
 G_DEFINE_TYPE(GtkFilterResponse, gtk_filter_response, GTK_TYPE_WIDGET)
+
+enum {
+  SIGNAL_FILTER_CHANGED,
+  N_SIGNALS
+};
+
+static guint signals[N_SIGNALS];
 
 // Calculate graph area from widget dimensions
 static void calc_graph_area(int width, int height, struct graph_area *g) {
@@ -74,6 +88,39 @@ static double freq_to_x(const struct graph_area *g, double freq) {
 // Convert dB to Y coordinate
 static double db_to_y(const struct graph_area *g, double db) {
   return g->bottom - (db - DB_MIN) / (DB_MAX - DB_MIN) * g->height;
+}
+
+// Convert X coordinate to frequency (log scale)
+static double x_to_freq(const struct graph_area *g, double x) {
+  double log_min = log10(FREQ_MIN);
+  double log_max = log10(FREQ_MAX);
+  double t = (x - g->left) / g->width;
+  double log_freq = log_min + t * (log_max - log_min);
+  return pow(10.0, log_freq);
+}
+
+// Convert Y coordinate to dB
+static double y_to_db(const struct graph_area *g, double y) {
+  double t = (g->bottom - y) / g->height;
+  return DB_MIN + t * (DB_MAX - DB_MIN);
+}
+
+// Convert Q to Y coordinate (log scale, higher Q = higher Y)
+static double q_to_y(const struct graph_area *g, double q) {
+  double log_min = log10(Q_MIN);
+  double log_max = log10(Q_MAX);
+  double log_q = log10(q);
+  double t = (log_q - log_min) / (log_max - log_min);
+  return g->bottom - t * g->height;
+}
+
+// Convert Y coordinate to Q (log scale, higher Y = higher Q)
+static double y_to_q(const struct graph_area *g, double y) {
+  double t = (g->bottom - y) / g->height;
+  double log_min = log10(Q_MIN);
+  double log_max = log10(Q_MAX);
+  double log_q = log_min + t * (log_max - log_min);
+  return pow(10.0, log_q);
 }
 
 // Draw a single filter response curve with shading to 0 dB line
@@ -159,9 +206,8 @@ static void draw_filter_handle(
   if (biquad_type_uses_gain(params->type)) {
     y = db_to_y(ga, params->gain_db);
   } else {
-    // For LP/HP/BP/Notch, show at the response at center freq
-    double db = biquad_response_db(coeffs, params->freq, SAMPLE_RATE);
-    y = db_to_y(ga, db);
+    // For LP/HP/BP/Notch, Y represents Q
+    y = q_to_y(ga, params->q);
   }
 
   double radius = highlighted ? 12 : 10;
@@ -256,8 +302,7 @@ static int find_band_at_position(
     if (biquad_type_uses_gain(params->type)) {
       y = db_to_y(&g, params->gain_db);
     } else {
-      double db = biquad_response_db(&response->coeffs[i], params->freq, SAMPLE_RATE);
-      y = db_to_y(&g, db);
+      y = q_to_y(&g, params->q);
     }
 
     double dx = mx - x;
@@ -298,6 +343,105 @@ static void response_leave(
     response->highlight_band = -1;
     gtk_widget_queue_draw(GTK_WIDGET(response));
   }
+}
+
+// Drag gesture callbacks
+static void response_drag_begin(
+  GtkGestureDrag    *gesture,
+  double             start_x,
+  double             start_y,
+  GtkFilterResponse *response
+) {
+  int band = find_band_at_position(response, start_x, start_y);
+
+  if (band >= 0) {
+    response->drag_band = band;
+    response->highlight_band = band;
+
+    // Calculate offset from handle center to click point
+    int width = gtk_widget_get_width(GTK_WIDGET(response));
+    int height = gtk_widget_get_height(GTK_WIDGET(response));
+    struct graph_area g;
+    calc_graph_area(width, height, &g);
+
+    const struct biquad_params *params = &response->bands[band];
+    double handle_x = freq_to_x(&g, params->freq);
+    double handle_y;
+    if (biquad_type_uses_gain(params->type)) {
+      handle_y = db_to_y(&g, params->gain_db);
+    } else {
+      handle_y = q_to_y(&g, params->q);
+    }
+
+    response->drag_offset_x = start_x - handle_x;
+    response->drag_offset_y = start_y - handle_y;
+
+    gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+  }
+}
+
+static void response_drag_update(
+  GtkGestureDrag    *gesture,
+  double             offset_x,
+  double             offset_y,
+  GtkFilterResponse *response
+) {
+  if (response->drag_band < 0)
+    return;
+
+  double start_x, start_y;
+  gtk_gesture_drag_get_start_point(gesture, &start_x, &start_y);
+
+  // Calculate handle center position (subtract click offset from mouse position)
+  double x = start_x + offset_x - response->drag_offset_x;
+  double y = start_y + offset_y - response->drag_offset_y;
+
+  int width = gtk_widget_get_width(GTK_WIDGET(response));
+  int height = gtk_widget_get_height(GTK_WIDGET(response));
+
+  struct graph_area g;
+  calc_graph_area(width, height, &g);
+
+  // Convert position to freq
+  double freq = x_to_freq(&g, x);
+  if (freq < FREQ_MIN) freq = FREQ_MIN;
+  if (freq > FREQ_MAX) freq = FREQ_MAX;
+
+  // Update the band
+  struct biquad_params *params = &response->bands[response->drag_band];
+  params->freq = freq;
+
+  if (biquad_type_uses_gain(params->type)) {
+    // Y adjusts gain
+    double gain_db = y_to_db(&g, y);
+    if (gain_db < DB_MIN) gain_db = DB_MIN;
+    if (gain_db > DB_MAX) gain_db = DB_MAX;
+    params->gain_db = gain_db;
+  } else {
+    // Y adjusts Q (higher = narrower)
+    double q = y_to_q(&g, y);
+    if (q < Q_MIN) q = Q_MIN;
+    if (q > Q_MAX) q = Q_MAX;
+    params->q = q;
+  }
+
+  // Recalculate coefficients
+  biquad_calculate(params, SAMPLE_RATE, &response->coeffs[response->drag_band]);
+
+  // Emit signal to notify external code
+  g_signal_emit(response, signals[SIGNAL_FILTER_CHANGED], 0,
+                response->drag_band, params);
+
+  gtk_widget_queue_draw(GTK_WIDGET(response));
+}
+
+static void response_drag_end(
+  GtkGestureDrag    *gesture,
+  double             offset_x,
+  double             offset_y,
+  GtkFilterResponse *response
+) {
+  response->drag_band = -1;
 }
 
 // Calculate combined response at a frequency (includes all enabled bands)
@@ -531,6 +675,20 @@ static void gtk_filter_response_class_init(GtkFilterResponseClass *klass) {
 
   widget_class->snapshot = response_snapshot;
   widget_class->measure = response_measure;
+
+  // Signal emitted when a filter is changed by dragging
+  signals[SIGNAL_FILTER_CHANGED] = g_signal_new(
+    "filter-changed",
+    G_TYPE_FROM_CLASS(klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    NULL,
+    G_TYPE_NONE,
+    2,
+    G_TYPE_INT,     // band index
+    G_TYPE_POINTER  // biquad_params pointer
+  );
 }
 
 static void gtk_filter_response_init(GtkFilterResponse *response) {
@@ -538,6 +696,7 @@ static void gtk_filter_response_init(GtkFilterResponse *response) {
   response->enabled = TRUE;
   response->highlight_band = -1;
   response->internal_highlight = -1;
+  response->drag_band = -1;
 
   for (int i = 0; i < FILTER_RESPONSE_MAX_BANDS; i++) {
     response->band_enabled[i] = TRUE;
@@ -552,6 +711,13 @@ static void gtk_filter_response_init(GtkFilterResponse *response) {
   g_signal_connect(motion, "motion", G_CALLBACK(response_motion), response);
   g_signal_connect(motion, "leave", G_CALLBACK(response_leave), response);
   gtk_widget_add_controller(GTK_WIDGET(response), motion);
+
+  // Add drag gesture for handle dragging
+  GtkGesture *drag = gtk_gesture_drag_new();
+  g_signal_connect(drag, "drag-begin", G_CALLBACK(response_drag_begin), response);
+  g_signal_connect(drag, "drag-update", G_CALLBACK(response_drag_update), response);
+  g_signal_connect(drag, "drag-end", G_CALLBACK(response_drag_end), response);
+  gtk_widget_add_controller(GTK_WIDGET(response), GTK_EVENT_CONTROLLER(drag));
 }
 
 GtkWidget *gtk_filter_response_new(int num_bands) {
