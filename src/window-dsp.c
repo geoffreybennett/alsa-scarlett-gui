@@ -594,19 +594,17 @@ static GtkWidget *create_section_box(
   gtk_widget_set_margin_start(box, 5);
   gtk_widget_set_margin_end(box, 5);
 
-  // Header with enable
-  GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_append(GTK_BOX(box), header_box);
-
-  GtkWidget *label = gtk_label_new(NULL);
-  char *markup = g_strdup_printf("<b>%s</b>", title);
-  gtk_label_set_markup(GTK_LABEL(label), markup);
-  g_free(markup);
-  gtk_box_append(GTK_BOX(header_box), label);
-
+  // Header with enable toggle button
   if (enable_elem) {
-    GtkWidget *enable = make_boolean_alsa_elem(enable_elem, "Off", "On");
-    gtk_box_append(GTK_BOX(header_box), enable);
+    GtkWidget *enable = make_boolean_alsa_elem(enable_elem, title, NULL);
+    gtk_widget_add_css_class(enable, "dsp");
+    gtk_box_append(GTK_BOX(box), enable);
+  } else {
+    GtkWidget *label = gtk_label_new(NULL);
+    char *markup = g_strdup_printf("<b>%s</b>", title);
+    gtk_label_set_markup(GTK_LABEL(label), markup);
+    g_free(markup);
+    gtk_box_append(GTK_BOX(box), label);
   }
 
   return box;
@@ -639,16 +637,19 @@ static void add_channel_controls(
   gtk_widget_set_margin_top(header_box, *grid_y > 0 ? 15 : 0);
   gtk_grid_attach(GTK_GRID(grid), header_box, 0, (*grid_y)++, 1, 1);
 
-  char *header = g_strdup_printf("DSP %d", channel);
-  w = gtk_label_new(NULL);
-  char *markup = g_strdup_printf("<b>%s</b>", header);
-  gtk_label_set_markup(GTK_LABEL(w), markup);
-  g_free(markup);
-  g_free(header);
-  gtk_box_append(GTK_BOX(header_box), w);
-
   if (dsp_enable) {
-    w = make_boolean_alsa_elem(dsp_enable, "Off", "On");
+    char *header = g_strdup_printf("DSP %d", channel);
+    w = make_boolean_alsa_elem(dsp_enable, header, NULL);
+    g_free(header);
+    gtk_widget_add_css_class(w, "dsp");
+    gtk_box_append(GTK_BOX(header_box), w);
+  } else {
+    char *header = g_strdup_printf("DSP %d", channel);
+    w = gtk_label_new(NULL);
+    char *markup = g_strdup_printf("<b>%s</b>", header);
+    gtk_label_set_markup(GTK_LABEL(w), markup);
+    g_free(markup);
+    g_free(header);
     gtk_box_append(GTK_BOX(header_box), w);
   }
 
