@@ -46,6 +46,7 @@ struct _GtkFilterResponse {
   struct biquad_coeffs coeffs[FILTER_RESPONSE_MAX_BANDS];
   gboolean band_enabled[FILTER_RESPONSE_MAX_BANDS];
   gboolean enabled;
+  int highlight_band;  // -1 for none
 };
 
 G_DEFINE_TYPE(GtkFilterResponse, gtk_filter_response, GTK_TYPE_WIDGET)
@@ -200,8 +201,10 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_rectangle(cr, g.left, g.top, g.width, g.height);
   cairo_clip(cr);
 
-  // Draw individual filter curves (dashed only if individual band disabled)
+  // Draw individual filter curves (skip highlighted band for now)
   for (int i = 0; i < response->num_bands; i++) {
+    if (i == response->highlight_band)
+      continue;
     int color_idx = i % 8;
     gboolean band_on = response->band_enabled[i];
     draw_filter_response(
@@ -239,6 +242,22 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   }
   cairo_stroke(cr);
 
+  // Draw highlighted band last (on top of everything) with full opacity
+  if (response->highlight_band >= 0 &&
+      response->highlight_band < response->num_bands) {
+    int i = response->highlight_band;
+    int color_idx = i % 8;
+    gboolean band_on = response->band_enabled[i];
+    draw_filter_response(
+      cr, &g, &response->coeffs[i],
+      band_colors[color_idx][0],
+      band_colors[color_idx][1],
+      band_colors[color_idx][2],
+      band_on ? 1.0 : 0.6,
+      !band_on
+    );
+  }
+
   cairo_restore(cr);
 
   cairo_destroy(cr);
@@ -274,6 +293,7 @@ static void gtk_filter_response_class_init(GtkFilterResponseClass *klass) {
 static void gtk_filter_response_init(GtkFilterResponse *response) {
   response->num_bands = 0;
   response->enabled = TRUE;
+  response->highlight_band = -1;
 
   for (int i = 0; i < FILTER_RESPONSE_MAX_BANDS; i++) {
     response->band_enabled[i] = TRUE;
@@ -337,6 +357,16 @@ void gtk_filter_response_set_enabled(
 ) {
   if (response->enabled != enabled) {
     response->enabled = enabled;
+    gtk_widget_queue_draw(GTK_WIDGET(response));
+  }
+}
+
+void gtk_filter_response_set_highlight(
+  GtkFilterResponse *response,
+  int                band
+) {
+  if (response->highlight_band != band) {
+    response->highlight_band = band;
     gtk_widget_queue_draw(GTK_WIDGET(response));
   }
 }

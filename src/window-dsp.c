@@ -269,6 +269,25 @@ static void filter_stage_destroy(struct filter_stage *stage) {
   g_free(stage);
 }
 
+// Hover callbacks for highlighting
+static void filter_stage_enter(
+  GtkEventControllerMotion *controller,
+  double                    x,
+  double                    y,
+  struct filter_stage      *stage
+) {
+  if (stage->response)
+    gtk_filter_response_set_highlight(stage->response, stage->band_index);
+}
+
+static void filter_stage_leave(
+  GtkEventControllerMotion *controller,
+  struct filter_stage      *stage
+) {
+  if (stage->response)
+    gtk_filter_response_set_highlight(stage->response, -1);
+}
+
 // Create controls for one filter stage
 static GtkWidget *make_filter_stage(
   struct alsa_elem  *coeff_elem,
@@ -396,6 +415,12 @@ static GtkWidget *make_filter_stage(
     stage->gain_scale, "value-changed",
     G_CALLBACK(filter_gain_changed), stage
   );
+
+  // Hover detection for highlighting in the response graph
+  GtkEventController *motion = gtk_event_controller_motion_new();
+  g_signal_connect(motion, "enter", G_CALLBACK(filter_stage_enter), stage);
+  g_signal_connect(motion, "leave", G_CALLBACK(filter_stage_leave), stage);
+  gtk_widget_add_controller(box, motion);
 
   g_object_weak_ref(G_OBJECT(box), (GWeakNotify)filter_stage_destroy, stage);
 
