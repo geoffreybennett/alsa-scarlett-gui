@@ -64,7 +64,7 @@ static double db_to_y(const struct graph_area *g, double db) {
   return g->bottom - (db - DB_MIN) / (DB_MAX - DB_MIN) * g->height;
 }
 
-// Draw a single filter response curve
+// Draw a single filter response curve with shading to 0 dB line
 static void draw_filter_response(
   cairo_t                    *cr,
   const struct graph_area    *g,
@@ -77,6 +77,39 @@ static void draw_filter_response(
 ) {
   cairo_save(cr);
 
+  double y0 = db_to_y(g, 0);
+  double x_start = freq_to_x(g, FREQ_MIN);
+  double x_end = freq_to_x(g, FREQ_MAX);
+
+  // Build closed path for fill
+  cairo_move_to(cr, x_start, y0);
+  for (double freq = FREQ_MIN; freq <= FREQ_MAX; freq *= 1.02) {
+    double db = biquad_response_db(coeffs, freq, SAMPLE_RATE);
+    double x = freq_to_x(g, freq);
+    double y = db_to_y(g, db);
+    cairo_line_to(cr, x, y);
+  }
+  cairo_line_to(cr, x_end, y0);
+  cairo_close_path(cr);
+
+  // Fill with translucent color
+  cairo_set_source_rgba(cr, r, gc, b, alpha * 0.3);
+  cairo_fill(cr);
+
+  // Build new path for stroke (curve only)
+  gboolean first = TRUE;
+  for (double freq = FREQ_MIN; freq <= FREQ_MAX; freq *= 1.02) {
+    double db = biquad_response_db(coeffs, freq, SAMPLE_RATE);
+    double x = freq_to_x(g, freq);
+    double y = db_to_y(g, db);
+    if (first) {
+      cairo_move_to(cr, x, y);
+      first = FALSE;
+    } else {
+      cairo_line_to(cr, x, y);
+    }
+  }
+
   cairo_set_source_rgba(cr, r, gc, b, alpha);
   cairo_set_line_width(cr, 1.5);
 
@@ -85,19 +118,6 @@ static void draw_filter_response(
     cairo_set_dash(cr, dashes, 2, 0);
   }
 
-  gboolean first = TRUE;
-  for (double freq = FREQ_MIN; freq <= FREQ_MAX; freq *= 1.02) {
-    double db = biquad_response_db(coeffs, freq, SAMPLE_RATE);
-    double x = freq_to_x(g, freq);
-    double y = db_to_y(g, db);
-
-    if (first) {
-      cairo_move_to(cr, x, y);
-      first = FALSE;
-    } else {
-      cairo_line_to(cr, x, y);
-    }
-  }
   cairo_stroke(cr);
 
   cairo_restore(cr);
