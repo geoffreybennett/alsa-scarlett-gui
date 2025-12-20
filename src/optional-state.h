@@ -5,17 +5,23 @@
 
 #include "alsa.h"
 
-// Load the optional control state for a device
-// Returns hash table of control_name → value (as string)
+// Configuration file sections
+#define CONFIG_SECTION_DEVICE   "device"
+#define CONFIG_SECTION_CONTROLS "controls"
+#define CONFIG_SECTION_UI       "ui"
+
+// Load the optional control state for a device from a specific section
+// Returns hash table of key → value (as string)
 // Caller must free the hash table with g_hash_table_destroy()
 // Returns NULL if card has no serial or file doesn't exist
-GHashTable *optional_state_load(struct alsa_card *card);
+GHashTable *optional_state_load(struct alsa_card *card, const char *section);
 
-// Save a single optional control value to the state file
+// Save a single value to the state file in a specific section
 // Creates the state file and directory if needed
 // Returns 0 on success, -1 on error
 int optional_state_save(
   struct alsa_card *card,
+  const char       *section,
   const char       *key,
   const char       *value
 );

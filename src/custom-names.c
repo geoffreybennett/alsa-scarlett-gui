@@ -39,13 +39,19 @@ static void custom_name_changed(
     // only save if valid UTF-8
     if (str_len > 0 && g_utf8_validate((const char *)bytes, str_len, NULL)) {
       char *str = g_strndup((const char *)bytes, str_len);
-      optional_state_save(data->card, data->config_key, str);
+      optional_state_save(
+        data->card, CONFIG_SECTION_CONTROLS, data->config_key, str
+      );
       g_free(str);
     } else {
-      optional_state_save(data->card, data->config_key, "");
+      optional_state_save(
+        data->card, CONFIG_SECTION_CONTROLS, data->config_key, ""
+      );
     }
   } else {
-    optional_state_save(data->card, data->config_key, "");
+    optional_state_save(
+      data->card, CONFIG_SECTION_CONTROLS, data->config_key, ""
+    );
   }
 }
 
@@ -67,16 +73,18 @@ static char *get_src_elem_name(struct routing_src *src) {
   switch (src->port_category) {
     case PC_HW:
       category_name = hw_type_names[src->hw_type];
-      return g_strdup_printf("%s In %d Name", category_name, src->lr_num);
+      return g_strdup_printf(
+        "%s In %d Name", category_name, src->lr_num
+      );
 
     case PC_PCM:
-      return g_strdup_printf("PCM In %d Name", src->lr_num);
+      return g_strdup_printf("PCM Out %d Name", src->lr_num);
 
     case PC_MIX:
-      return g_strdup_printf("Mix In %d Name", src->lr_num);
+      return g_strdup_printf("Mixer Out %d Name", src->lr_num);
 
     case PC_DSP:
-      return g_strdup_printf("DSP In %d Name", src->lr_num);
+      return g_strdup_printf("DSP Out %d Name", src->lr_num);
 
     default:
       return NULL;
@@ -92,65 +100,18 @@ static char *get_snk_elem_name(struct routing_snk *snk) {
   switch (elem->port_category) {
     case PC_HW:
       category_name = hw_type_names[elem->hw_type];
-      return g_strdup_printf("%s Out %d Name", category_name, elem->lr_num);
+      return g_strdup_printf(
+        "%s Out %d Name", category_name, elem->lr_num
+      );
 
     case PC_PCM:
-      return g_strdup_printf("PCM Out %d Name", elem->lr_num);
+      return g_strdup_printf("PCM In %d Name", elem->lr_num);
 
     case PC_MIX:
-      return g_strdup_printf("Mix Out %d Name", elem->lr_num);
+      return g_strdup_printf("Mixer In %d Name", elem->lr_num);
 
     case PC_DSP:
-      return g_strdup_printf("DSP Out %d Name", elem->lr_num);
-
-    default:
-      return NULL;
-  }
-}
-
-// Generate config key for a routing source
-// Returns newly allocated string that must be freed
-static char *get_src_config_key(struct routing_src *src) {
-  const char *category_prefix = NULL;
-
-  switch (src->port_category) {
-    case PC_HW:
-      category_prefix = hw_type_names[src->hw_type];
-      return g_strdup_printf("%s_in_%d_name", category_prefix, src->lr_num);
-
-    case PC_PCM:
-      return g_strdup_printf("pcm_in_%d_name", src->lr_num);
-
-    case PC_MIX:
-      return g_strdup_printf("mix_in_%d_name", src->lr_num);
-
-    case PC_DSP:
-      return g_strdup_printf("dsp_in_%d_name", src->lr_num);
-
-    default:
-      return NULL;
-  }
-}
-
-// Generate config key for a routing sink
-// Returns newly allocated string that must be freed
-static char *get_snk_config_key(struct routing_snk *snk) {
-  struct alsa_elem *elem = snk->elem;
-  const char *category_prefix = NULL;
-
-  switch (elem->port_category) {
-    case PC_HW:
-      category_prefix = hw_type_names[elem->hw_type];
-      return g_strdup_printf("%s_out_%d_name", category_prefix, elem->lr_num);
-
-    case PC_PCM:
-      return g_strdup_printf("pcm_out_%d_name", elem->lr_num);
-
-    case PC_MIX:
-      return g_strdup_printf("mix_out_%d_name", elem->lr_num);
-
-    case PC_DSP:
-      return g_strdup_printf("dsp_out_%d_name", elem->lr_num);
+      return g_strdup_printf("DSP In %d Name", elem->lr_num);
 
     default:
       return NULL;
@@ -418,22 +379,21 @@ static void create_src_custom_name_elem(
 
   src->custom_name_elem = elem;
 
-  // generate config key
-  char *config_key = get_src_config_key(src);
+  // use element name as config key
+  char *config_key = get_src_elem_name(src);
   if (!config_key)
     return;
 
   // load value from state file
   const char *value = g_hash_table_lookup(state, config_key);
-  if (value && *value) {
+  if (value && *value)
     alsa_set_elem_bytes(elem, value, strlen(value));
-  }
 
   // register callback to save state on changes
   struct custom_name_save_data *callback_data =
     g_malloc0(sizeof(struct custom_name_save_data));
   callback_data->card = card;
-  callback_data->config_key = config_key;  // transfer ownership
+  callback_data->config_key = config_key;
 
   alsa_elem_add_callback(
     elem, custom_name_changed, callback_data,
@@ -455,6 +415,10 @@ static void create_snk_custom_name_elem(
 ) {
   // skip sinks without valid port category
   if (snk->elem->port_category == PC_OFF)
+    return;
+
+  // skip DSP sinks (DSP inputs just show numbers on routing window)
+  if (snk->elem->port_category == PC_DSP)
     return;
 
   // generate element name
@@ -490,22 +454,21 @@ static void create_snk_custom_name_elem(
 
   snk->custom_name_elem = elem;
 
-  // generate config key
-  char *config_key = get_snk_config_key(snk);
+  // use element name as config key
+  char *config_key = get_snk_elem_name(snk);
   if (!config_key)
     return;
 
   // load value from state file
   const char *value = g_hash_table_lookup(state, config_key);
-  if (value && *value) {
+  if (value && *value)
     alsa_set_elem_bytes(elem, value, strlen(value));
-  }
 
   // register callback to save state on changes
   struct custom_name_save_data *callback_data =
     g_malloc0(sizeof(struct custom_name_save_data));
   callback_data->card = card;
-  callback_data->config_key = config_key;  // transfer ownership
+  callback_data->config_key = config_key;
 
   alsa_elem_add_callback(
     elem, custom_name_changed, callback_data,
@@ -533,7 +496,7 @@ void custom_names_init(struct alsa_card *card) {
   }
 
   // load existing state
-  GHashTable *state = optional_state_load(card);
+  GHashTable *state = optional_state_load(card, CONFIG_SECTION_CONTROLS);
   if (!state) {
     state = g_hash_table_new_full(
       g_str_hash, g_str_equal, g_free, g_free
