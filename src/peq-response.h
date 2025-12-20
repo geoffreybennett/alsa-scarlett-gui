@@ -43,4 +43,10 @@ void gtk_filter_response_set_enabled(
   gboolean           enabled
 );
 
+// Set highlighted band (-1 for none)
+void gtk_filter_response_set_highlight(
+  GtkFilterResponse *response,
+  int                band
+);
+
 G_END_DECLS
