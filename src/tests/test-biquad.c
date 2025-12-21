@@ -39,10 +39,11 @@ static void test_filter(
 
   // Check results
   int type_ok = (result.type == orig.type);
-  // Freq and Q are irrelevant for gain filter
+  // Freq is irrelevant for gain filter
   int freq_ok = (type == BIQUAD_TYPE_GAIN) ||
                 fabs(result.freq - orig.freq) < orig.freq * 0.000000001;
-  int q_ok = (type == BIQUAD_TYPE_GAIN) ||
+  // Q is irrelevant for gain and first-order filters
+  int q_ok = !biquad_type_uses_q(type) ||
              fabs(result.q - orig.q) < orig.q * 0.000000001;
   int gain_ok = !biquad_type_uses_gain(type) ||
                 fabs(result.gain_db - orig.gain_db) < 0.000000001;
@@ -92,6 +93,24 @@ int main(void) {
       continue;
     }
 
+    // First-order filters: don't iterate over Q
+    if (!biquad_type_uses_q(type)) {
+      for (int fi = 0; fi < n_freqs; fi++) {
+        if (biquad_type_uses_gain(type)) {
+          for (int gi = 0; gi < n_gains; gi++) {
+            // Skip 0dB shelf filters - indistinguishable from bypass
+            if (gains[gi] == 0)
+              continue;
+            test_filter(type, freqs[fi], 0.707, gains[gi]);
+          }
+        } else {
+          test_filter(type, freqs[fi], 0.707, 0);
+        }
+      }
+      continue;
+    }
+
+    // Second-order filters: iterate over freq, Q, and optionally gain
     for (int fi = 0; fi < n_freqs; fi++) {
       for (int qi = 0; qi < n_qs; qi++) {
         if (biquad_type_uses_gain(type)) {
