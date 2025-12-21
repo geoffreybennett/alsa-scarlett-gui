@@ -1604,7 +1604,8 @@ static gboolean inotify_callback(
   for (
     event = (struct inotify_event *)buf;
     (char *)event < buf + len;
-    event++
+    event = (struct inotify_event *)
+              ((char *)event + sizeof(*event) + event->len)
   ) {
     if (event->mask & IN_CREATE &&
         len &&
