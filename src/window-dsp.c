@@ -410,6 +410,93 @@ static void filter_stage_destroy(struct filter_stage *stage) {
   g_free(stage);
 }
 
+// Callback for when biquad coefficients are changed externally
+static void filter_stage_coeffs_updated(
+  struct alsa_elem *elem,
+  void             *private
+) {
+  struct filter_stage *stage = private;
+
+  long *fixed = alsa_get_elem_int_values(elem);
+  if (!fixed)
+    return;
+
+  struct biquad_coeffs coeffs;
+  biquad_from_fixed_point(fixed, &coeffs);
+
+  struct biquad_params new_params;
+  biquad_analyze(&coeffs, SAMPLE_RATE, &new_params);
+  free(fixed);
+
+  // Check if it's a bypass (identity) filter
+  gboolean new_enabled = !(new_params.type == BIQUAD_TYPE_GAIN &&
+                           new_params.gain_db == 0.0);
+
+  // If disabled, keep the previous filter parameters for the UI
+  if (new_enabled) {
+    stage->params = new_params;
+  }
+  stage->enabled = new_enabled;
+
+  // Update enable checkbox
+  g_signal_handlers_block_by_func(
+    stage->enable_check, filter_enable_toggled, stage
+  );
+  gtk_check_button_set_active(
+    GTK_CHECK_BUTTON(stage->enable_check), stage->enabled
+  );
+  g_signal_handlers_unblock_by_func(
+    stage->enable_check, filter_enable_toggled, stage
+  );
+
+  // Update sliders (block signals to avoid feedback loop)
+  g_signal_handlers_block_by_func(stage->freq_scale, filter_freq_changed, stage);
+  g_signal_handlers_block_by_func(stage->q_scale, filter_q_changed, stage);
+  g_signal_handlers_block_by_func(stage->gain_scale, filter_gain_changed, stage);
+
+  gtk_range_set_value(
+    GTK_RANGE(stage->freq_scale), freq_to_slider(stage->params.freq)
+  );
+  gtk_range_set_value(
+    GTK_RANGE(stage->q_scale), q_to_slider(stage->params.q)
+  );
+  gtk_range_set_value(GTK_RANGE(stage->gain_scale), stage->params.gain_db);
+
+  g_signal_handlers_unblock_by_func(stage->freq_scale, filter_freq_changed, stage);
+  g_signal_handlers_unblock_by_func(stage->q_scale, filter_q_changed, stage);
+  g_signal_handlers_unblock_by_func(stage->gain_scale, filter_gain_changed, stage);
+
+  // Update type dropdown
+  filter_type_dropdown_set_selected(stage->type_dropdown, stage->params.type);
+
+  // Update labels
+  format_freq_label(stage->freq_label, stage->params.freq);
+
+  char text[16];
+  snprintf(text, sizeof(text), "%.2f", stage->params.q);
+  gtk_label_set_text(GTK_LABEL(stage->q_label), text);
+
+  snprintf(text, sizeof(text), "%+.1f dB", stage->params.gain_db);
+  gtk_label_set_text(GTK_LABEL(stage->gain_label), text);
+
+  // Update control visibility based on filter type
+  filter_stage_update_gain_visibility(stage);
+  filter_stage_update_freq_q_visibility(stage);
+
+  // Update response graph
+  if (stage->response) {
+    gtk_filter_response_set_filter(
+      stage->response, stage->band_index, &stage->params
+    );
+    gtk_filter_response_set_band_enabled(
+      stage->response, stage->band_index, stage->enabled
+    );
+  }
+
+  // Save state
+  filter_stage_save_state(stage);
+}
+
 // Hover callbacks for highlighting
 static void filter_stage_enter(
   GtkEventControllerMotion *controller,
@@ -624,6 +711,9 @@ static GtkWidget *make_filter_stage(
   gtk_widget_add_controller(box, motion);
 
   g_object_weak_ref(G_OBJECT(box), (GWeakNotify)filter_stage_destroy, stage);
+
+  // Register callback for external coefficient changes
+  alsa_elem_add_callback(coeff_elem, filter_stage_coeffs_updated, stage, NULL);
 
   // Update response graph with loaded parameters
   if (stage->response) {
