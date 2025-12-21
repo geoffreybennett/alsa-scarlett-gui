@@ -68,6 +68,11 @@
 .mixer-label {
 }
 
+.mixer-corner-label {
+  font-size: smaller;
+  color: #808080;
+}
+
 .mixer-label-hover {
   font-weight: bold;
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;

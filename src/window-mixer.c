@@ -291,6 +291,16 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     }
   }
 
+  // Create corner label for mixer inputs/outputs legend
+  card->mixer_corner_label = gtk_label_new(NULL);
+  gtk_label_set_markup(
+    GTK_LABEL(card->mixer_corner_label),
+    "<span line_height=\"1.8\">Inputs →</span>\nOutputs ↓"
+  );
+  gtk_label_set_justify(GTK_LABEL(card->mixer_corner_label), GTK_JUSTIFY_CENTER);
+  gtk_widget_add_css_class(card->mixer_corner_label, "mixer-corner-label");
+  g_object_ref(card->mixer_corner_label);
+
   // Create all mixer input labels upfront (top and bottom)
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
@@ -527,6 +537,11 @@ void rebuild_mixer_grid(struct alsa_card *card) {
         visible_input_count + 1, row + row_offset, 1, 1
       );
     }
+  }
+
+  // Attach corner label spanning rows 0-1
+  if (card->mixer_corner_label) {
+    gtk_grid_attach(grid, card->mixer_corner_label, 0, 0, 1, 2);
   }
 
   // Re-attach mixer input labels (top and bottom)
