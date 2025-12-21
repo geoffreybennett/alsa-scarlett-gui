@@ -33,8 +33,10 @@ struct filter_stage {
   GtkWidget           *box;
   GtkWidget           *enable_check;
   GtkWidget           *type_dropdown;
+  GtkWidget           *freq_box;
   GtkWidget           *freq_scale;
   GtkWidget           *freq_label;
+  GtkWidget           *q_box;
   GtkWidget           *q_scale;
   GtkWidget           *q_label;
   GtkWidget           *gain_scale;
@@ -195,6 +197,13 @@ static void filter_stage_update_gain_visibility(struct filter_stage *stage) {
   gtk_widget_set_visible(stage->gain_box, show);
 }
 
+// Show/hide freq/Q controls (hidden for gain-only filter)
+static void filter_stage_update_freq_q_visibility(struct filter_stage *stage) {
+  gboolean show = stage->params.type != BIQUAD_TYPE_GAIN;
+  gtk_widget_set_visible(stage->freq_box, show);
+  gtk_widget_set_visible(stage->q_box, show);
+}
+
 // Enable checkbox callback
 static void filter_enable_toggled(GtkCheckButton *check, struct filter_stage *stage) {
   stage->enabled = gtk_check_button_get_active(check);
@@ -218,6 +227,7 @@ static void filter_type_changed(GtkDropDown *dropdown, GParamSpec *pspec,
   if (selected >= 0 && selected < BIQUAD_TYPE_COUNT) {
     stage->params.type = (BiquadFilterType)selected;
     filter_stage_update_gain_visibility(stage);
+    filter_stage_update_freq_q_visibility(stage);
     filter_stage_update_coeffs(stage);
   }
 }
@@ -394,19 +404,30 @@ static GtkWidget *make_filter_stage(
   stage->band_index = band_index;
   stage->response = response;
 
-  // Default parameters
+  // Try to read and analyze existing coefficients from hardware
   stage->enabled = TRUE;
   stage->params.type = default_type;
   stage->params.freq = 1000.0;
   stage->params.q = 0.707;
   stage->params.gain_db = 0.0;
 
+  long *fixed = alsa_get_elem_int_values(coeff_elem);
+  if (fixed) {
+    struct biquad_coeffs coeffs;
+    biquad_from_fixed_point(fixed, &coeffs);
+    biquad_analyze(&coeffs, SAMPLE_RATE, &stage->params);
+
+    // Disable if it's a bypass (gain 0dB)
+    if (stage->params.type == BIQUAD_TYPE_GAIN && stage->params.gain_db == 0.0)
+      stage->enabled = FALSE;
+  }
+
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   stage->box = box;
 
   // Enable checkbox with stage label
   stage->enable_check = gtk_check_button_new_with_label(label_text);
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(stage->enable_check), TRUE);
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(stage->enable_check), stage->enabled);
   gtk_widget_set_size_request(stage->enable_check, 70, -1);
   gtk_box_append(GTK_BOX(box), stage->enable_check);
 
@@ -427,9 +448,9 @@ static GtkWidget *make_filter_stage(
   gtk_box_append(GTK_BOX(box), stage->type_dropdown);
 
   // Frequency slider
-  GtkWidget *freq_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  stage->freq_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
   GtkWidget *freq_lbl = gtk_label_new("Freq");
-  gtk_box_append(GTK_BOX(freq_box), freq_lbl);
+  gtk_box_append(GTK_BOX(stage->freq_box), freq_lbl);
 
   stage->freq_scale = gtk_scale_new_with_range(
     GTK_ORIENTATION_HORIZONTAL, 0, 1000, 1
@@ -439,18 +460,18 @@ static GtkWidget *make_filter_stage(
   gtk_range_set_value(
     GTK_RANGE(stage->freq_scale), freq_to_slider(stage->params.freq)
   );
-  gtk_box_append(GTK_BOX(freq_box), stage->freq_scale);
+  gtk_box_append(GTK_BOX(stage->freq_box), stage->freq_scale);
 
   stage->freq_label = gtk_label_new("");
   gtk_widget_set_size_request(stage->freq_label, 60, -1);
   format_freq_label(stage->freq_label, stage->params.freq);
-  gtk_box_append(GTK_BOX(freq_box), stage->freq_label);
-  gtk_box_append(GTK_BOX(box), freq_box);
+  gtk_box_append(GTK_BOX(stage->freq_box), stage->freq_label);
+  gtk_box_append(GTK_BOX(box), stage->freq_box);
 
   // Q slider
-  GtkWidget *q_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  stage->q_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
   GtkWidget *q_lbl = gtk_label_new("Q");
-  gtk_box_append(GTK_BOX(q_box), q_lbl);
+  gtk_box_append(GTK_BOX(stage->q_box), q_lbl);
 
   stage->q_scale = gtk_scale_new_with_range(
     GTK_ORIENTATION_HORIZONTAL, 0, 1000, 1
@@ -460,12 +481,14 @@ static GtkWidget *make_filter_stage(
   gtk_range_set_value(
     GTK_RANGE(stage->q_scale), q_to_slider(stage->params.q)
   );
-  gtk_box_append(GTK_BOX(q_box), stage->q_scale);
+  gtk_box_append(GTK_BOX(stage->q_box), stage->q_scale);
 
-  stage->q_label = gtk_label_new("0.71");
+  char q_text[16];
+  snprintf(q_text, sizeof(q_text), "%.2f", stage->params.q);
+  stage->q_label = gtk_label_new(q_text);
   gtk_widget_set_size_request(stage->q_label, 40, -1);
-  gtk_box_append(GTK_BOX(q_box), stage->q_label);
-  gtk_box_append(GTK_BOX(box), q_box);
+  gtk_box_append(GTK_BOX(stage->q_box), stage->q_label);
+  gtk_box_append(GTK_BOX(box), stage->q_box);
 
   // Gain slider (shown only for peaking/shelving types)
   stage->gain_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
@@ -480,13 +503,16 @@ static GtkWidget *make_filter_stage(
   gtk_range_set_value(GTK_RANGE(stage->gain_scale), stage->params.gain_db);
   gtk_box_append(GTK_BOX(stage->gain_box), stage->gain_scale);
 
-  stage->gain_label = gtk_label_new("+0.0 dB");
+  char gain_text[16];
+  snprintf(gain_text, sizeof(gain_text), "%+.1f dB", stage->params.gain_db);
+  stage->gain_label = gtk_label_new(gain_text);
   gtk_widget_set_size_request(stage->gain_label, 55, -1);
   gtk_box_append(GTK_BOX(stage->gain_box), stage->gain_label);
   gtk_box_append(GTK_BOX(box), stage->gain_box);
 
-  // Update gain visibility
+  // Update control visibility based on filter type
   filter_stage_update_gain_visibility(stage);
+  filter_stage_update_freq_q_visibility(stage);
 
   // Connect signals
   g_signal_connect(
@@ -518,8 +544,15 @@ static GtkWidget *make_filter_stage(
 
   g_object_weak_ref(G_OBJECT(box), (GWeakNotify)filter_stage_destroy, stage);
 
-  // Initial coefficient update
-  filter_stage_update_coeffs(stage);
+  // Update response graph with loaded parameters
+  if (stage->response) {
+    gtk_filter_response_set_filter(
+      stage->response, stage->band_index, &stage->params
+    );
+    gtk_filter_response_set_band_enabled(
+      stage->response, stage->band_index, stage->enabled
+    );
+  }
 
   return box;
 }
