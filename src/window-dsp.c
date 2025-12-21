@@ -3,6 +3,7 @@
 
 #include "biquad.h"
 #include "compressor-curve.h"
+#include "custom-names.h"
 #include "dsp-state.h"
 #include "gtkhelper.h"
 #include "optional-state.h"
@@ -827,6 +828,47 @@ static void dsp_enable_updated(
     gtk_filter_response_set_dsp_enabled(data->peq_response, enabled);
 }
 
+// Callback data for DSP header name updates
+struct dsp_header_data {
+  GtkWidget         *button;  // toggle button (NULL if using label)
+  GtkWidget         *label;   // label widget (NULL if using button)
+  struct routing_src *src;
+  int                channel;
+};
+
+static void dsp_header_name_updated(
+  struct alsa_elem *elem,
+  void             *private
+) {
+  struct dsp_header_data *data = private;
+  const char *name = get_routing_src_display_name(data->src);
+
+  if (!name) {
+    char fallback[16];
+    snprintf(fallback, sizeof(fallback), "DSP %d", data->channel);
+    if (data->button)
+      gtk_button_set_label(GTK_BUTTON(data->button), fallback);
+    else if (data->label) {
+      char *markup = g_strdup_printf("<b>%s</b>", fallback);
+      gtk_label_set_markup(GTK_LABEL(data->label), markup);
+      g_free(markup);
+    }
+    return;
+  }
+
+  if (data->button)
+    gtk_button_set_label(GTK_BUTTON(data->button), name);
+  else if (data->label) {
+    char *markup = g_strdup_printf("<b>%s</b>", name);
+    gtk_label_set_markup(GTK_LABEL(data->label), markup);
+    g_free(markup);
+  }
+}
+
+static void dsp_header_destroy(struct dsp_header_data *data) {
+  g_free(data);
+}
+
 static void dsp_enable_destroy(struct dsp_enable_data *data) {
   g_free(data);
 }
@@ -874,6 +916,32 @@ static void add_channel_controls(
   GtkCompressorCurve *comp_curve = NULL;
   GtkFilterResponse *peq_response = NULL;
 
+  // Find DSP Output source for this channel to get custom name
+  struct routing_src *dsp_src = NULL;
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (src->port_category == PC_DSP && src->port_num == channel - 1) {
+      dsp_src = src;
+      break;
+    }
+  }
+
+  // Find DSP Input sink for this channel
+  struct routing_snk *dsp_snk = NULL;
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (snk->elem &&
+        snk->elem->port_category == PC_DSP &&
+        snk->elem->port_num == channel - 1) {
+      dsp_snk = snk;
+      break;
+    }
+  }
+
   // DSP header row with enable
   name = g_strdup_printf("%sDSP Capture Switch", prefix);
   struct alsa_elem *dsp_enable = get_elem_by_name(elems, name);
@@ -883,20 +951,44 @@ static void add_channel_controls(
   gtk_widget_set_margin_top(header_box, *grid_y > 0 ? 15 : 0);
   gtk_grid_attach(GTK_GRID(grid), header_box, 0, (*grid_y)++, 1, 1);
 
+  const char *header = dsp_src
+    ? get_routing_src_display_name(dsp_src)
+    : NULL;
+  char *header_fallback = NULL;
+  if (!header) {
+    header_fallback = g_strdup_printf("DSP %d", channel);
+    header = header_fallback;
+  }
+
+  GtkWidget *header_button = NULL;
+  GtkWidget *header_label = NULL;
+
   if (dsp_enable) {
-    char *header = g_strdup_printf("DSP %d", channel);
     w = make_boolean_alsa_elem(dsp_enable, header, NULL);
-    g_free(header);
     gtk_widget_add_css_class(w, "dsp");
     gtk_box_append(GTK_BOX(header_box), w);
+    header_button = w;
   } else {
-    char *header = g_strdup_printf("DSP %d", channel);
     w = gtk_label_new(NULL);
     char *markup = g_strdup_printf("<b>%s</b>", header);
     gtk_label_set_markup(GTK_LABEL(w), markup);
     g_free(markup);
-    g_free(header);
     gtk_box_append(GTK_BOX(header_box), w);
+    header_label = w;
+  }
+  g_free(header_fallback);
+
+  // Register callback for custom name changes
+  if (dsp_src && dsp_src->custom_name_elem) {
+    struct dsp_header_data *hdr_data = g_malloc0(sizeof(struct dsp_header_data));
+    hdr_data->button = header_button;
+    hdr_data->label = header_label;
+    hdr_data->src = dsp_src;
+    hdr_data->channel = channel;
+    alsa_elem_add_callback(
+      dsp_src->custom_name_elem, dsp_header_name_updated, hdr_data,
+      (GDestroyNotify)dsp_header_destroy
+    );
   }
 
   // Horizontal box for the three sections
@@ -983,39 +1075,11 @@ static void add_channel_controls(
                            (GDestroyNotify)comp_enable_destroy);
     comp_enable_updated(comp_enable, comp_en_data);
 
-    // Find routing elements for level display
-    struct routing_snk *input_snk = NULL;
-    struct routing_src *output_src = NULL;
-
-    // Find DSP Input sink for this channel
-    for (int i = 0; i < card->routing_snks->len; i++) {
-      struct routing_snk *snk = &g_array_index(
-        card->routing_snks, struct routing_snk, i
-      );
-      if (snk->elem &&
-          snk->elem->port_category == PC_DSP &&
-          snk->elem->port_num == channel - 1) {
-        input_snk = snk;
-        break;
-      }
-    }
-
-    // Find DSP Output source for this channel
-    for (int i = 0; i < card->routing_srcs->len; i++) {
-      struct routing_src *src = &g_array_index(
-        card->routing_srcs, struct routing_src, i
-      );
-      if (src->port_category == PC_DSP && src->port_num == channel - 1) {
-        output_src = src;
-        break;
-      }
-    }
-
     // Store for level updates
     struct dsp_comp_widget *dcw = g_malloc0(sizeof(struct dsp_comp_widget));
     dcw->curve = comp_curve;
-    dcw->input_snk = input_snk;
-    dcw->output_src = output_src;
+    dcw->input_snk = dsp_snk;
+    dcw->output_src = dsp_src;
     card->dsp_comp_widgets = g_list_append(card->dsp_comp_widgets, dcw);
 
     // Sliders grid
