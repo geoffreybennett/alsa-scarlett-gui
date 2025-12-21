@@ -54,7 +54,7 @@ GLIB_COMPILE_RESOURCES := $(shell $(PKG_CONFIG) --variable=glib_compile_resource
 all: $(TARGET) $(DESKTOP_FILE)
 
 clean: depclean
-	rm -f $(TARGET) $(DESKTOP_FILE) $(OBJS) $(XML_OBJ)
+	rm -f $(TARGET) $(DESKTOP_FILE) $(OBJS) $(XML_OBJ) tests/test-biquad
 
 depclean:
 	rm -rf $(DEPDIR)
@@ -94,6 +94,12 @@ uninstall:
 	rm -f $(ICONDIR)/$(ICON_FILE)
 	rm -f $(DESKTOPDIR)/$(DESKTOP_FILE)
 
+tests/test-biquad: tests/test-biquad.c biquad.c biquad.h
+	$(CC) -I. -o $@ tests/test-biquad.c biquad.c -lm -Wall $(shell $(PKG_CONFIG) --cflags --libs glib-2.0)
+
+test: tests/test-biquad
+	./tests/test-biquad
+
 help:
 	@echo "alsa-scarlett-gui"
 	@echo
@@ -101,3 +107,5 @@ help:
 	@echo "  make"
 	@echo "  make install"
 	@echo "  make uninstall"
+	@echo "  make test-biquad"
+	@echo "  make test"
