@@ -12,50 +12,6 @@
 #include "custom-names.h"
 #include "port-enable.h"
 
-// Get the formatted name to display for a routing source
-// Returns newly allocated string that must be freed
-static char *get_src_display_name_formatted(struct routing_src *r_src) {
-  // check if a custom name is set
-  int has_custom_name = 0;
-  if (r_src->custom_name_elem) {
-    size_t size;
-    const void *bytes = alsa_get_elem_bytes(r_src->custom_name_elem, &size);
-    size_t str_len = bytes ? strnlen((const char *)bytes, size) : 0;
-    if (str_len > 0 && g_utf8_validate((const char *)bytes, str_len, NULL)) {
-      has_custom_name = 1;
-    }
-  }
-
-  // if it's a custom name, use it as-is
-  if (has_custom_name) {
-    return g_strdup(get_routing_src_display_name(r_src));
-  }
-
-  // otherwise, format the default name based on category
-  switch (r_src->port_category) {
-    case PC_DSP:
-      // r_src->name is "DSP X", strip "DSP " prefix
-      return g_strdup(r_src->name + 4);
-
-    case PC_MIX:
-      // r_src->name is "Mix X", strip "Mix " prefix
-      return g_strdup(r_src->name + 4);
-
-    case PC_PCM:
-      return g_strdup_printf("PCM %d", r_src->lr_num);
-
-    case PC_HW:
-      return g_strdup_printf(
-        "%s %d",
-        hw_type_names[r_src->hw_type],
-        r_src->lr_num
-      );
-
-    default:
-      return g_strdup(r_src->name);
-  }
-}
-
 // clear all the routing sinks
 static void routing_preset_clear(struct alsa_card *card) {
   for (int i = 0; i < card->routing_snks->len; i++) {
