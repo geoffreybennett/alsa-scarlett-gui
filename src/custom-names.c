@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "custom-names.h"
+#include "device-port-names.h"
 #include "optional-state.h"
 #include "alsa.h"
 #include "widget-boolean.h"
@@ -142,8 +143,8 @@ static void update_src_display_name(struct routing_src *src) {
     }
   }
 
-  // fall back to default name
-  src->display_name = g_strdup(src->name ? src->name : "");
+  // fall back to default name (device-specific or generic)
+  src->display_name = get_src_default_name_formatted(src, 0);
 }
 
 // Update the cached display name for a routing sink
@@ -170,8 +171,8 @@ static void update_snk_display_name(struct routing_snk *snk) {
     }
   }
 
-  // fall back to element name
-  snk->display_name = g_strdup(snk->elem->name ? snk->elem->name : "");
+  // fall back to default name (device-specific or generic)
+  snk->display_name = get_snk_default_name_formatted(snk);
 }
 
 // Callback when a routing source's custom name changes
@@ -239,53 +240,97 @@ static void src_custom_name_display_changed(
          child != NULL;
          child = gtk_widget_get_next_sibling(child)) {
       if (GTK_IS_LABEL(child)) {
-        // check if this is a custom name or default
-        if (src->custom_name_elem) {
-          size_t size;
-          const void *bytes = alsa_get_elem_bytes(src->custom_name_elem, &size);
-          size_t str_len = bytes ? strnlen((const char *)bytes, size) : 0;
-
-          if (str_len > 0) {
-            // custom name - use it as-is
-            gtk_label_set_text(GTK_LABEL(child), src->display_name);
-            gtk_widget_set_tooltip_text(child, src->display_name);
-          } else {
-            // default name - format it
-            const char *formatted_text = NULL;
-            switch (src->port_category) {
-              case PC_DSP:
-              case PC_MIX:
-                // strip prefix for DSP/Mix
-                if (strlen(src->name) > 4) {
-                  formatted_text = src->name + 4;
-                } else {
-                  formatted_text = src->name;
-                }
-                break;
-              default:
-                formatted_text = src->display_name;
-                break;
-            }
-            gtk_label_set_text(GTK_LABEL(child), formatted_text);
-            gtk_widget_set_tooltip_text(child, formatted_text);
-          }
-        }
+        char *label = get_src_display_name_formatted(src);
+        gtk_label_set_text(GTK_LABEL(child), label);
+        gtk_widget_set_tooltip_text(child, label);
+        g_free(label);
         break;
       }
     }
   }
 }
 
-// Get formatted default name for a routing sink (ignoring custom name)
+// Get generic hardware name for a routing source (no device-specific names)
 // Returns newly allocated string that must be freed
-char *get_snk_default_name_formatted(struct routing_snk *snk) {
+char *get_src_generic_name(struct routing_src *src) {
+  if (!src)
+    return g_strdup("");
+
+  switch (src->port_category) {
+    case PC_HW:
+      return g_strdup_printf(
+        "%s %d", hw_type_names[src->hw_type], src->lr_num
+      );
+
+    case PC_PCM:
+      return g_strdup_printf("PCM %d", src->lr_num);
+
+    case PC_MIX:
+      return g_strdup_printf("Mix %c", src->port_num + 'A');
+
+    case PC_DSP:
+      return g_strdup_printf("DSP %d", src->lr_num);
+
+    default:
+      return g_strdup(src->name ? src->name : "");
+  }
+}
+
+// Get formatted default name for a routing source (ignoring custom name)
+// Returns newly allocated string that must be freed
+char *get_src_default_name_formatted(struct routing_src *src, int abbreviated) {
+  if (!src)
+    return g_strdup("");
+
+  // for abbreviated mode, always use short form for Mix/DSP
+  if (abbreviated) {
+    switch (src->port_category) {
+      case PC_MIX:
+        return g_strdup_printf("%c", src->port_num + 'A');
+      case PC_DSP:
+        return g_strdup_printf("%d", src->lr_num);
+      default:
+        break;
+    }
+  }
+
+  // check device-specific default name
+  const char *device_default = get_device_port_name(
+    src->card->pid,
+    src->port_category,
+    src->hw_type,
+    0,  // is_snk = false for sources
+    src->port_num
+  );
+  if (device_default)
+    return g_strdup(device_default);
+
+  return get_src_generic_name(src);
+}
+
+// Get the formatted name to display for a routing source
+// Returns newly allocated string that must be freed
+char *get_src_display_name_formatted(struct routing_src *src) {
+  // mixer/DSP always show abbreviated form, others show display_name
+  if (src->port_category == PC_MIX || src->port_category == PC_DSP)
+    return get_src_default_name_formatted(src, 1);
+
+  return g_strdup(src->display_name);
+}
+
+// Get generic hardware name for a routing sink (no device-specific names)
+// Returns newly allocated string that must be freed
+char *get_snk_generic_name(struct routing_snk *snk) {
   if (!snk || !snk->elem)
     return g_strdup("");
 
   struct alsa_elem *elem = snk->elem;
+
   switch (elem->port_category) {
     case PC_HW:
-      return g_strdup_printf("%s %d", hw_type_names[elem->hw_type], elem->lr_num);
+      return g_strdup_printf(
+        "%s %d", hw_type_names[elem->hw_type], elem->lr_num
+      );
 
     case PC_PCM:
       return g_strdup_printf("PCM %d", elem->lr_num);
@@ -299,6 +344,28 @@ char *get_snk_default_name_formatted(struct routing_snk *snk) {
     default:
       return g_strdup(elem->name ? elem->name : "");
   }
+}
+
+// Get formatted default name for a routing sink (ignoring custom name)
+// Returns newly allocated string that must be freed
+char *get_snk_default_name_formatted(struct routing_snk *snk) {
+  if (!snk || !snk->elem)
+    return g_strdup("");
+
+  struct alsa_elem *elem = snk->elem;
+
+  // check device-specific default name
+  const char *device_default = get_device_port_name(
+    elem->card->pid,
+    elem->port_category,
+    elem->hw_type,
+    1,  // is_snk = true for sinks
+    elem->port_num
+  );
+  if (device_default)
+    return g_strdup(device_default);
+
+  return get_snk_generic_name(snk);
 }
 
 // Get formatted display name for a routing sink (for UI display)
@@ -546,30 +613,17 @@ const char *get_routing_src_display_name(struct routing_src *src) {
   return src->display_name ? src->display_name : "";
 }
 
-// Get mixer output label for mixer window (returns "Mix A" for defaults)
+// Get mixer output label for mixer window
 // Returns newly allocated string that must be freed
 char *get_mixer_output_label_for_mixer_window(struct routing_src *src) {
   if (!src || src->port_category != PC_MIX)
     return g_strdup("");
 
-  const char *display_name = src->display_name;
-  if (!display_name)
-    return g_strdup_printf("Mix %c", src->port_num + 'A');
+  // display_name already has: custom name > device default > generic default
+  if (src->display_name)
+    return g_strdup(src->display_name);
 
-  // check if custom name is set
-  if (src->custom_name_elem) {
-    size_t size;
-    const void *bytes = alsa_get_elem_bytes(src->custom_name_elem, &size);
-    size_t str_len = bytes ? strnlen((const char *)bytes, size) : 0;
-
-    if (str_len > 0) {
-      // custom name - use it as-is
-      return g_strdup(display_name);
-    }
-  }
-
-  // default name - ensure it's in "Mix X" format
-  return g_strdup_printf("Mix %c", src->port_num + 'A');
+  return get_src_default_name_formatted(src, 0);
 }
 
 // Get display name for a routing sink (returns cached value)

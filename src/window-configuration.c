@@ -8,6 +8,7 @@
 #include "optional-controls.h"
 #include "optional-state.h"
 #include "custom-names.h"
+#include "device-port-names.h"
 #include "port-enable.h"
 #include "widget-drop-down.h"
 #include "widget-drop-down-two-level.h"
@@ -383,7 +384,8 @@ static void enable_checkbox_updated(struct alsa_elem *elem, void *private) {
 static void add_name_entry_to_grid(
   GtkWidget        *grid,
   int               row,
-  const char       *default_name,
+  const char       *label_text,
+  const char       *placeholder,  // device-specific default, or NULL
   struct alsa_elem *custom_name_elem,
   struct alsa_elem *enable_elem
 ) {
@@ -416,14 +418,19 @@ static void add_name_entry_to_grid(
     gtk_grid_attach(GTK_GRID(grid), checkbox, 0, row, 1, 1);
   }
 
-  // Label showing the default name
-  GtkWidget *label = gtk_label_new(default_name);
+  // Label showing the generic hardware name
+  GtkWidget *label = gtk_label_new(label_text);
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_grid_attach(GTK_GRID(grid), label, 1, row, 1, 1);
 
   // Text entry for custom name
   GtkWidget *entry = make_text_entry_alsa_elem(custom_name_elem);
   gtk_widget_set_hexpand(entry, TRUE);
+
+  // Set placeholder text if device-specific default exists
+  if (placeholder && *placeholder)
+    gtk_entry_set_placeholder_text(GTK_ENTRY(entry), placeholder);
+
   gtk_grid_attach(GTK_GRID(grid), entry, 2, row, 1, 1);
 }
 
@@ -503,11 +510,14 @@ static char *get_mixer_input_label_text(
     return g_strdup(r_src ? get_routing_src_display_name(r_src) : "Off");
   } else {
     // For configurable mixer inputs, show "Mixer X - [Source Name]"
-    return g_strdup_printf(
-      "Mixer %d - %s",
-      snk->elem->lr_num,
+    char *snk_name = get_snk_generic_name(snk);
+    char *result = g_strdup_printf(
+      "%s - %s",
+      snk_name,
       r_src ? get_routing_src_display_name(r_src) : "Off"
     );
+    g_free(snk_name);
+    return result;
   }
 }
 
@@ -703,13 +713,19 @@ static void add_src_names_for_category(
     if (!src->custom_name_elem)
       continue;
 
+    char *generic_name = get_src_generic_name(src);
+    const char *device_default = get_device_port_name(
+      src->card->pid, src->port_category, src->hw_type, 0, src->port_num
+    );
     add_name_entry_to_grid(
       grid,
       row++,
-      src->name,
+      generic_name,
+      device_default,
       src->custom_name_elem,
       src->enable_elem
     );
+    g_free(generic_name);
 
     // register with column checkbox if available
     if (col_data && src->enable_elem) {
@@ -751,15 +767,23 @@ static void add_snk_names_for_category(
     if (!snk->custom_name_elem)
       continue;
 
-    char *clean_label = get_snk_default_name_formatted(snk);
+    char *generic_name = get_snk_generic_name(snk);
+    const char *device_default = get_device_port_name(
+      snk->elem->card->pid,
+      snk->elem->port_category,
+      snk->elem->hw_type,
+      1,
+      snk->elem->port_num
+    );
     add_name_entry_to_grid(
       grid,
       row++,
-      clean_label,
+      generic_name,
+      device_default,
       snk->custom_name_elem,
       snk->enable_elem
     );
-    g_free(clean_label);
+    g_free(generic_name);
 
     // register with column checkbox if available
     if (col_data && snk->enable_elem) {
