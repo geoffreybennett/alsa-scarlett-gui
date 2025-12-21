@@ -198,11 +198,14 @@ static void filter_stage_update_gain_visibility(struct filter_stage *stage) {
   gtk_widget_set_visible(stage->gain_box, show);
 }
 
-// Show/hide freq/Q controls (hidden for gain-only filter)
+// Show/hide freq/Q controls based on filter type
 static void filter_stage_update_freq_q_visibility(struct filter_stage *stage) {
-  gboolean show = stage->params.type != BIQUAD_TYPE_GAIN;
-  gtk_widget_set_visible(stage->freq_box, show);
-  gtk_widget_set_visible(stage->q_box, show);
+  // Freq is used by all except pure gain
+  gboolean show_freq = stage->params.type != BIQUAD_TYPE_GAIN;
+  // Q is only used by second-order filters
+  gboolean show_q = biquad_type_uses_q(stage->params.type);
+  gtk_widget_set_visible(stage->freq_box, show_freq);
+  gtk_widget_set_visible(stage->q_box, show_q);
 }
 
 // Enable checkbox callback

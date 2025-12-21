@@ -98,6 +98,36 @@ static void draw_filter_type_icon(
       cairo_line_to(cr, x1, y_mid);
       break;
 
+    case BIQUAD_TYPE_LOWPASS_1:
+      // Gentler slope (6 dB/oct) - flatter curve than 2nd order
+      cairo_move_to(cr, x0, y_top + 2);
+      cairo_line_to(cr, w * 0.4, y_top + 2);
+      cairo_curve_to(cr, w * 0.55, y_top + 3, w * 0.7, y_mid, x1, y_mid + 3);
+      break;
+
+    case BIQUAD_TYPE_HIGHPASS_1:
+      // Gentler slope (6 dB/oct)
+      cairo_move_to(cr, x0, y_mid + 3);
+      cairo_curve_to(cr, w * 0.3, y_mid, w * 0.45, y_top + 3, w * 0.6, y_top + 2);
+      cairo_line_to(cr, x1, y_top + 2);
+      break;
+
+    case BIQUAD_TYPE_LOW_SHELF_1:
+      // Gentler shelf transition
+      cairo_move_to(cr, x0, y_top + 2);
+      cairo_line_to(cr, w * 0.25, y_top + 2);
+      cairo_curve_to(cr, w * 0.5, y_top + 2, w * 0.5, y_bot - 2, w * 0.75, y_bot - 2);
+      cairo_line_to(cr, x1, y_bot - 2);
+      break;
+
+    case BIQUAD_TYPE_HIGH_SHELF_1:
+      // Gentler shelf transition
+      cairo_move_to(cr, x0, y_bot - 2);
+      cairo_line_to(cr, w * 0.25, y_bot - 2);
+      cairo_curve_to(cr, w * 0.5, y_bot - 2, w * 0.5, y_top + 2, w * 0.75, y_top + 2);
+      cairo_line_to(cr, x1, y_top + 2);
+      break;
+
     default:
       // Flat line for unknown types
       cairo_move_to(cr, x0, y_mid);

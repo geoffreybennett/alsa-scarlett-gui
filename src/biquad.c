@@ -13,7 +13,11 @@ static const char *filter_type_names[] = {
   "Highpass",
   "Bandpass",
   "Notch",
-  "Gain"
+  "Gain",
+  "LP 6dB/oct",
+  "HP 6dB/oct",
+  "LS 6dB/oct",
+  "HS 6dB/oct"
 };
 
 const char *biquad_type_name(BiquadFilterType type) {
@@ -26,7 +30,18 @@ gboolean biquad_type_uses_gain(BiquadFilterType type) {
   return type == BIQUAD_TYPE_PEAKING ||
          type == BIQUAD_TYPE_LOW_SHELF ||
          type == BIQUAD_TYPE_HIGH_SHELF ||
-         type == BIQUAD_TYPE_GAIN;
+         type == BIQUAD_TYPE_GAIN ||
+         type == BIQUAD_TYPE_LOW_SHELF_1 ||
+         type == BIQUAD_TYPE_HIGH_SHELF_1;
+}
+
+gboolean biquad_type_uses_q(BiquadFilterType type) {
+  // First-order filters and gain don't use Q
+  return type != BIQUAD_TYPE_GAIN &&
+         type != BIQUAD_TYPE_LOWPASS_1 &&
+         type != BIQUAD_TYPE_HIGHPASS_1 &&
+         type != BIQUAD_TYPE_LOW_SHELF_1 &&
+         type != BIQUAD_TYPE_HIGH_SHELF_1;
 }
 
 // Calculate biquad coefficients using Audio EQ Cookbook formulas
@@ -126,6 +141,84 @@ void biquad_calculate(
       coeffs->a1 = 0.0;
       coeffs->a2 = 0.0;
       return;
+
+    case BIQUAD_TYPE_LOWPASS_1: {
+      // First-order lowpass (6 dB/octave)
+      double K = tan(M_PI * params->freq / sample_rate);
+      double norm = 1.0 / (1.0 + K);
+      coeffs->b0 = K * norm;
+      coeffs->b1 = K * norm;
+      coeffs->b2 = 0.0;
+      coeffs->a1 = (K - 1.0) * norm;
+      coeffs->a2 = 0.0;
+      return;
+    }
+
+    case BIQUAD_TYPE_HIGHPASS_1: {
+      // First-order highpass (6 dB/octave)
+      double K = tan(M_PI * params->freq / sample_rate);
+      double norm = 1.0 / (1.0 + K);
+      coeffs->b0 = norm;
+      coeffs->b1 = -norm;
+      coeffs->b2 = 0.0;
+      coeffs->a1 = (K - 1.0) * norm;
+      coeffs->a2 = 0.0;
+      return;
+    }
+
+    case BIQUAD_TYPE_LOW_SHELF_1: {
+      // First-order low shelf
+      // Ensure exact relationship: b0 - b1 = 1 - a1 (Nyquist gain = 1)
+      double K = tan(M_PI * params->freq / sample_rate);
+      double V = pow(10.0, fabs(params->gain_db) / 20.0);
+      if (params->gain_db >= 0) {
+        // Boost: a1 = (K-1)/(1+K)
+        double denom = 1.0 + K;
+        coeffs->a1 = (K - 1.0) / denom;
+        double nyq_diff = 1.0 - coeffs->a1;  // Exact: b0 - b1 = nyq_diff
+        double dc_sum = 2.0 * V * K / denom; // b0 + b1
+        coeffs->b0 = (dc_sum + nyq_diff) / 2.0;
+        coeffs->b1 = (dc_sum - nyq_diff) / 2.0;
+      } else {
+        // Cut: a1 = (V*K-1)/(1+V*K)
+        double denom = 1.0 + V * K;
+        coeffs->a1 = (V * K - 1.0) / denom;
+        double nyq_diff = 1.0 - coeffs->a1;  // Exact: b0 - b1 = nyq_diff
+        double dc_sum = 2.0 * K / denom;     // b0 + b1
+        coeffs->b0 = (dc_sum + nyq_diff) / 2.0;
+        coeffs->b1 = (dc_sum - nyq_diff) / 2.0;
+      }
+      coeffs->b2 = 0.0;
+      coeffs->a2 = 0.0;
+      return;
+    }
+
+    case BIQUAD_TYPE_HIGH_SHELF_1: {
+      // First-order high shelf
+      // Ensure exact relationship: b0 + b1 = 1 + a1 (DC gain = 1)
+      double K = tan(M_PI * params->freq / sample_rate);
+      double V = pow(10.0, fabs(params->gain_db) / 20.0);
+      if (params->gain_db >= 0) {
+        // Boost: a1 = (K-1)/(1+K)
+        double denom = 1.0 + K;
+        coeffs->a1 = (K - 1.0) / denom;
+        double dc_sum = 1.0 + coeffs->a1;    // Exact: b0 + b1 = dc_sum
+        double nyq_diff = 2.0 * V / denom;   // b0 - b1
+        coeffs->b0 = (dc_sum + nyq_diff) / 2.0;
+        coeffs->b1 = (dc_sum - nyq_diff) / 2.0;
+      } else {
+        // Cut: a1 = (K-V)/(V+K)
+        double denom = V + K;
+        coeffs->a1 = (K - V) / denom;
+        double dc_sum = 1.0 + coeffs->a1;    // Exact: b0 + b1 = dc_sum
+        double nyq_diff = 2.0 / denom;       // b0 - b1
+        coeffs->b0 = (dc_sum + nyq_diff) / 2.0;
+        coeffs->b1 = (dc_sum - nyq_diff) / 2.0;
+      }
+      coeffs->b2 = 0.0;
+      coeffs->a2 = 0.0;
+      return;
+    }
 
     default:
       // Passthrough (unity gain)
@@ -241,6 +334,76 @@ gboolean biquad_analyze(
     params->gain_db = 20.0 * log10(b0);
     if (params->gain_db < -18.0) params->gain_db = -18.0;
     if (params->gain_db > 18.0) params->gain_db = 18.0;
+    return TRUE;
+  }
+
+  // Check for first-order filters (b2 = 0, a2 = 0)
+  if (approx_eq(b2, 0.0, 0.001) && approx_eq(a2, 0.0, 0.001)) {
+    // First-order filter: H(z) = (b0 + b1*z^-1) / (1 + a1*z^-1)
+    // K = (1 + a1) / (1 - a1) = tan(pi * fc / fs)
+    double K = (1.0 + a1) / (1.0 - a1);
+    if (K < 0.001) K = 0.001;
+    double freq = atan(K) * sample_rate / M_PI;
+    if (freq < 20.0) freq = 20.0;
+    if (freq > 20000.0) freq = 20000.0;
+    params->freq = freq;
+    params->q = 0.707;  // Not used for first-order
+
+    // First-order lowpass: b0 = b1
+    if (coeff_eq(b0, b1)) {
+      params->type = BIQUAD_TYPE_LOWPASS_1;
+      params->gain_db = 0.0;
+      return TRUE;
+    }
+
+    // First-order highpass: b0 = -b1
+    if (coeff_eq(b0, -b1)) {
+      params->type = BIQUAD_TYPE_HIGHPASS_1;
+      params->gain_db = 0.0;
+      return TRUE;
+    }
+
+    // Low shelf: b0 - b1 = 1 - a1 (Nyquist gain = 1)
+    if (coeff_eq(b0 - b1, 1.0 - a1)) {
+      params->type = BIQUAD_TYPE_LOW_SHELF_1;
+      double dc_gain = (b0 + b1) / (1.0 + a1);
+      params->gain_db = 20.0 * log10(fabs(dc_gain));
+      if (params->gain_db < -18.0) params->gain_db = -18.0;
+      if (params->gain_db > 18.0) params->gain_db = 18.0;
+
+      // Recover K: boost uses a1 = (K-1)/(K+1), cut uses a1 = (V*K-1)/(V*K+1)
+      double V = pow(10.0, fabs(params->gain_db) / 20.0);
+      double K_term = (1.0 + a1) / (1.0 - a1);
+      double K = (params->gain_db >= 0) ? K_term : K_term / V;
+      if (K > 0)
+        params->freq = atan(K) * sample_rate / M_PI;
+      if (params->freq < 20.0) params->freq = 20.0;
+      if (params->freq > 20000.0) params->freq = 20000.0;
+      return TRUE;
+    }
+
+    // High shelf: b0 + b1 = 1 + a1 (DC gain = 1)
+    if (coeff_eq(b0 + b1, 1.0 + a1)) {
+      params->type = BIQUAD_TYPE_HIGH_SHELF_1;
+      double nyq_gain = (b0 - b1) / (1.0 - a1);
+      params->gain_db = 20.0 * log10(fabs(nyq_gain));
+      if (params->gain_db < -18.0) params->gain_db = -18.0;
+      if (params->gain_db > 18.0) params->gain_db = 18.0;
+
+      // Recover K: boost uses a1 = (K-1)/(K+1), cut uses a1 = (K-V)/(K+V)
+      double V = pow(10.0, fabs(params->gain_db) / 20.0);
+      double K_term = (1.0 + a1) / (1.0 - a1);
+      double K = (params->gain_db >= 0) ? K_term : K_term * V;
+      if (K > 0)
+        params->freq = atan(K) * sample_rate / M_PI;
+      if (params->freq < 20.0) params->freq = 20.0;
+      if (params->freq > 20000.0) params->freq = 20000.0;
+      return TRUE;
+    }
+
+    // Unknown first-order, default to lowpass
+    params->type = BIQUAD_TYPE_LOWPASS_1;
+    params->gain_db = 0.0;
     return TRUE;
   }
 

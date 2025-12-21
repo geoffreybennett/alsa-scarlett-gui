@@ -15,6 +15,11 @@ typedef enum {
   BIQUAD_TYPE_BANDPASS,
   BIQUAD_TYPE_NOTCH,
   BIQUAD_TYPE_GAIN,
+  // First-order filters (6 dB/octave)
+  BIQUAD_TYPE_LOWPASS_1,
+  BIQUAD_TYPE_HIGHPASS_1,
+  BIQUAD_TYPE_LOW_SHELF_1,
+  BIQUAD_TYPE_HIGH_SHELF_1,
   BIQUAD_TYPE_COUNT
 } BiquadFilterType;
 
@@ -62,6 +67,9 @@ const char *biquad_type_name(BiquadFilterType type);
 
 // Check if filter type uses gain parameter
 gboolean biquad_type_uses_gain(BiquadFilterType type);
+
+// Check if filter type uses Q parameter
+gboolean biquad_type_uses_q(BiquadFilterType type);
 
 // Convert fixed-point coefficients back to floating-point
 void biquad_from_fixed_point(
