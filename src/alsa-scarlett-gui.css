@@ -499,3 +499,24 @@ button.toggle {
 .window-frame check:focus:focus-visible {
   outline: 2px solid #ff4040;
 }
+
+/* Filter type dropdown list */
+.filter-type-list {
+  background: transparent;
+  color: #d0d0d0;
+}
+
+.filter-type-list > row {
+  padding: 4px 8px;
+  color: #d0d0d0;
+}
+
+.filter-type-list > row:hover {
+  background: #800000;
+  color: #ffffff;
+}
+
+.filter-type-list > row:selected {
+  background: #600000;
+  color: #ffffff;
+}

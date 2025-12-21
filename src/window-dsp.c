@@ -7,6 +7,7 @@
 #include "peq-response.h"
 #include "stringhelper.h"
 #include "widget-boolean.h"
+#include "widget-filter-type.h"
 #include "window-dsp.h"
 
 #define SAMPLE_RATE 48000.0
@@ -221,15 +222,15 @@ static void format_freq_label(GtkWidget *label, double freq) {
 }
 
 // Callbacks for filter stage controls
-static void filter_type_changed(GtkDropDown *dropdown, GParamSpec *pspec,
-                                struct filter_stage *stage) {
-  int selected = gtk_drop_down_get_selected(dropdown);
-  if (selected >= 0 && selected < BIQUAD_TYPE_COUNT) {
-    stage->params.type = (BiquadFilterType)selected;
-    filter_stage_update_gain_visibility(stage);
-    filter_stage_update_freq_q_visibility(stage);
-    filter_stage_update_coeffs(stage);
-  }
+static void filter_type_changed(
+  GtkWidget           *widget,
+  BiquadFilterType     type,
+  struct filter_stage *stage
+) {
+  stage->params.type = type;
+  filter_stage_update_gain_visibility(stage);
+  filter_stage_update_freq_q_visibility(stage);
+  filter_stage_update_coeffs(stage);
 }
 
 static void filter_freq_changed(GtkRange *range, struct filter_stage *stage) {
@@ -431,20 +432,8 @@ static GtkWidget *make_filter_stage(
   gtk_widget_set_size_request(stage->enable_check, 70, -1);
   gtk_box_append(GTK_BOX(box), stage->enable_check);
 
-  // Filter type dropdown (NULL-terminated array for gtk_string_list_new)
-  const char *type_names[BIQUAD_TYPE_COUNT + 1];
-  for (int i = 0; i < BIQUAD_TYPE_COUNT; i++)
-    type_names[i] = biquad_type_name(i);
-  type_names[BIQUAD_TYPE_COUNT] = NULL;
-
-  GtkStringList *type_list = gtk_string_list_new(type_names);
-  stage->type_dropdown = gtk_drop_down_new(
-    G_LIST_MODEL(type_list), NULL
-  );
-  gtk_drop_down_set_selected(
-    GTK_DROP_DOWN(stage->type_dropdown), stage->params.type
-  );
-  gtk_widget_set_size_request(stage->type_dropdown, 90, -1);
+  // Filter type dropdown with icons
+  stage->type_dropdown = make_filter_type_dropdown(stage->params.type);
   gtk_box_append(GTK_BOX(box), stage->type_dropdown);
 
   // Frequency slider
@@ -519,9 +508,10 @@ static GtkWidget *make_filter_stage(
     stage->enable_check, "toggled",
     G_CALLBACK(filter_enable_toggled), stage
   );
-  g_signal_connect(
-    stage->type_dropdown, "notify::selected",
-    G_CALLBACK(filter_type_changed), stage
+  filter_type_dropdown_connect_changed(
+    stage->type_dropdown,
+    (FilterTypeChangedCallback)filter_type_changed,
+    stage
   );
   g_signal_connect(
     stage->freq_scale, "value-changed",
