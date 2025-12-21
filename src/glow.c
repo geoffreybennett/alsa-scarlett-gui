@@ -70,9 +70,9 @@ void level_to_colour(double db, double *r, double *g, double *b) {
   }
 }
 
-// get the level meter index for a routing sink (for implicit level maps)
+// get the level meter index for a routing sink
 // returns -1 if the sink has no corresponding level meter
-static int get_routing_snk_level_index(
+int get_routing_snk_level_index(
   struct alsa_card   *card,
   struct routing_snk *r_snk
 ) {

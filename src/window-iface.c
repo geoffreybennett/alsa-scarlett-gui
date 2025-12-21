@@ -123,6 +123,11 @@ static void cleanup_gain_widget_lists(struct alsa_card *card) {
   }
   g_list_free(card->mixer_gain_widgets);
   card->mixer_gain_widgets = NULL;
+
+  for (GList *l = card->dsp_comp_widgets; l != NULL; l = l->next)
+    g_free(l->data);
+  g_list_free(card->dsp_comp_widgets);
+  card->dsp_comp_widgets = NULL;
 }
 
 // Clean up subwindows

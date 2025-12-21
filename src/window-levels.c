@@ -11,6 +11,7 @@
 #include "iface-mixer.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
+#include "window-dsp.h"
 #include "window-levels.h"
 #include "window-mixer.h"
 
@@ -167,6 +168,31 @@ static int update_levels_controls(void *user_data) {
       GtkWidget *dial = get_gain_dial(og->widget);
       if (dial)
         gtk_dial_set_level(GTK_DIAL(dial), level_db);
+    }
+  }
+
+  // update compressor curve levels if DSP window is visible
+  int dsp_visible = card->window_dsp &&
+                    gtk_widget_get_visible(GTK_WIDGET(card->window_dsp));
+  if (dsp_visible && card->dsp_comp_widgets) {
+    for (GList *l = card->dsp_comp_widgets; l; l = l->next) {
+      struct dsp_comp_widget *dcw = l->data;
+
+      double input_db = -80.0;
+      double output_db = -80.0;
+
+      // Get input level from DSP Input sink
+      if (dcw->input_snk) {
+        int idx = get_routing_snk_level_index(card, dcw->input_snk);
+        if (idx >= 0 && idx < card->routing_levels_count)
+          input_db = card->routing_levels[idx];
+      }
+
+      // Get output level from DSP Output source
+      if (dcw->output_src)
+        output_db = get_routing_src_level_db(card, dcw->output_src);
+
+      gtk_compressor_curve_set_levels(dcw->curve, input_db, output_db);
     }
   }
 

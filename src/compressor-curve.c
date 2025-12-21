@@ -20,6 +20,8 @@ struct _GtkCompressorCurve {
   int makeup_gain;  // 0-24 dB
   gboolean enabled;     // section enable
   gboolean dsp_enabled; // overall DSP enable
+  double input_level_db;  // current input level for dot display
+  double output_level_db; // current output level for dot display
 };
 
 G_DEFINE_TYPE(GtkCompressorCurve, gtk_compressor_curve, GTK_TYPE_WIDGET)
@@ -232,6 +234,25 @@ static void curve_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   if (!first)
     cairo_stroke(cr);
 
+  // Draw level indicator dot if we have valid levels
+  if (is_enabled &&
+      curve->input_level_db > DB_MIN && curve->output_level_db > DB_MIN) {
+    double in_db = curve->input_level_db;
+    double out_db = curve->output_level_db;
+
+    // Clamp to graph bounds
+    if (in_db > DB_MAX) in_db = DB_MAX;
+    if (out_db > DB_MAX) out_db = DB_MAX;
+
+    double x = db_to_x(in_db);
+    double y = db_to_y(out_db);
+
+    // Draw filled circle
+    cairo_set_source_rgb(cr, 0.2, 0.8, 1.0);
+    cairo_arc(cr, x, y, 4, 0, 2 * M_PI);
+    cairo_fill(cr);
+  }
+
   cairo_destroy(cr);
 }
 
@@ -265,6 +286,8 @@ static void gtk_compressor_curve_init(GtkCompressorCurve *curve) {
   curve->makeup_gain = 5;
   curve->enabled = TRUE;
   curve->dsp_enabled = TRUE;
+  curve->input_level_db = -80.0;
+  curve->output_level_db = -80.0;
 }
 
 GtkWidget *gtk_compressor_curve_new(void) {
@@ -311,4 +334,14 @@ void gtk_compressor_curve_set_dsp_enabled(GtkCompressorCurve *curve, gboolean en
     curve->dsp_enabled = enabled;
     gtk_widget_queue_draw(GTK_WIDGET(curve));
   }
+}
+
+void gtk_compressor_curve_set_levels(
+  GtkCompressorCurve *curve,
+  double              input_db,
+  double              output_db
+) {
+  curve->input_level_db = input_db;
+  curve->output_level_db = output_db;
+  gtk_widget_queue_draw(GTK_WIDGET(curve));
 }
