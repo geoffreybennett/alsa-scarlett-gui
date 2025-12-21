@@ -38,18 +38,16 @@ struct filter_stage {
   struct alsa_elem    *coeff_elem;
   struct biquad_params params;
   gboolean             enabled;
+  gboolean             editing;  // true while user is editing an entry
   GtkWidget           *box;
   GtkWidget           *enable_check;
   GtkWidget           *type_dropdown;
   GtkWidget           *freq_box;
-  GtkWidget           *freq_scale;
-  GtkWidget           *freq_label;
+  GtkWidget           *freq_entry;
   GtkWidget           *q_box;
-  GtkWidget           *q_scale;
-  GtkWidget           *q_label;
-  GtkWidget           *gain_scale;
-  GtkWidget           *gain_label;
+  GtkWidget           *q_entry;
   GtkWidget           *gain_box;
+  GtkWidget           *gain_entry;
   GtkFilterResponse   *response;
   int                  band_index;
 
@@ -252,14 +250,49 @@ static void filter_enable_toggled(GtkCheckButton *check, struct filter_stage *st
   filter_stage_save_state(stage);
 }
 
-// Format frequency for display
-static void format_freq_label(GtkWidget *label, double freq) {
-  char text[32];
-  if (freq >= 1000)
-    snprintf(text, sizeof(text), "%.1f kHz", freq / 1000.0);
-  else
-    snprintf(text, sizeof(text), "%.0f Hz", freq);
-  gtk_label_set_text(GTK_LABEL(label), text);
+// Format frequency for display in entry
+static void format_freq_entry(struct filter_stage *stage) {
+  char text[16];
+  snprintf(text, sizeof(text), "%.0f", stage->params.freq);
+  gtk_editable_set_text(GTK_EDITABLE(stage->freq_entry), text);
+}
+
+// Format Q for display in entry
+static void format_q_entry(GtkWidget *entry, double q) {
+  char text[16];
+  snprintf(text, sizeof(text), "%.2f", q);
+  gtk_editable_set_text(GTK_EDITABLE(entry), text);
+}
+
+// Format gain for display in entry
+static void format_gain_entry(GtkWidget *entry, double gain_db) {
+  char text[16];
+  snprintf(text, sizeof(text), "%+.1f", gain_db);
+  gtk_editable_set_text(GTK_EDITABLE(entry), text);
+}
+
+// Parse frequency from entry text (Hz)
+static double parse_freq_entry(const char *text) {
+  double value;
+  if (sscanf(text, "%lf", &value) == 1)
+    return CLAMP(value, 20.0, 20000.0);
+  return -1.0;
+}
+
+// Parse Q from entry text
+static double parse_q_entry(const char *text) {
+  double value;
+  if (sscanf(text, "%lf", &value) == 1)
+    return CLAMP(value, 0.1, 10.0);
+  return -1.0;
+}
+
+// Parse gain from entry text (accepts "+3.5 dB", "-6 dB", or bare number)
+static double parse_gain_entry(const char *text) {
+  double value;
+  if (sscanf(text, "%lf", &value) == 1)
+    return CLAMP(value, -18.0, 18.0);
+  return -1000.0;
 }
 
 // Callbacks for filter stage controls
@@ -275,66 +308,116 @@ static void filter_type_changed(
   filter_stage_save_state(stage);
 }
 
-static void filter_freq_changed(GtkRange *range, struct filter_stage *stage) {
-  // Log scale: slider value 0-1000 maps to 20-20000 Hz
-  double slider_val = gtk_range_get_value(range);
-  double log_min = log10(20.0);
-  double log_max = log10(20000.0);
-  double log_freq = log_min + (slider_val / 1000.0) * (log_max - log_min);
-  stage->params.freq = pow(10.0, log_freq);
+static void filter_freq_changed(GtkEditable *editable, struct filter_stage *stage) {
+  const char *text = gtk_editable_get_text(editable);
+  double freq = parse_freq_entry(text);
 
-  format_freq_label(stage->freq_label, stage->params.freq);
-  filter_stage_update_coeffs(stage);
-  filter_stage_save_state(stage);
+  if (freq > 0 && freq != stage->params.freq) {
+    stage->params.freq = freq;
+    filter_stage_update_coeffs(stage);
+    filter_stage_save_state(stage);
+  }
 }
 
-static void filter_q_changed(GtkRange *range, struct filter_stage *stage) {
-  // Log scale for Q: slider 0-1000 maps to 0.1-10
-  double slider_val = gtk_range_get_value(range);
-  double log_min = log10(0.1);
-  double log_max = log10(10.0);
-  double log_q = log_min + (slider_val / 1000.0) * (log_max - log_min);
-  stage->params.q = pow(10.0, log_q);
-
-  char text[16];
-  snprintf(text, sizeof(text), "%.2f", stage->params.q);
-  gtk_label_set_text(GTK_LABEL(stage->q_label), text);
-  filter_stage_update_coeffs(stage);
-  filter_stage_save_state(stage);
+static gboolean filter_freq_select_all(gpointer data) {
+  struct filter_stage *stage = data;
+  gtk_editable_select_region(GTK_EDITABLE(stage->freq_entry), 0, -1);
+  return G_SOURCE_REMOVE;
 }
 
-static void filter_gain_changed(GtkRange *range, struct filter_stage *stage) {
-  stage->params.gain_db = gtk_range_get_value(range);
-
-  char text[16];
-  snprintf(text, sizeof(text), "%+.1f dB", stage->params.gain_db);
-  gtk_label_set_text(GTK_LABEL(stage->gain_label), text);
-  filter_stage_update_coeffs(stage);
-  filter_stage_save_state(stage);
+static void filter_freq_focus_enter(
+  GtkEventControllerFocus *controller,
+  struct filter_stage     *stage
+) {
+  stage->editing = TRUE;
+  g_idle_add(filter_freq_select_all, stage);
 }
 
-// Convert frequency to slider value (0-1000)
-static double freq_to_slider(double freq) {
-  double log_min = log10(20.0);
-  double log_max = log10(20000.0);
-  double log_freq = log10(freq);
-  return (log_freq - log_min) / (log_max - log_min) * 1000.0;
+static void filter_freq_focus_leave(
+  GtkEventControllerFocus *controller,
+  struct filter_stage     *stage
+) {
+  stage->editing = FALSE;
+  g_signal_handlers_block_by_func(stage->freq_entry, filter_freq_changed, stage);
+  format_freq_entry(stage);
+  g_signal_handlers_unblock_by_func(stage->freq_entry, filter_freq_changed, stage);
 }
 
-// Convert Q to slider value (0-1000)
-static double q_to_slider(double q) {
-  double log_min = log10(0.1);
-  double log_max = log10(10.0);
-  double log_q = log10(q);
-  return (log_q - log_min) / (log_max - log_min) * 1000.0;
+static void filter_q_changed(GtkEditable *editable, struct filter_stage *stage) {
+  const char *text = gtk_editable_get_text(editable);
+  double q = parse_q_entry(text);
+
+  if (q > 0 && q != stage->params.q) {
+    stage->params.q = q;
+    filter_stage_update_coeffs(stage);
+    filter_stage_save_state(stage);
+  }
+}
+
+static gboolean filter_q_select_all(gpointer data) {
+  struct filter_stage *stage = data;
+  gtk_editable_select_region(GTK_EDITABLE(stage->q_entry), 0, -1);
+  return G_SOURCE_REMOVE;
+}
+
+static void filter_q_focus_enter(
+  GtkEventControllerFocus *controller,
+  struct filter_stage     *stage
+) {
+  stage->editing = TRUE;
+  g_idle_add(filter_q_select_all, stage);
+}
+
+static void filter_q_focus_leave(
+  GtkEventControllerFocus *controller,
+  struct filter_stage     *stage
+) {
+  stage->editing = FALSE;
+  g_signal_handlers_block_by_func(stage->q_entry, filter_q_changed, stage);
+  format_q_entry(stage->q_entry, stage->params.q);
+  g_signal_handlers_unblock_by_func(stage->q_entry, filter_q_changed, stage);
+}
+
+static void filter_gain_changed(GtkEditable *editable, struct filter_stage *stage) {
+  const char *text = gtk_editable_get_text(editable);
+  double gain = parse_gain_entry(text);
+
+  if (gain > -999.0 && gain != stage->params.gain_db) {
+    stage->params.gain_db = gain;
+    filter_stage_update_coeffs(stage);
+    filter_stage_save_state(stage);
+  }
+}
+
+static gboolean filter_gain_select_all(gpointer data) {
+  struct filter_stage *stage = data;
+  gtk_editable_select_region(GTK_EDITABLE(stage->gain_entry), 0, -1);
+  return G_SOURCE_REMOVE;
+}
+
+static void filter_gain_focus_enter(
+  GtkEventControllerFocus *controller,
+  struct filter_stage     *stage
+) {
+  stage->editing = TRUE;
+  g_idle_add(filter_gain_select_all, stage);
+}
+
+static void filter_gain_focus_leave(
+  GtkEventControllerFocus *controller,
+  struct filter_stage     *stage
+) {
+  stage->editing = FALSE;
+  g_signal_handlers_block_by_func(stage->gain_entry, filter_gain_changed, stage);
+  format_gain_entry(stage->gain_entry, stage->params.gain_db);
+  g_signal_handlers_unblock_by_func(stage->gain_entry, filter_gain_changed, stage);
 }
 
 // Forward declarations for response_filter_changed callback
 static void filter_stage_update_coeffs(struct filter_stage *stage);
-static void format_freq_label(GtkWidget *label, double freq);
-static void filter_freq_changed(GtkRange *range, struct filter_stage *stage);
-static void filter_q_changed(GtkRange *range, struct filter_stage *stage);
-static void filter_gain_changed(GtkRange *range, struct filter_stage *stage);
+static void format_freq_entry(struct filter_stage *stage);
+static void format_q_entry(GtkWidget *entry, double q);
+static void format_gain_entry(GtkWidget *entry, double gain_db);
 
 // Callback for filter-changed signal from response widget
 static void response_filter_changed(
@@ -355,28 +438,18 @@ static void response_filter_changed(
   stage->params.q = params->q;
   stage->params.gain_db = params->gain_db;
 
-  // Update sliders (block signals to avoid feedback loop)
-  g_signal_handlers_block_by_func(stage->freq_scale, filter_freq_changed, stage);
-  g_signal_handlers_block_by_func(stage->q_scale, filter_q_changed, stage);
-  g_signal_handlers_block_by_func(stage->gain_scale, filter_gain_changed, stage);
+  // Update entries (block signals to avoid feedback loop)
+  g_signal_handlers_block_by_func(stage->freq_entry, filter_freq_changed, stage);
+  g_signal_handlers_block_by_func(stage->q_entry, filter_q_changed, stage);
+  g_signal_handlers_block_by_func(stage->gain_entry, filter_gain_changed, stage);
 
-  gtk_range_set_value(GTK_RANGE(stage->freq_scale), freq_to_slider(params->freq));
-  gtk_range_set_value(GTK_RANGE(stage->q_scale), q_to_slider(params->q));
-  gtk_range_set_value(GTK_RANGE(stage->gain_scale), params->gain_db);
+  format_freq_entry(stage);
+  format_q_entry(stage->q_entry, params->q);
+  format_gain_entry(stage->gain_entry, params->gain_db);
 
-  g_signal_handlers_unblock_by_func(stage->freq_scale, filter_freq_changed, stage);
-  g_signal_handlers_unblock_by_func(stage->q_scale, filter_q_changed, stage);
-  g_signal_handlers_unblock_by_func(stage->gain_scale, filter_gain_changed, stage);
-
-  // Update labels
-  format_freq_label(stage->freq_label, params->freq);
-
-  char text[16];
-  snprintf(text, sizeof(text), "%.2f", params->q);
-  gtk_label_set_text(GTK_LABEL(stage->q_label), text);
-
-  snprintf(text, sizeof(text), "%+.1f dB", params->gain_db);
-  gtk_label_set_text(GTK_LABEL(stage->gain_label), text);
+  g_signal_handlers_unblock_by_func(stage->freq_entry, filter_freq_changed, stage);
+  g_signal_handlers_unblock_by_func(stage->q_entry, filter_q_changed, stage);
+  g_signal_handlers_unblock_by_func(stage->gain_entry, filter_gain_changed, stage);
 
   // Update hardware and save state
   filter_stage_update_coeffs(stage);
@@ -449,35 +522,23 @@ static void filter_stage_coeffs_updated(
     stage->enable_check, filter_enable_toggled, stage
   );
 
-  // Update sliders (block signals to avoid feedback loop)
-  g_signal_handlers_block_by_func(stage->freq_scale, filter_freq_changed, stage);
-  g_signal_handlers_block_by_func(stage->q_scale, filter_q_changed, stage);
-  g_signal_handlers_block_by_func(stage->gain_scale, filter_gain_changed, stage);
+  // Update entries (skip if user is currently editing)
+  if (!stage->editing) {
+    g_signal_handlers_block_by_func(stage->freq_entry, filter_freq_changed, stage);
+    g_signal_handlers_block_by_func(stage->q_entry, filter_q_changed, stage);
+    g_signal_handlers_block_by_func(stage->gain_entry, filter_gain_changed, stage);
 
-  gtk_range_set_value(
-    GTK_RANGE(stage->freq_scale), freq_to_slider(stage->params.freq)
-  );
-  gtk_range_set_value(
-    GTK_RANGE(stage->q_scale), q_to_slider(stage->params.q)
-  );
-  gtk_range_set_value(GTK_RANGE(stage->gain_scale), stage->params.gain_db);
+    format_freq_entry(stage);
+    format_q_entry(stage->q_entry, stage->params.q);
+    format_gain_entry(stage->gain_entry, stage->params.gain_db);
 
-  g_signal_handlers_unblock_by_func(stage->freq_scale, filter_freq_changed, stage);
-  g_signal_handlers_unblock_by_func(stage->q_scale, filter_q_changed, stage);
-  g_signal_handlers_unblock_by_func(stage->gain_scale, filter_gain_changed, stage);
+    g_signal_handlers_unblock_by_func(stage->freq_entry, filter_freq_changed, stage);
+    g_signal_handlers_unblock_by_func(stage->q_entry, filter_q_changed, stage);
+    g_signal_handlers_unblock_by_func(stage->gain_entry, filter_gain_changed, stage);
+  }
 
   // Update type dropdown
   filter_type_dropdown_set_selected(stage->type_dropdown, stage->params.type);
-
-  // Update labels
-  format_freq_label(stage->freq_label, stage->params.freq);
-
-  char text[16];
-  snprintf(text, sizeof(text), "%.2f", stage->params.q);
-  gtk_label_set_text(GTK_LABEL(stage->q_label), text);
-
-  snprintf(text, sizeof(text), "%+.1f dB", stage->params.gain_db);
-  gtk_label_set_text(GTK_LABEL(stage->gain_label), text);
 
   // Update control visibility based on filter type
   filter_stage_update_gain_visibility(stage);
@@ -614,67 +675,34 @@ static GtkWidget *make_filter_stage(
   stage->type_dropdown = make_filter_type_dropdown(stage->params.type);
   gtk_box_append(GTK_BOX(box), stage->type_dropdown);
 
-  // Frequency slider
-  stage->freq_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
-  GtkWidget *freq_lbl = gtk_label_new("Freq");
-  gtk_box_append(GTK_BOX(stage->freq_box), freq_lbl);
-
-  stage->freq_scale = gtk_scale_new_with_range(
-    GTK_ORIENTATION_HORIZONTAL, 0, 1000, 1
-  );
-  gtk_scale_set_draw_value(GTK_SCALE(stage->freq_scale), FALSE);
-  gtk_widget_set_size_request(stage->freq_scale, 100, -1);
-  gtk_range_set_value(
-    GTK_RANGE(stage->freq_scale), freq_to_slider(stage->params.freq)
-  );
-  gtk_box_append(GTK_BOX(stage->freq_box), stage->freq_scale);
-
-  stage->freq_label = gtk_label_new("");
-  gtk_widget_set_size_request(stage->freq_label, 60, -1);
-  format_freq_label(stage->freq_label, stage->params.freq);
-  gtk_box_append(GTK_BOX(stage->freq_box), stage->freq_label);
+  // Frequency entry
+  stage->freq_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+  stage->freq_entry = gtk_entry_new();
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(stage->freq_entry), 5);
+  gtk_entry_set_max_length(GTK_ENTRY(stage->freq_entry), 5);
+  gtk_box_append(GTK_BOX(stage->freq_box), stage->freq_entry);
+  gtk_box_append(GTK_BOX(stage->freq_box), gtk_label_new("Hz"));
+  format_freq_entry(stage);
   gtk_box_append(GTK_BOX(box), stage->freq_box);
 
-  // Q slider
-  stage->q_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
-  GtkWidget *q_lbl = gtk_label_new("Q");
-  gtk_box_append(GTK_BOX(stage->q_box), q_lbl);
-
-  stage->q_scale = gtk_scale_new_with_range(
-    GTK_ORIENTATION_HORIZONTAL, 0, 1000, 1
-  );
-  gtk_scale_set_draw_value(GTK_SCALE(stage->q_scale), FALSE);
-  gtk_widget_set_size_request(stage->q_scale, 80, -1);
-  gtk_range_set_value(
-    GTK_RANGE(stage->q_scale), q_to_slider(stage->params.q)
-  );
-  gtk_box_append(GTK_BOX(stage->q_box), stage->q_scale);
-
-  char q_text[16];
-  snprintf(q_text, sizeof(q_text), "%.2f", stage->params.q);
-  stage->q_label = gtk_label_new(q_text);
-  gtk_widget_set_size_request(stage->q_label, 40, -1);
-  gtk_box_append(GTK_BOX(stage->q_box), stage->q_label);
+  // Q entry
+  stage->q_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+  gtk_box_append(GTK_BOX(stage->q_box), gtk_label_new("Q"));
+  stage->q_entry = gtk_entry_new();
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(stage->q_entry), 4);
+  gtk_entry_set_max_length(GTK_ENTRY(stage->q_entry), 4);
+  format_q_entry(stage->q_entry, stage->params.q);
+  gtk_box_append(GTK_BOX(stage->q_box), stage->q_entry);
   gtk_box_append(GTK_BOX(box), stage->q_box);
 
-  // Gain slider (shown only for peaking/shelving types)
-  stage->gain_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
-  GtkWidget *gain_lbl = gtk_label_new("Gain");
-  gtk_box_append(GTK_BOX(stage->gain_box), gain_lbl);
-
-  stage->gain_scale = gtk_scale_new_with_range(
-    GTK_ORIENTATION_HORIZONTAL, -18, 18, 0.5
-  );
-  gtk_scale_set_draw_value(GTK_SCALE(stage->gain_scale), FALSE);
-  gtk_widget_set_size_request(stage->gain_scale, 80, -1);
-  gtk_range_set_value(GTK_RANGE(stage->gain_scale), stage->params.gain_db);
-  gtk_box_append(GTK_BOX(stage->gain_box), stage->gain_scale);
-
-  char gain_text[16];
-  snprintf(gain_text, sizeof(gain_text), "%+.1f dB", stage->params.gain_db);
-  stage->gain_label = gtk_label_new(gain_text);
-  gtk_widget_set_size_request(stage->gain_label, 55, -1);
-  gtk_box_append(GTK_BOX(stage->gain_box), stage->gain_label);
+  // Gain entry (shown only for peaking/shelving types)
+  stage->gain_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+  stage->gain_entry = gtk_entry_new();
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(stage->gain_entry), 5);
+  gtk_entry_set_max_length(GTK_ENTRY(stage->gain_entry), 5);
+  format_gain_entry(stage->gain_entry, stage->params.gain_db);
+  gtk_box_append(GTK_BOX(stage->gain_box), stage->gain_entry);
+  gtk_box_append(GTK_BOX(stage->gain_box), gtk_label_new("dB"));
   gtk_box_append(GTK_BOX(box), stage->gain_box);
 
   // Update control visibility based on filter type
@@ -692,17 +720,31 @@ static GtkWidget *make_filter_stage(
     stage
   );
   g_signal_connect(
-    stage->freq_scale, "value-changed",
+    stage->freq_entry, "changed",
     G_CALLBACK(filter_freq_changed), stage
   );
+  GtkEventController *freq_focus = gtk_event_controller_focus_new();
+  g_signal_connect(freq_focus, "enter", G_CALLBACK(filter_freq_focus_enter), stage);
+  g_signal_connect(freq_focus, "leave", G_CALLBACK(filter_freq_focus_leave), stage);
+  gtk_widget_add_controller(stage->freq_entry, freq_focus);
+
   g_signal_connect(
-    stage->q_scale, "value-changed",
+    stage->q_entry, "changed",
     G_CALLBACK(filter_q_changed), stage
   );
+  GtkEventController *q_focus = gtk_event_controller_focus_new();
+  g_signal_connect(q_focus, "enter", G_CALLBACK(filter_q_focus_enter), stage);
+  g_signal_connect(q_focus, "leave", G_CALLBACK(filter_q_focus_leave), stage);
+  gtk_widget_add_controller(stage->q_entry, q_focus);
+
   g_signal_connect(
-    stage->gain_scale, "value-changed",
+    stage->gain_entry, "changed",
     G_CALLBACK(filter_gain_changed), stage
   );
+  GtkEventController *gain_focus = gtk_event_controller_focus_new();
+  g_signal_connect(gain_focus, "enter", G_CALLBACK(filter_gain_focus_enter), stage);
+  g_signal_connect(gain_focus, "leave", G_CALLBACK(filter_gain_focus_leave), stage);
+  gtk_widget_add_controller(stage->gain_entry, gain_focus);
 
   // Hover detection for highlighting in the response graph
   GtkEventController *motion = gtk_event_controller_motion_new();
