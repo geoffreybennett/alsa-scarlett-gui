@@ -3,7 +3,9 @@
 
 #include "biquad.h"
 #include "compressor-curve.h"
+#include "dsp-state.h"
 #include "gtkhelper.h"
+#include "optional-state.h"
 #include "peq-response.h"
 #include "stringhelper.h"
 #include "widget-boolean.h"
@@ -26,6 +28,11 @@ struct int_slider {
   curve_update_fn     curve_fn; // function to update curve
 };
 
+// Scaling factors for simulated element values
+#define FREQ_SCALE 10    // Hz * 10 (1000.5 Hz = 10005)
+#define Q_SCALE 1000     // Q * 1000 (0.707 = 707)
+#define GAIN_SCALE 10    // dB * 10 (3.5 dB = 35)
+
 // Data for a filter stage
 struct filter_stage {
   struct alsa_elem    *coeff_elem;
@@ -45,6 +52,13 @@ struct filter_stage {
   GtkWidget           *gain_box;
   GtkFilterResponse   *response;
   int                  band_index;
+
+  // Simulated elements for persisting filter state
+  struct alsa_elem    *state_enable_elem;
+  struct alsa_elem    *state_type_elem;
+  struct alsa_elem    *state_freq_elem;
+  struct alsa_elem    *state_q_elem;
+  struct alsa_elem    *state_gain_elem;
 };
 
 // Data for connecting filter stages to a response widget
@@ -208,10 +222,34 @@ static void filter_stage_update_freq_q_visibility(struct filter_stage *stage) {
   gtk_widget_set_visible(stage->q_box, show_q);
 }
 
+// Helper to save a single parameter to state file
+static void save_filter_param(struct alsa_elem *elem, long value) {
+  if (!elem)
+    return;
+
+  // Update simulated element value
+  elem->value = value;
+
+  // Save directly to state file
+  char *str = g_strdup_printf("%ld", value);
+  optional_state_save(elem->card, CONFIG_SECTION_CONTROLS, elem->name, str);
+  g_free(str);
+}
+
+// Save filter state to simulated elements and state file
+static void filter_stage_save_state(struct filter_stage *stage) {
+  save_filter_param(stage->state_enable_elem, stage->enabled ? 1 : 0);
+  save_filter_param(stage->state_type_elem, stage->params.type);
+  save_filter_param(stage->state_freq_elem, (long)(stage->params.freq * FREQ_SCALE));
+  save_filter_param(stage->state_q_elem, (long)(stage->params.q * Q_SCALE));
+  save_filter_param(stage->state_gain_elem, (long)(stage->params.gain_db * GAIN_SCALE));
+}
+
 // Enable checkbox callback
 static void filter_enable_toggled(GtkCheckButton *check, struct filter_stage *stage) {
   stage->enabled = gtk_check_button_get_active(check);
   filter_stage_update_coeffs(stage);
+  filter_stage_save_state(stage);
 }
 
 // Format frequency for display
@@ -234,6 +272,7 @@ static void filter_type_changed(
   filter_stage_update_gain_visibility(stage);
   filter_stage_update_freq_q_visibility(stage);
   filter_stage_update_coeffs(stage);
+  filter_stage_save_state(stage);
 }
 
 static void filter_freq_changed(GtkRange *range, struct filter_stage *stage) {
@@ -246,6 +285,7 @@ static void filter_freq_changed(GtkRange *range, struct filter_stage *stage) {
 
   format_freq_label(stage->freq_label, stage->params.freq);
   filter_stage_update_coeffs(stage);
+  filter_stage_save_state(stage);
 }
 
 static void filter_q_changed(GtkRange *range, struct filter_stage *stage) {
@@ -260,6 +300,7 @@ static void filter_q_changed(GtkRange *range, struct filter_stage *stage) {
   snprintf(text, sizeof(text), "%.2f", stage->params.q);
   gtk_label_set_text(GTK_LABEL(stage->q_label), text);
   filter_stage_update_coeffs(stage);
+  filter_stage_save_state(stage);
 }
 
 static void filter_gain_changed(GtkRange *range, struct filter_stage *stage) {
@@ -269,6 +310,7 @@ static void filter_gain_changed(GtkRange *range, struct filter_stage *stage) {
   snprintf(text, sizeof(text), "%+.1f dB", stage->params.gain_db);
   gtk_label_set_text(GTK_LABEL(stage->gain_label), text);
   filter_stage_update_coeffs(stage);
+  filter_stage_save_state(stage);
 }
 
 // Convert frequency to slider value (0-1000)
@@ -336,8 +378,9 @@ static void response_filter_changed(
   snprintf(text, sizeof(text), "%+.1f dB", params->gain_db);
   gtk_label_set_text(GTK_LABEL(stage->gain_label), text);
 
-  // Update hardware
+  // Update hardware and save state
   filter_stage_update_coeffs(stage);
+  filter_stage_save_state(stage);
 }
 
 static void filter_response_stages_destroy(struct filter_response_stages *data) {
@@ -394,11 +437,15 @@ static void filter_stage_leave(
 
 // Create controls for one filter stage
 static GtkWidget *make_filter_stage(
+  struct alsa_card   *card,
   struct alsa_elem   *coeff_elem,
   int                 band_index,
   GtkFilterResponse  *response,
   const char         *label_text,
   BiquadFilterType    default_type,
+  const char         *filter_type,
+  int                 channel,
+  int                 stage_num,
   struct filter_stage **stage_out
 ) {
   struct filter_stage *stage = g_malloc0(sizeof(struct filter_stage));
@@ -407,6 +454,23 @@ static GtkWidget *make_filter_stage(
   stage->coeff_elem = coeff_elem;
   stage->band_index = band_index;
   stage->response = response;
+
+  // Look up simulated state elements
+  stage->state_enable_elem = dsp_state_get_enable_elem(
+    card, filter_type, channel, stage_num
+  );
+  stage->state_type_elem = dsp_state_get_type_elem(
+    card, filter_type, channel, stage_num
+  );
+  stage->state_freq_elem = dsp_state_get_freq_elem(
+    card, filter_type, channel, stage_num
+  );
+  stage->state_q_elem = dsp_state_get_q_elem(
+    card, filter_type, channel, stage_num
+  );
+  stage->state_gain_elem = dsp_state_get_gain_elem(
+    card, filter_type, channel, stage_num
+  );
 
   // Try to read and analyze existing coefficients from hardware
   stage->enabled = TRUE;
@@ -421,10 +485,34 @@ static GtkWidget *make_filter_stage(
     biquad_from_fixed_point(fixed, &coeffs);
     biquad_analyze(&coeffs, SAMPLE_RATE, &stage->params);
 
-    // Disable if it's a bypass (gain 0dB)
-    if (stage->params.type == BIQUAD_TYPE_GAIN && stage->params.gain_db == 0.0)
+    // If it's a bypass (0dB gain), load saved params from simulated elements
+    if (stage->params.type == BIQUAD_TYPE_GAIN && stage->params.gain_db == 0.0) {
       stage->enabled = FALSE;
+
+      // Load saved params from simulated elements
+      if (stage->state_type_elem)
+        stage->params.type = alsa_get_elem_value(stage->state_type_elem);
+      if (stage->state_freq_elem)
+        stage->params.freq = alsa_get_elem_value(stage->state_freq_elem) / (double)FREQ_SCALE;
+      if (stage->state_q_elem)
+        stage->params.q = alsa_get_elem_value(stage->state_q_elem) / (double)Q_SCALE;
+      if (stage->state_gain_elem)
+        stage->params.gain_db = alsa_get_elem_value(stage->state_gain_elem) / (double)GAIN_SCALE;
+
+      // Clamp values to valid ranges
+      if (stage->params.freq < 20.0) stage->params.freq = 20.0;
+      if (stage->params.freq > 20000.0) stage->params.freq = 20000.0;
+      if (stage->params.q < 0.1) stage->params.q = 0.1;
+      if (stage->params.q > 10.0) stage->params.q = 10.0;
+      if (stage->params.gain_db < -18.0) stage->params.gain_db = -18.0;
+      if (stage->params.gain_db > 18.0) stage->params.gain_db = 18.0;
+    }
+
+    free(fixed);
   }
+
+  // Save initial state to simulated elements
+  filter_stage_save_state(stage);
 
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   stage->box = box;
@@ -722,8 +810,8 @@ static void add_channel_controls(
         snprintf(stage_label, sizeof(stage_label), "Stage %d", i);
         struct filter_stage *stage;
         w = make_filter_stage(
-          elem, i - 1, precomp_response, stage_label, BIQUAD_TYPE_HIGHPASS,
-          &stage
+          card, elem, i - 1, precomp_response, stage_label, BIQUAD_TYPE_HIGHPASS,
+          "Pre-Comp", channel, i, &stage
         );
         precomp_stages->stages[i - 1] = stage;
         precomp_stages->num_stages = i;
@@ -884,8 +972,8 @@ static void add_channel_controls(
         snprintf(band_label, sizeof(band_label), "Band %d", i);
         struct filter_stage *stage;
         w = make_filter_stage(
-          elem, i - 1, peq_response, band_label, BIQUAD_TYPE_PEAKING,
-          &stage
+          card, elem, i - 1, peq_response, band_label, BIQUAD_TYPE_PEAKING,
+          "PEQ", channel, i, &stage
         );
         peq_stages->stages[i - 1] = stage;
         peq_stages->num_stages = i;

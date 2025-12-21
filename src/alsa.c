@@ -13,6 +13,7 @@
 #include "optional-controls.h"
 #include "custom-names.h"
 #include "port-enable.h"
+#include "dsp-state.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -1091,6 +1092,7 @@ static void complete_card_init(struct alsa_card *card) {
   optional_controls_init(card);
   custom_names_init(card);
   port_enable_init(card);
+  dsp_state_init(card);
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
 
   if (card->serial) {
