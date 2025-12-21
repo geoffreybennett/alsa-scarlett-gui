@@ -70,6 +70,31 @@ void level_to_colour(double db, double *r, double *g, double *b) {
   }
 }
 
+// get the level meter index for a routing sink (for implicit level maps)
+// returns -1 if the sink has no corresponding level meter
+static int get_routing_snk_level_index(
+  struct alsa_card   *card,
+  struct routing_snk *r_snk
+) {
+  if (!r_snk->elem)
+    return -1;
+
+  int cat = r_snk->elem->port_category;
+  if (cat == PC_OFF)
+    return -1;
+
+  // level meters are ordered: HW Outputs, Mixer Inputs, DSP Inputs, PCM Inputs
+  int index = 0;
+  for (int c = PC_HW; c < cat; c++)
+    index += card->routing_out_count[c];
+  index += r_snk->elem->port_num;
+
+  if (index >= card->routing_levels_count)
+    return -1;
+
+  return index;
+}
+
 // get the level meter index for a routing source
 // returns -1 if the source has no corresponding level meter
 static int get_routing_src_level_index(
@@ -100,21 +125,25 @@ static int get_routing_src_level_index(
     return -1;
   }
 
-  // without labels, level meters are ordered by port category
-  int index = 0;
+  // without labels, level meters are at sinks only (HW Outputs, Mixer
+  // Inputs, DSP Inputs, PCM Inputs); find a sink connected to this
+  // source and return its level index
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
 
-  // add counts from earlier categories
-  for (int cat = PC_HW; cat < r_src->port_category; cat++)
-    index += card->routing_out_count[cat];
+    // check if this sink is connected to our source
+    if (r_snk->effective_source_idx != r_src->id)
+      continue;
 
-  // add the port number within this category
-  index += r_src->port_num;
+    int index = get_routing_snk_level_index(card, r_snk);
+    if (index >= 0)
+      return index;
+  }
 
-  // validate index is within bounds
-  if (index >= card->routing_levels_count)
-    return -1;
-
-  return index;
+  // source is not connected to any sink
+  return -1;
 }
 
 // get level in dB for a routing source (-80 if no level data)
