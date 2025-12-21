@@ -851,6 +851,41 @@ static void add_channel_controls(
                            (GDestroyNotify)comp_enable_destroy);
     comp_enable_updated(comp_enable, comp_en_data);
 
+    // Find routing elements for level display
+    struct routing_snk *input_snk = NULL;
+    struct routing_src *output_src = NULL;
+
+    // Find DSP Input sink for this channel
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      if (snk->elem &&
+          snk->elem->port_category == PC_DSP &&
+          snk->elem->port_num == channel - 1) {
+        input_snk = snk;
+        break;
+      }
+    }
+
+    // Find DSP Output source for this channel
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+      if (src->port_category == PC_DSP && src->port_num == channel - 1) {
+        output_src = src;
+        break;
+      }
+    }
+
+    // Store for level updates
+    struct dsp_comp_widget *dcw = g_malloc0(sizeof(struct dsp_comp_widget));
+    dcw->curve = comp_curve;
+    dcw->input_snk = input_snk;
+    dcw->output_src = output_src;
+    card->dsp_comp_widgets = g_list_append(card->dsp_comp_widgets, dcw);
+
     // Sliders grid
     GtkWidget *slider_grid = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(slider_grid), 5);
