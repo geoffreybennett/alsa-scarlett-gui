@@ -77,6 +77,7 @@ all: $(TARGET) $(DESKTOP_FILE)
 
 clean: depclean
 	rm -f $(TARGET) $(DESKTOP_FILE) $(OBJS) $(XML_OBJ)
+	$(MAKE) -C tests clean
 
 depclean:
 	rm -rf $(DEPDIR)
@@ -124,6 +125,9 @@ uninstall:
 	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(DESKTOPDIR)/$(DESKTOP_FILE)
 	$(Q)rm -f $(DESKTOPDIR)/$(DESKTOP_FILE)
 
+test:
+	$(MAKE) -C tests test
+
 help:
 	@echo "alsa-scarlett-gui"
 	@echo
@@ -131,3 +135,4 @@ help:
 	@echo "  make"
 	@echo "  make install"
 	@echo "  make uninstall"
+	@echo "  make test"

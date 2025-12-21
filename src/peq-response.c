@@ -215,8 +215,9 @@ static void draw_filter_handle(
   double radius = highlighted ? 12 : 10;
   double line_width = highlighted ? 2 : 1.5;
 
-  // Draw Q whiskers for filters with gain
-  if (biquad_type_uses_gain(params->type)) {
+  // Draw Q whiskers for filters with gain (except pure gain which has no Q)
+  if (biquad_type_uses_gain(params->type) &&
+      params->type != BIQUAD_TYPE_GAIN) {
     // Calculate bandwidth as ratio for log scale symmetry
     double ratio = pow(2.0, 0.5 / params->q);
     double freq_lo = params->freq / ratio;

@@ -14,6 +14,7 @@ typedef enum {
   BIQUAD_TYPE_HIGHPASS,
   BIQUAD_TYPE_BANDPASS,
   BIQUAD_TYPE_NOTCH,
+  BIQUAD_TYPE_GAIN,
   BIQUAD_TYPE_COUNT
 } BiquadFilterType;
 
@@ -61,3 +62,17 @@ const char *biquad_type_name(BiquadFilterType type);
 
 // Check if filter type uses gain parameter
 gboolean biquad_type_uses_gain(BiquadFilterType type);
+
+// Convert fixed-point coefficients back to floating-point
+void biquad_from_fixed_point(
+  const long fixed[5],
+  struct biquad_coeffs *coeffs
+);
+
+// Analyze coefficients to determine filter parameters
+// Returns TRUE if successful, FALSE if coefficients don't match a known filter
+gboolean biquad_analyze(
+  const struct biquad_coeffs *coeffs,
+  double sample_rate,
+  struct biquad_params *params
+);
