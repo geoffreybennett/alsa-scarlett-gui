@@ -32,7 +32,7 @@ state.USB {
 	control.4 {
 		iface MIXER
 		name 'Clock Source Clock Source'
-		value S/PDIF
+		value Internal
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -43,6 +43,28 @@ state.USB {
 		}
 	}
 	control.5 {
+		iface CARD
+		name 'Firmware Version'
+		value 1653
+		comment {
+			access read
+			type INTEGER
+			count 1
+			range '0 - 0'
+		}
+	}
+	control.6 {
+		iface CARD
+		name 'Minimum Firmware Version'
+		value 0
+		comment {
+			access read
+			type INTEGER
+			count 1
+			range '0 - 0'
+		}
+	}
+	control.7 {
 		iface MIXER
 		name 'Master HW Playback Volume'
 		value 0
@@ -56,84 +78,12 @@ state.USB {
 			dbvalue.0 -12700
 		}
 	}
-	control.6 {
-		iface MIXER
-		name 'Line 01 (Monitor L) Playback Volume'
-		value 127
-		comment {
-			access 'read write'
-			type INTEGER
-			count 1
-			range '0 - 127 (step 1)'
-			dbmin -12700
-			dbmax 0
-			dbvalue.0 0
-		}
-	}
-	control.7 {
-		iface MIXER
-		name 'Line 01 Mute Playback Switch'
-		value false
-		comment {
-			access 'read write'
-			type BOOLEAN
-			count 1
-		}
-	}
 	control.8 {
 		iface MIXER
-		name 'Line Out 01 Volume Control Playback Enum'
-		value SW
-		comment {
-			access 'read write'
-			type ENUMERATED
-			count 1
-			item.0 SW
-			item.1 HW
-		}
-	}
-	control.9 {
-		iface MIXER
-		name 'Line 02 (Monitor R) Playback Volume'
-		value 127
-		comment {
-			access 'read write'
-			type INTEGER
-			count 1
-			range '0 - 127 (step 1)'
-			dbmin -12700
-			dbmax 0
-			dbvalue.0 0
-		}
-	}
-	control.10 {
-		iface MIXER
-		name 'Line 02 Mute Playback Switch'
-		value false
-		comment {
-			access 'read write'
-			type BOOLEAN
-			count 1
-		}
-	}
-	control.11 {
-		iface MIXER
-		name 'Line Out 02 Volume Control Playback Enum'
-		value SW
-		comment {
-			access 'read write'
-			type ENUMERATED
-			count 1
-			item.0 SW
-			item.1 HW
-		}
-	}
-	control.12 {
-		iface MIXER
-		name 'Line 03 Playback Volume'
+		name 'Line 01 (Monitor L) Playback Volume'
 		value 0
 		comment {
-			access 'read write'
+			access read
 			type INTEGER
 			count 1
 			range '0 - 127 (step 1)'
@@ -142,7 +92,79 @@ state.USB {
 			dbvalue.0 -12700
 		}
 	}
+	control.9 {
+		iface MIXER
+		name 'Line 01 Mute Playback Switch'
+		value false
+		comment {
+			access read
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.10 {
+		iface MIXER
+		name 'Line Out 01 Volume Control Playback Enum'
+		value HW
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 SW
+			item.1 HW
+		}
+	}
+	control.11 {
+		iface MIXER
+		name 'Line 02 (Monitor R) Playback Volume'
+		value 0
+		comment {
+			access read
+			type INTEGER
+			count 1
+			range '0 - 127 (step 1)'
+			dbmin -12700
+			dbmax 0
+			dbvalue.0 -12700
+		}
+	}
+	control.12 {
+		iface MIXER
+		name 'Line 02 Mute Playback Switch'
+		value false
+		comment {
+			access read
+			type BOOLEAN
+			count 1
+		}
+	}
 	control.13 {
+		iface MIXER
+		name 'Line Out 02 Volume Control Playback Enum'
+		value HW
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 SW
+			item.1 HW
+		}
+	}
+	control.14 {
+		iface MIXER
+		name 'Line 03 Playback Volume'
+		value 127
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 127 (step 1)'
+			dbmin -12700
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.15 {
 		iface MIXER
 		name 'Line 03 Mute Playback Switch'
 		value false
@@ -152,7 +174,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.14 {
+	control.16 {
 		iface MIXER
 		name 'Line Out 03 Volume Control Playback Enum'
 		value SW
@@ -164,10 +186,10 @@ state.USB {
 			item.1 HW
 		}
 	}
-	control.15 {
+	control.17 {
 		iface MIXER
 		name 'Line 04 Playback Volume'
-		value 0
+		value 127
 		comment {
 			access 'read write'
 			type INTEGER
@@ -175,10 +197,10 @@ state.USB {
 			range '0 - 127 (step 1)'
 			dbmin -12700
 			dbmax 0
-			dbvalue.0 -12700
+			dbvalue.0 0
 		}
 	}
-	control.16 {
+	control.18 {
 		iface MIXER
 		name 'Line 04 Mute Playback Switch'
 		value false
@@ -188,7 +210,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.17 {
+	control.19 {
 		iface MIXER
 		name 'Line Out 04 Volume Control Playback Enum'
 		value SW
@@ -200,7 +222,7 @@ state.USB {
 			item.1 HW
 		}
 	}
-	control.18 {
+	control.20 {
 		iface MIXER
 		name 'Line 05 Playback Volume'
 		value 127
@@ -214,7 +236,7 @@ state.USB {
 			dbvalue.0 0
 		}
 	}
-	control.19 {
+	control.21 {
 		iface MIXER
 		name 'Line 05 Mute Playback Switch'
 		value false
@@ -224,7 +246,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.20 {
+	control.22 {
 		iface MIXER
 		name 'Line Out 05 Volume Control Playback Enum'
 		value SW
@@ -236,7 +258,7 @@ state.USB {
 			item.1 HW
 		}
 	}
-	control.21 {
+	control.23 {
 		iface MIXER
 		name 'Line 06 Playback Volume'
 		value 127
@@ -250,7 +272,7 @@ state.USB {
 			dbvalue.0 0
 		}
 	}
-	control.22 {
+	control.24 {
 		iface MIXER
 		name 'Line 06 Mute Playback Switch'
 		value false
@@ -260,7 +282,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.23 {
+	control.25 {
 		iface MIXER
 		name 'Line Out 06 Volume Control Playback Enum'
 		value SW
@@ -272,7 +294,7 @@ state.USB {
 			item.1 HW
 		}
 	}
-	control.24 {
+	control.26 {
 		iface MIXER
 		name 'Line 07 (Headphones 1 L) Playback Volume'
 		value 127
@@ -286,7 +308,7 @@ state.USB {
 			dbvalue.0 0
 		}
 	}
-	control.25 {
+	control.27 {
 		iface MIXER
 		name 'Line 07 Mute Playback Switch'
 		value false
@@ -296,7 +318,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.26 {
+	control.28 {
 		iface MIXER
 		name 'Line Out 07 Volume Control Playback Enum'
 		value SW
@@ -308,7 +330,7 @@ state.USB {
 			item.1 HW
 		}
 	}
-	control.27 {
+	control.29 {
 		iface MIXER
 		name 'Line 08 (Headphones 1 R) Playback Volume'
 		value 127
@@ -322,7 +344,7 @@ state.USB {
 			dbvalue.0 0
 		}
 	}
-	control.28 {
+	control.30 {
 		iface MIXER
 		name 'Line 08 Mute Playback Switch'
 		value false
@@ -332,7 +354,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.29 {
+	control.31 {
 		iface MIXER
 		name 'Line Out 08 Volume Control Playback Enum'
 		value SW
@@ -344,7 +366,7 @@ state.USB {
 			item.1 HW
 		}
 	}
-	control.30 {
+	control.32 {
 		iface MIXER
 		name 'Line 09 (Headphones 2 L) Playback Volume'
 		value 127
@@ -358,7 +380,7 @@ state.USB {
 			dbvalue.0 0
 		}
 	}
-	control.31 {
+	control.33 {
 		iface MIXER
 		name 'Line 09 Mute Playback Switch'
 		value false
@@ -368,7 +390,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.32 {
+	control.34 {
 		iface MIXER
 		name 'Line Out 09 Volume Control Playback Enum'
 		value SW
@@ -380,7 +402,7 @@ state.USB {
 			item.1 HW
 		}
 	}
-	control.33 {
+	control.35 {
 		iface MIXER
 		name 'Line 10 (Headphones 2 R) Playback Volume'
 		value 127
@@ -394,7 +416,7 @@ state.USB {
 			dbvalue.0 0
 		}
 	}
-	control.34 {
+	control.36 {
 		iface MIXER
 		name 'Line 10 Mute Playback Switch'
 		value false
@@ -404,7 +426,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.35 {
+	control.37 {
 		iface MIXER
 		name 'Line Out 10 Volume Control Playback Enum'
 		value SW
@@ -416,7 +438,7 @@ state.USB {
 			item.1 HW
 		}
 	}
-	control.36 {
+	control.38 {
 		iface MIXER
 		name 'Mute Playback Switch'
 		value false
@@ -426,7 +448,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.37 {
+	control.39 {
 		iface MIXER
 		name 'Dim Playback Switch'
 		value false
@@ -436,7 +458,7 @@ state.USB {
 			count 1
 		}
 	}
-	control.38 {
+	control.40 {
 		iface MIXER
 		name 'Analogue Output 01 Playback Enum'
 		value 'PCM 1'
@@ -495,7 +517,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.39 {
+	control.41 {
 		iface MIXER
 		name 'Analogue Output 02 Playback Enum'
 		value 'PCM 2'
@@ -554,128 +576,10 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.40 {
-		iface MIXER
-		name 'Analogue Output 03 Playback Enum'
-		value 'Mix E'
-		comment {
-			access 'read write'
-			type ENUMERATED
-			count 1
-			item.0 Off
-			item.1 'Analogue 1'
-			item.2 'Analogue 2'
-			item.3 'Analogue 3'
-			item.4 'Analogue 4'
-			item.5 'Analogue 5'
-			item.6 'Analogue 6'
-			item.7 'Analogue 7'
-			item.8 'Analogue 8'
-			item.9 'S/PDIF 1'
-			item.10 'S/PDIF 2'
-			item.11 'ADAT 1'
-			item.12 'ADAT 2'
-			item.13 'ADAT 3'
-			item.14 'ADAT 4'
-			item.15 'ADAT 5'
-			item.16 'ADAT 6'
-			item.17 'ADAT 7'
-			item.18 'ADAT 8'
-			item.19 'Mix A'
-			item.20 'Mix B'
-			item.21 'Mix C'
-			item.22 'Mix D'
-			item.23 'Mix E'
-			item.24 'Mix F'
-			item.25 'Mix G'
-			item.26 'Mix H'
-			item.27 'Mix I'
-			item.28 'Mix J'
-			item.29 'PCM 1'
-			item.30 'PCM 2'
-			item.31 'PCM 3'
-			item.32 'PCM 4'
-			item.33 'PCM 5'
-			item.34 'PCM 6'
-			item.35 'PCM 7'
-			item.36 'PCM 8'
-			item.37 'PCM 9'
-			item.38 'PCM 10'
-			item.39 'PCM 11'
-			item.40 'PCM 12'
-			item.41 'PCM 13'
-			item.42 'PCM 14'
-			item.43 'PCM 15'
-			item.44 'PCM 16'
-			item.45 'PCM 17'
-			item.46 'PCM 18'
-			item.47 'PCM 19'
-			item.48 'PCM 20'
-		}
-	}
-	control.41 {
-		iface MIXER
-		name 'Analogue Output 04 Playback Enum'
-		value 'Mix F'
-		comment {
-			access 'read write'
-			type ENUMERATED
-			count 1
-			item.0 Off
-			item.1 'Analogue 1'
-			item.2 'Analogue 2'
-			item.3 'Analogue 3'
-			item.4 'Analogue 4'
-			item.5 'Analogue 5'
-			item.6 'Analogue 6'
-			item.7 'Analogue 7'
-			item.8 'Analogue 8'
-			item.9 'S/PDIF 1'
-			item.10 'S/PDIF 2'
-			item.11 'ADAT 1'
-			item.12 'ADAT 2'
-			item.13 'ADAT 3'
-			item.14 'ADAT 4'
-			item.15 'ADAT 5'
-			item.16 'ADAT 6'
-			item.17 'ADAT 7'
-			item.18 'ADAT 8'
-			item.19 'Mix A'
-			item.20 'Mix B'
-			item.21 'Mix C'
-			item.22 'Mix D'
-			item.23 'Mix E'
-			item.24 'Mix F'
-			item.25 'Mix G'
-			item.26 'Mix H'
-			item.27 'Mix I'
-			item.28 'Mix J'
-			item.29 'PCM 1'
-			item.30 'PCM 2'
-			item.31 'PCM 3'
-			item.32 'PCM 4'
-			item.33 'PCM 5'
-			item.34 'PCM 6'
-			item.35 'PCM 7'
-			item.36 'PCM 8'
-			item.37 'PCM 9'
-			item.38 'PCM 10'
-			item.39 'PCM 11'
-			item.40 'PCM 12'
-			item.41 'PCM 13'
-			item.42 'PCM 14'
-			item.43 'PCM 15'
-			item.44 'PCM 16'
-			item.45 'PCM 17'
-			item.46 'PCM 18'
-			item.47 'PCM 19'
-			item.48 'PCM 20'
-		}
-	}
 	control.42 {
 		iface MIXER
-		name 'Analogue Output 05 Playback Enum'
-		value 'Analogue 5'
+		name 'Analogue Output 03 Playback Enum'
+		value 'PCM 3'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -733,8 +637,8 @@ state.USB {
 	}
 	control.43 {
 		iface MIXER
-		name 'Analogue Output 06 Playback Enum'
-		value 'Analogue 6'
+		name 'Analogue Output 04 Playback Enum'
+		value 'PCM 4'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -792,8 +696,8 @@ state.USB {
 	}
 	control.44 {
 		iface MIXER
-		name 'Analogue Output 07 Playback Enum'
-		value 'PCM 1'
+		name 'Analogue Output 05 Playback Enum'
+		value 'PCM 5'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -851,8 +755,8 @@ state.USB {
 	}
 	control.45 {
 		iface MIXER
-		name 'Analogue Output 08 Playback Enum'
-		value 'PCM 2'
+		name 'Analogue Output 06 Playback Enum'
+		value 'PCM 6'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -910,8 +814,8 @@ state.USB {
 	}
 	control.46 {
 		iface MIXER
-		name 'Analogue Output 09 Playback Enum'
-		value 'S/PDIF 1'
+		name 'Analogue Output 07 Playback Enum'
+		value 'PCM 7'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -969,8 +873,8 @@ state.USB {
 	}
 	control.47 {
 		iface MIXER
-		name 'Analogue Output 10 Playback Enum'
-		value 'S/PDIF 2'
+		name 'Analogue Output 08 Playback Enum'
+		value 'PCM 8'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1028,8 +932,8 @@ state.USB {
 	}
 	control.48 {
 		iface MIXER
-		name 'S/PDIF Output 1 Playback Enum'
-		value Off
+		name 'Analogue Output 09 Playback Enum'
+		value 'PCM 9'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1087,8 +991,8 @@ state.USB {
 	}
 	control.49 {
 		iface MIXER
-		name 'S/PDIF Output 2 Playback Enum'
-		value Off
+		name 'Analogue Output 10 Playback Enum'
+		value 'PCM 10'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1146,8 +1050,8 @@ state.USB {
 	}
 	control.50 {
 		iface MIXER
-		name 'ADAT Output 1 Playback Enum'
-		value Off
+		name 'S/PDIF Output 1 Playback Enum'
+		value 'PCM 11'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1205,8 +1109,8 @@ state.USB {
 	}
 	control.51 {
 		iface MIXER
-		name 'ADAT Output 2 Playback Enum'
-		value Off
+		name 'S/PDIF Output 2 Playback Enum'
+		value 'PCM 12'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1264,8 +1168,8 @@ state.USB {
 	}
 	control.52 {
 		iface MIXER
-		name 'ADAT Output 3 Playback Enum'
-		value Off
+		name 'ADAT Output 1 Playback Enum'
+		value 'PCM 13'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1323,8 +1227,8 @@ state.USB {
 	}
 	control.53 {
 		iface MIXER
-		name 'ADAT Output 4 Playback Enum'
-		value Off
+		name 'ADAT Output 2 Playback Enum'
+		value 'PCM 14'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1382,8 +1286,8 @@ state.USB {
 	}
 	control.54 {
 		iface MIXER
-		name 'ADAT Output 5 Playback Enum'
-		value Off
+		name 'ADAT Output 3 Playback Enum'
+		value 'PCM 15'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1441,8 +1345,8 @@ state.USB {
 	}
 	control.55 {
 		iface MIXER
-		name 'ADAT Output 6 Playback Enum'
-		value Off
+		name 'ADAT Output 4 Playback Enum'
+		value 'PCM 16'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1500,8 +1404,8 @@ state.USB {
 	}
 	control.56 {
 		iface MIXER
-		name 'ADAT Output 7 Playback Enum'
-		value Off
+		name 'ADAT Output 5 Playback Enum'
+		value 'PCM 17'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1559,8 +1463,8 @@ state.USB {
 	}
 	control.57 {
 		iface MIXER
-		name 'ADAT Output 8 Playback Enum'
-		value Off
+		name 'ADAT Output 6 Playback Enum'
+		value 'PCM 18'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1618,8 +1522,8 @@ state.USB {
 	}
 	control.58 {
 		iface MIXER
-		name 'Mixer Input 01 Capture Enum'
-		value 'Analogue 1'
+		name 'ADAT Output 7 Playback Enum'
+		value 'PCM 19'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1677,8 +1581,8 @@ state.USB {
 	}
 	control.59 {
 		iface MIXER
-		name 'Mixer Input 02 Capture Enum'
-		value 'Analogue 2'
+		name 'ADAT Output 8 Playback Enum'
+		value 'PCM 20'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1736,8 +1640,8 @@ state.USB {
 	}
 	control.60 {
 		iface MIXER
-		name 'Mixer Input 03 Capture Enum'
-		value 'Analogue 3'
+		name 'Mixer Input 01 Capture Enum'
+		value Off
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1795,8 +1699,8 @@ state.USB {
 	}
 	control.61 {
 		iface MIXER
-		name 'Mixer Input 04 Capture Enum'
-		value 'Analogue 4'
+		name 'Mixer Input 02 Capture Enum'
+		value Off
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1854,8 +1758,8 @@ state.USB {
 	}
 	control.62 {
 		iface MIXER
-		name 'Mixer Input 05 Capture Enum'
-		value 'PCM 1'
+		name 'Mixer Input 03 Capture Enum'
+		value Off
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1913,8 +1817,8 @@ state.USB {
 	}
 	control.63 {
 		iface MIXER
-		name 'Mixer Input 06 Capture Enum'
-		value 'PCM 2'
+		name 'Mixer Input 04 Capture Enum'
+		value Off
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -1972,8 +1876,8 @@ state.USB {
 	}
 	control.64 {
 		iface MIXER
-		name 'Mixer Input 07 Capture Enum'
-		value 'Mix E'
+		name 'Mixer Input 05 Capture Enum'
+		value Off
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -2031,8 +1935,8 @@ state.USB {
 	}
 	control.65 {
 		iface MIXER
-		name 'Mixer Input 08 Capture Enum'
-		value 'Mix F'
+		name 'Mixer Input 06 Capture Enum'
+		value Off
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -2090,7 +1994,7 @@ state.USB {
 	}
 	control.66 {
 		iface MIXER
-		name 'Mixer Input 09 Capture Enum'
+		name 'Mixer Input 07 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2149,7 +2053,7 @@ state.USB {
 	}
 	control.67 {
 		iface MIXER
-		name 'Mixer Input 10 Capture Enum'
+		name 'Mixer Input 08 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2208,7 +2112,7 @@ state.USB {
 	}
 	control.68 {
 		iface MIXER
-		name 'Mixer Input 11 Capture Enum'
+		name 'Mixer Input 09 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2267,7 +2171,7 @@ state.USB {
 	}
 	control.69 {
 		iface MIXER
-		name 'Mixer Input 12 Capture Enum'
+		name 'Mixer Input 10 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2326,7 +2230,7 @@ state.USB {
 	}
 	control.70 {
 		iface MIXER
-		name 'Mixer Input 13 Capture Enum'
+		name 'Mixer Input 11 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2385,7 +2289,7 @@ state.USB {
 	}
 	control.71 {
 		iface MIXER
-		name 'Mixer Input 14 Capture Enum'
+		name 'Mixer Input 12 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2444,7 +2348,7 @@ state.USB {
 	}
 	control.72 {
 		iface MIXER
-		name 'Mixer Input 15 Capture Enum'
+		name 'Mixer Input 13 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2503,7 +2407,7 @@ state.USB {
 	}
 	control.73 {
 		iface MIXER
-		name 'Mixer Input 16 Capture Enum'
+		name 'Mixer Input 14 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2562,7 +2466,7 @@ state.USB {
 	}
 	control.74 {
 		iface MIXER
-		name 'Mixer Input 17 Capture Enum'
+		name 'Mixer Input 15 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2621,7 +2525,7 @@ state.USB {
 	}
 	control.75 {
 		iface MIXER
-		name 'Mixer Input 18 Capture Enum'
+		name 'Mixer Input 16 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2680,7 +2584,7 @@ state.USB {
 	}
 	control.76 {
 		iface MIXER
-		name 'PCM 01 Capture Enum'
+		name 'Mixer Input 17 Capture Enum'
 		value Off
 		comment {
 			access 'read write'
@@ -2739,8 +2643,8 @@ state.USB {
 	}
 	control.77 {
 		iface MIXER
-		name 'PCM 02 Capture Enum'
-		value 'Analogue 1'
+		name 'Mixer Input 18 Capture Enum'
+		value Off
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -2798,7 +2702,7 @@ state.USB {
 	}
 	control.78 {
 		iface MIXER
-		name 'PCM 03 Capture Enum'
+		name 'PCM 01 Capture Enum'
 		value 'Analogue 1'
 		comment {
 			access 'read write'
@@ -2857,8 +2761,8 @@ state.USB {
 	}
 	control.79 {
 		iface MIXER
-		name 'PCM 04 Capture Enum'
-		value 'Analogue 1'
+		name 'PCM 02 Capture Enum'
+		value 'Analogue 2'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -2916,8 +2820,8 @@ state.USB {
 	}
 	control.80 {
 		iface MIXER
-		name 'PCM 05 Capture Enum'
-		value 'Analogue 1'
+		name 'PCM 03 Capture Enum'
+		value 'Analogue 3'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -2975,8 +2879,8 @@ state.USB {
 	}
 	control.81 {
 		iface MIXER
-		name 'PCM 06 Capture Enum'
-		value 'Analogue 1'
+		name 'PCM 04 Capture Enum'
+		value 'Analogue 4'
 		comment {
 			access 'read write'
 			type ENUMERATED
@@ -3033,6 +2937,124 @@ state.USB {
 		}
 	}
 	control.82 {
+		iface MIXER
+		name 'PCM 05 Capture Enum'
+		value 'Analogue 5'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Analogue 5'
+			item.6 'Analogue 6'
+			item.7 'Analogue 7'
+			item.8 'Analogue 8'
+			item.9 'S/PDIF 1'
+			item.10 'S/PDIF 2'
+			item.11 'ADAT 1'
+			item.12 'ADAT 2'
+			item.13 'ADAT 3'
+			item.14 'ADAT 4'
+			item.15 'ADAT 5'
+			item.16 'ADAT 6'
+			item.17 'ADAT 7'
+			item.18 'ADAT 8'
+			item.19 'Mix A'
+			item.20 'Mix B'
+			item.21 'Mix C'
+			item.22 'Mix D'
+			item.23 'Mix E'
+			item.24 'Mix F'
+			item.25 'Mix G'
+			item.26 'Mix H'
+			item.27 'Mix I'
+			item.28 'Mix J'
+			item.29 'PCM 1'
+			item.30 'PCM 2'
+			item.31 'PCM 3'
+			item.32 'PCM 4'
+			item.33 'PCM 5'
+			item.34 'PCM 6'
+			item.35 'PCM 7'
+			item.36 'PCM 8'
+			item.37 'PCM 9'
+			item.38 'PCM 10'
+			item.39 'PCM 11'
+			item.40 'PCM 12'
+			item.41 'PCM 13'
+			item.42 'PCM 14'
+			item.43 'PCM 15'
+			item.44 'PCM 16'
+			item.45 'PCM 17'
+			item.46 'PCM 18'
+			item.47 'PCM 19'
+			item.48 'PCM 20'
+		}
+	}
+	control.83 {
+		iface MIXER
+		name 'PCM 06 Capture Enum'
+		value 'Analogue 6'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Off
+			item.1 'Analogue 1'
+			item.2 'Analogue 2'
+			item.3 'Analogue 3'
+			item.4 'Analogue 4'
+			item.5 'Analogue 5'
+			item.6 'Analogue 6'
+			item.7 'Analogue 7'
+			item.8 'Analogue 8'
+			item.9 'S/PDIF 1'
+			item.10 'S/PDIF 2'
+			item.11 'ADAT 1'
+			item.12 'ADAT 2'
+			item.13 'ADAT 3'
+			item.14 'ADAT 4'
+			item.15 'ADAT 5'
+			item.16 'ADAT 6'
+			item.17 'ADAT 7'
+			item.18 'ADAT 8'
+			item.19 'Mix A'
+			item.20 'Mix B'
+			item.21 'Mix C'
+			item.22 'Mix D'
+			item.23 'Mix E'
+			item.24 'Mix F'
+			item.25 'Mix G'
+			item.26 'Mix H'
+			item.27 'Mix I'
+			item.28 'Mix J'
+			item.29 'PCM 1'
+			item.30 'PCM 2'
+			item.31 'PCM 3'
+			item.32 'PCM 4'
+			item.33 'PCM 5'
+			item.34 'PCM 6'
+			item.35 'PCM 7'
+			item.36 'PCM 8'
+			item.37 'PCM 9'
+			item.38 'PCM 10'
+			item.39 'PCM 11'
+			item.40 'PCM 12'
+			item.41 'PCM 13'
+			item.42 'PCM 14'
+			item.43 'PCM 15'
+			item.44 'PCM 16'
+			item.45 'PCM 17'
+			item.46 'PCM 18'
+			item.47 'PCM 19'
+			item.48 'PCM 20'
+		}
+	}
+	control.84 {
 		iface MIXER
 		name 'PCM 07 Capture Enum'
 		value 'Analogue 7'
@@ -3091,7 +3113,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.83 {
+	control.85 {
 		iface MIXER
 		name 'PCM 08 Capture Enum'
 		value 'Analogue 8'
@@ -3150,7 +3172,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.84 {
+	control.86 {
 		iface MIXER
 		name 'PCM 09 Capture Enum'
 		value 'S/PDIF 1'
@@ -3209,7 +3231,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.85 {
+	control.87 {
 		iface MIXER
 		name 'PCM 10 Capture Enum'
 		value 'S/PDIF 2'
@@ -3268,7 +3290,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.86 {
+	control.88 {
 		iface MIXER
 		name 'PCM 11 Capture Enum'
 		value 'ADAT 1'
@@ -3327,7 +3349,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.87 {
+	control.89 {
 		iface MIXER
 		name 'PCM 12 Capture Enum'
 		value 'ADAT 2'
@@ -3386,7 +3408,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.88 {
+	control.90 {
 		iface MIXER
 		name 'PCM 13 Capture Enum'
 		value 'ADAT 3'
@@ -3445,7 +3467,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.89 {
+	control.91 {
 		iface MIXER
 		name 'PCM 14 Capture Enum'
 		value 'ADAT 4'
@@ -3504,7 +3526,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.90 {
+	control.92 {
 		iface MIXER
 		name 'PCM 15 Capture Enum'
 		value 'ADAT 5'
@@ -3563,7 +3585,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.91 {
+	control.93 {
 		iface MIXER
 		name 'PCM 16 Capture Enum'
 		value 'ADAT 6'
@@ -3622,7 +3644,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.92 {
+	control.94 {
 		iface MIXER
 		name 'PCM 17 Capture Enum'
 		value 'ADAT 7'
@@ -3681,7 +3703,7 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.93 {
+	control.95 {
 		iface MIXER
 		name 'PCM 18 Capture Enum'
 		value 'ADAT 8'
@@ -3740,21 +3762,21 @@ state.USB {
 			item.48 'PCM 20'
 		}
 	}
-	control.94 {
+	control.96 {
 		iface MIXER
 		name 'Mix A Input 01 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.95 {
+	control.97 {
 		iface MIXER
 		name 'Mix A Input 02 Playback Volume'
 		value 0
@@ -3762,27 +3784,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.96 {
+	control.98 {
 		iface MIXER
 		name 'Mix A Input 03 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.97 {
+	control.99 {
 		iface MIXER
 		name 'Mix A Input 04 Playback Volume'
 		value 0
@@ -3790,13 +3812,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.98 {
+	control.100 {
 		iface MIXER
 		name 'Mix A Input 05 Playback Volume'
 		value 0
@@ -3804,13 +3826,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.99 {
+	control.101 {
 		iface MIXER
 		name 'Mix A Input 06 Playback Volume'
 		value 0
@@ -3818,13 +3840,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.100 {
+	control.102 {
 		iface MIXER
 		name 'Mix A Input 07 Playback Volume'
 		value 0
@@ -3832,13 +3854,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.101 {
+	control.103 {
 		iface MIXER
 		name 'Mix A Input 08 Playback Volume'
 		value 0
@@ -3846,13 +3868,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.102 {
+	control.104 {
 		iface MIXER
 		name 'Mix A Input 09 Playback Volume'
 		value 0
@@ -3860,13 +3882,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.103 {
+	control.105 {
 		iface MIXER
 		name 'Mix A Input 10 Playback Volume'
 		value 0
@@ -3874,13 +3896,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.104 {
+	control.106 {
 		iface MIXER
 		name 'Mix A Input 11 Playback Volume'
 		value 0
@@ -3888,13 +3910,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.105 {
+	control.107 {
 		iface MIXER
 		name 'Mix A Input 12 Playback Volume'
 		value 0
@@ -3902,13 +3924,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.106 {
+	control.108 {
 		iface MIXER
 		name 'Mix A Input 13 Playback Volume'
 		value 0
@@ -3916,13 +3938,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.107 {
+	control.109 {
 		iface MIXER
 		name 'Mix A Input 14 Playback Volume'
 		value 0
@@ -3930,13 +3952,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.108 {
+	control.110 {
 		iface MIXER
 		name 'Mix A Input 15 Playback Volume'
 		value 0
@@ -3944,13 +3966,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.109 {
+	control.111 {
 		iface MIXER
 		name 'Mix A Input 16 Playback Volume'
 		value 0
@@ -3958,13 +3980,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.110 {
+	control.112 {
 		iface MIXER
 		name 'Mix A Input 17 Playback Volume'
 		value 0
@@ -3972,13 +3994,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.111 {
+	control.113 {
 		iface MIXER
 		name 'Mix A Input 18 Playback Volume'
 		value 0
@@ -3986,13 +4008,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.112 {
+	control.114 {
 		iface MIXER
 		name 'Mix B Input 01 Playback Volume'
 		value 0
@@ -4000,27 +4022,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.113 {
+	control.115 {
 		iface MIXER
 		name 'Mix B Input 02 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.114 {
+	control.116 {
 		iface MIXER
 		name 'Mix B Input 03 Playback Volume'
 		value 0
@@ -4028,27 +4050,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.115 {
+	control.117 {
 		iface MIXER
 		name 'Mix B Input 04 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.116 {
+	control.118 {
 		iface MIXER
 		name 'Mix B Input 05 Playback Volume'
 		value 0
@@ -4056,13 +4078,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.117 {
+	control.119 {
 		iface MIXER
 		name 'Mix B Input 06 Playback Volume'
 		value 0
@@ -4070,13 +4092,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.118 {
+	control.120 {
 		iface MIXER
 		name 'Mix B Input 07 Playback Volume'
 		value 0
@@ -4084,13 +4106,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.119 {
+	control.121 {
 		iface MIXER
 		name 'Mix B Input 08 Playback Volume'
 		value 0
@@ -4098,13 +4120,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.120 {
+	control.122 {
 		iface MIXER
 		name 'Mix B Input 09 Playback Volume'
 		value 0
@@ -4112,13 +4134,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.121 {
+	control.123 {
 		iface MIXER
 		name 'Mix B Input 10 Playback Volume'
 		value 0
@@ -4126,13 +4148,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.122 {
+	control.124 {
 		iface MIXER
 		name 'Mix B Input 11 Playback Volume'
 		value 0
@@ -4140,13 +4162,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.123 {
+	control.125 {
 		iface MIXER
 		name 'Mix B Input 12 Playback Volume'
 		value 0
@@ -4154,13 +4176,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.124 {
+	control.126 {
 		iface MIXER
 		name 'Mix B Input 13 Playback Volume'
 		value 0
@@ -4168,13 +4190,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.125 {
+	control.127 {
 		iface MIXER
 		name 'Mix B Input 14 Playback Volume'
 		value 0
@@ -4182,13 +4204,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.126 {
+	control.128 {
 		iface MIXER
 		name 'Mix B Input 15 Playback Volume'
 		value 0
@@ -4196,13 +4218,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.127 {
+	control.129 {
 		iface MIXER
 		name 'Mix B Input 16 Playback Volume'
 		value 0
@@ -4210,13 +4232,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.128 {
+	control.130 {
 		iface MIXER
 		name 'Mix B Input 17 Playback Volume'
 		value 0
@@ -4224,13 +4246,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.129 {
+	control.131 {
 		iface MIXER
 		name 'Mix B Input 18 Playback Volume'
 		value 0
@@ -4238,27 +4260,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.130 {
+	control.132 {
 		iface MIXER
 		name 'Mix C Input 01 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.131 {
+	control.133 {
 		iface MIXER
 		name 'Mix C Input 02 Playback Volume'
 		value 0
@@ -4266,27 +4288,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.132 {
+	control.134 {
 		iface MIXER
 		name 'Mix C Input 03 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.133 {
+	control.135 {
 		iface MIXER
 		name 'Mix C Input 04 Playback Volume'
 		value 0
@@ -4294,27 +4316,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.134 {
+	control.136 {
 		iface MIXER
 		name 'Mix C Input 05 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.135 {
+	control.137 {
 		iface MIXER
 		name 'Mix C Input 06 Playback Volume'
 		value 0
@@ -4322,13 +4344,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.136 {
+	control.138 {
 		iface MIXER
 		name 'Mix C Input 07 Playback Volume'
 		value 0
@@ -4336,13 +4358,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.137 {
+	control.139 {
 		iface MIXER
 		name 'Mix C Input 08 Playback Volume'
 		value 0
@@ -4350,13 +4372,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.138 {
+	control.140 {
 		iface MIXER
 		name 'Mix C Input 09 Playback Volume'
 		value 0
@@ -4364,13 +4386,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.139 {
+	control.141 {
 		iface MIXER
 		name 'Mix C Input 10 Playback Volume'
 		value 0
@@ -4378,13 +4400,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.140 {
+	control.142 {
 		iface MIXER
 		name 'Mix C Input 11 Playback Volume'
 		value 0
@@ -4392,13 +4414,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.141 {
+	control.143 {
 		iface MIXER
 		name 'Mix C Input 12 Playback Volume'
 		value 0
@@ -4406,13 +4428,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.142 {
+	control.144 {
 		iface MIXER
 		name 'Mix C Input 13 Playback Volume'
 		value 0
@@ -4420,13 +4442,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.143 {
+	control.145 {
 		iface MIXER
 		name 'Mix C Input 14 Playback Volume'
 		value 0
@@ -4434,13 +4456,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.144 {
+	control.146 {
 		iface MIXER
 		name 'Mix C Input 15 Playback Volume'
 		value 0
@@ -4448,13 +4470,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.145 {
+	control.147 {
 		iface MIXER
 		name 'Mix C Input 16 Playback Volume'
 		value 0
@@ -4462,13 +4484,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.146 {
+	control.148 {
 		iface MIXER
 		name 'Mix C Input 17 Playback Volume'
 		value 0
@@ -4476,13 +4498,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.147 {
+	control.149 {
 		iface MIXER
 		name 'Mix C Input 18 Playback Volume'
 		value 0
@@ -4490,13 +4512,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.148 {
+	control.150 {
 		iface MIXER
 		name 'Mix D Input 01 Playback Volume'
 		value 0
@@ -4504,27 +4526,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.149 {
+	control.151 {
 		iface MIXER
 		name 'Mix D Input 02 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.150 {
+	control.152 {
 		iface MIXER
 		name 'Mix D Input 03 Playback Volume'
 		value 0
@@ -4532,27 +4554,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.151 {
+	control.153 {
 		iface MIXER
 		name 'Mix D Input 04 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.152 {
+	control.154 {
 		iface MIXER
 		name 'Mix D Input 05 Playback Volume'
 		value 0
@@ -4560,27 +4582,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.153 {
+	control.155 {
 		iface MIXER
 		name 'Mix D Input 06 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.154 {
+	control.156 {
 		iface MIXER
 		name 'Mix D Input 07 Playback Volume'
 		value 0
@@ -4588,13 +4610,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.155 {
+	control.157 {
 		iface MIXER
 		name 'Mix D Input 08 Playback Volume'
 		value 0
@@ -4602,13 +4624,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.156 {
+	control.158 {
 		iface MIXER
 		name 'Mix D Input 09 Playback Volume'
 		value 0
@@ -4616,13 +4638,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.157 {
+	control.159 {
 		iface MIXER
 		name 'Mix D Input 10 Playback Volume'
 		value 0
@@ -4630,13 +4652,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.158 {
+	control.160 {
 		iface MIXER
 		name 'Mix D Input 11 Playback Volume'
 		value 0
@@ -4644,13 +4666,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.159 {
+	control.161 {
 		iface MIXER
 		name 'Mix D Input 12 Playback Volume'
 		value 0
@@ -4658,13 +4680,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.160 {
+	control.162 {
 		iface MIXER
 		name 'Mix D Input 13 Playback Volume'
 		value 0
@@ -4672,13 +4694,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.161 {
+	control.163 {
 		iface MIXER
 		name 'Mix D Input 14 Playback Volume'
 		value 0
@@ -4686,13 +4708,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.162 {
+	control.164 {
 		iface MIXER
 		name 'Mix D Input 15 Playback Volume'
 		value 0
@@ -4700,13 +4722,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.163 {
+	control.165 {
 		iface MIXER
 		name 'Mix D Input 16 Playback Volume'
 		value 0
@@ -4714,13 +4736,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.164 {
+	control.166 {
 		iface MIXER
 		name 'Mix D Input 17 Playback Volume'
 		value 0
@@ -4728,13 +4750,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.165 {
+	control.167 {
 		iface MIXER
 		name 'Mix D Input 18 Playback Volume'
 		value 0
@@ -4742,27 +4764,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.166 {
+	control.168 {
 		iface MIXER
 		name 'Mix E Input 01 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.167 {
+	control.169 {
 		iface MIXER
 		name 'Mix E Input 02 Playback Volume'
 		value 0
@@ -4770,13 +4792,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.168 {
+	control.170 {
 		iface MIXER
 		name 'Mix E Input 03 Playback Volume'
 		value 0
@@ -4784,13 +4806,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.169 {
+	control.171 {
 		iface MIXER
 		name 'Mix E Input 04 Playback Volume'
 		value 0
@@ -4798,27 +4820,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.170 {
+	control.172 {
 		iface MIXER
 		name 'Mix E Input 05 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.171 {
+	control.173 {
 		iface MIXER
 		name 'Mix E Input 06 Playback Volume'
 		value 0
@@ -4826,13 +4848,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.172 {
+	control.174 {
 		iface MIXER
 		name 'Mix E Input 07 Playback Volume'
 		value 0
@@ -4840,13 +4862,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.173 {
+	control.175 {
 		iface MIXER
 		name 'Mix E Input 08 Playback Volume'
 		value 0
@@ -4854,13 +4876,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.174 {
+	control.176 {
 		iface MIXER
 		name 'Mix E Input 09 Playback Volume'
 		value 0
@@ -4868,13 +4890,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.175 {
+	control.177 {
 		iface MIXER
 		name 'Mix E Input 10 Playback Volume'
 		value 0
@@ -4882,13 +4904,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.176 {
+	control.178 {
 		iface MIXER
 		name 'Mix E Input 11 Playback Volume'
 		value 0
@@ -4896,13 +4918,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.177 {
+	control.179 {
 		iface MIXER
 		name 'Mix E Input 12 Playback Volume'
 		value 0
@@ -4910,13 +4932,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.178 {
+	control.180 {
 		iface MIXER
 		name 'Mix E Input 13 Playback Volume'
 		value 0
@@ -4924,13 +4946,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.179 {
+	control.181 {
 		iface MIXER
 		name 'Mix E Input 14 Playback Volume'
 		value 0
@@ -4938,13 +4960,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.180 {
+	control.182 {
 		iface MIXER
 		name 'Mix E Input 15 Playback Volume'
 		value 0
@@ -4952,13 +4974,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.181 {
+	control.183 {
 		iface MIXER
 		name 'Mix E Input 16 Playback Volume'
 		value 0
@@ -4966,13 +4988,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.182 {
+	control.184 {
 		iface MIXER
 		name 'Mix E Input 17 Playback Volume'
 		value 0
@@ -4980,13 +5002,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.183 {
+	control.185 {
 		iface MIXER
 		name 'Mix E Input 18 Playback Volume'
 		value 0
@@ -4994,27 +5016,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.184 {
+	control.186 {
 		iface MIXER
 		name 'Mix F Input 01 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.185 {
+	control.187 {
 		iface MIXER
 		name 'Mix F Input 02 Playback Volume'
 		value 0
@@ -5022,13 +5044,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.186 {
+	control.188 {
 		iface MIXER
 		name 'Mix F Input 03 Playback Volume'
 		value 0
@@ -5036,13 +5058,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.187 {
+	control.189 {
 		iface MIXER
 		name 'Mix F Input 04 Playback Volume'
 		value 0
@@ -5050,13 +5072,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.188 {
+	control.190 {
 		iface MIXER
 		name 'Mix F Input 05 Playback Volume'
 		value 0
@@ -5064,27 +5086,27 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.189 {
+	control.191 {
 		iface MIXER
 		name 'Mix F Input 06 Playback Volume'
-		value 160
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
-			dbvalue.0 0
+			dbmax 1200
+			dbvalue.0 -8000
 		}
 	}
-	control.190 {
+	control.192 {
 		iface MIXER
 		name 'Mix F Input 07 Playback Volume'
 		value 0
@@ -5092,13 +5114,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.191 {
+	control.193 {
 		iface MIXER
 		name 'Mix F Input 08 Playback Volume'
 		value 0
@@ -5106,13 +5128,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.192 {
+	control.194 {
 		iface MIXER
 		name 'Mix F Input 09 Playback Volume'
 		value 0
@@ -5120,13 +5142,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.193 {
+	control.195 {
 		iface MIXER
 		name 'Mix F Input 10 Playback Volume'
 		value 0
@@ -5134,13 +5156,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.194 {
+	control.196 {
 		iface MIXER
 		name 'Mix F Input 11 Playback Volume'
 		value 0
@@ -5148,13 +5170,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.195 {
+	control.197 {
 		iface MIXER
 		name 'Mix F Input 12 Playback Volume'
 		value 0
@@ -5162,13 +5184,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.196 {
+	control.198 {
 		iface MIXER
 		name 'Mix F Input 13 Playback Volume'
 		value 0
@@ -5176,13 +5198,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.197 {
+	control.199 {
 		iface MIXER
 		name 'Mix F Input 14 Playback Volume'
 		value 0
@@ -5190,13 +5212,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.198 {
+	control.200 {
 		iface MIXER
 		name 'Mix F Input 15 Playback Volume'
 		value 0
@@ -5204,13 +5226,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.199 {
+	control.201 {
 		iface MIXER
 		name 'Mix F Input 16 Playback Volume'
 		value 0
@@ -5218,13 +5240,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.200 {
+	control.202 {
 		iface MIXER
 		name 'Mix F Input 17 Playback Volume'
 		value 0
@@ -5232,13 +5254,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.201 {
+	control.203 {
 		iface MIXER
 		name 'Mix F Input 18 Playback Volume'
 		value 0
@@ -5246,13 +5268,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.202 {
+	control.204 {
 		iface MIXER
 		name 'Mix G Input 01 Playback Volume'
 		value 0
@@ -5260,13 +5282,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.203 {
+	control.205 {
 		iface MIXER
 		name 'Mix G Input 02 Playback Volume'
 		value 0
@@ -5274,13 +5296,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.204 {
+	control.206 {
 		iface MIXER
 		name 'Mix G Input 03 Playback Volume'
 		value 0
@@ -5288,13 +5310,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.205 {
+	control.207 {
 		iface MIXER
 		name 'Mix G Input 04 Playback Volume'
 		value 0
@@ -5302,13 +5324,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.206 {
+	control.208 {
 		iface MIXER
 		name 'Mix G Input 05 Playback Volume'
 		value 0
@@ -5316,13 +5338,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.207 {
+	control.209 {
 		iface MIXER
 		name 'Mix G Input 06 Playback Volume'
 		value 0
@@ -5330,13 +5352,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.208 {
+	control.210 {
 		iface MIXER
 		name 'Mix G Input 07 Playback Volume'
 		value 0
@@ -5344,13 +5366,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.209 {
+	control.211 {
 		iface MIXER
 		name 'Mix G Input 08 Playback Volume'
 		value 0
@@ -5358,13 +5380,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.210 {
+	control.212 {
 		iface MIXER
 		name 'Mix G Input 09 Playback Volume'
 		value 0
@@ -5372,13 +5394,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.211 {
+	control.213 {
 		iface MIXER
 		name 'Mix G Input 10 Playback Volume'
 		value 0
@@ -5386,13 +5408,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.212 {
+	control.214 {
 		iface MIXER
 		name 'Mix G Input 11 Playback Volume'
 		value 0
@@ -5400,13 +5422,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.213 {
+	control.215 {
 		iface MIXER
 		name 'Mix G Input 12 Playback Volume'
 		value 0
@@ -5414,13 +5436,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.214 {
+	control.216 {
 		iface MIXER
 		name 'Mix G Input 13 Playback Volume'
 		value 0
@@ -5428,13 +5450,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.215 {
+	control.217 {
 		iface MIXER
 		name 'Mix G Input 14 Playback Volume'
 		value 0
@@ -5442,13 +5464,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.216 {
+	control.218 {
 		iface MIXER
 		name 'Mix G Input 15 Playback Volume'
 		value 0
@@ -5456,13 +5478,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.217 {
+	control.219 {
 		iface MIXER
 		name 'Mix G Input 16 Playback Volume'
 		value 0
@@ -5470,13 +5492,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.218 {
+	control.220 {
 		iface MIXER
 		name 'Mix G Input 17 Playback Volume'
 		value 0
@@ -5484,13 +5506,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.219 {
+	control.221 {
 		iface MIXER
 		name 'Mix G Input 18 Playback Volume'
 		value 0
@@ -5498,13 +5520,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.220 {
+	control.222 {
 		iface MIXER
 		name 'Mix H Input 01 Playback Volume'
 		value 0
@@ -5512,13 +5534,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.221 {
+	control.223 {
 		iface MIXER
 		name 'Mix H Input 02 Playback Volume'
 		value 0
@@ -5526,13 +5548,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.222 {
+	control.224 {
 		iface MIXER
 		name 'Mix H Input 03 Playback Volume'
 		value 0
@@ -5540,13 +5562,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.223 {
+	control.225 {
 		iface MIXER
 		name 'Mix H Input 04 Playback Volume'
 		value 0
@@ -5554,13 +5576,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.224 {
+	control.226 {
 		iface MIXER
 		name 'Mix H Input 05 Playback Volume'
 		value 0
@@ -5568,13 +5590,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.225 {
+	control.227 {
 		iface MIXER
 		name 'Mix H Input 06 Playback Volume'
 		value 0
@@ -5582,13 +5604,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.226 {
+	control.228 {
 		iface MIXER
 		name 'Mix H Input 07 Playback Volume'
 		value 0
@@ -5596,13 +5618,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.227 {
+	control.229 {
 		iface MIXER
 		name 'Mix H Input 08 Playback Volume'
 		value 0
@@ -5610,13 +5632,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.228 {
+	control.230 {
 		iface MIXER
 		name 'Mix H Input 09 Playback Volume'
 		value 0
@@ -5624,13 +5646,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.229 {
+	control.231 {
 		iface MIXER
 		name 'Mix H Input 10 Playback Volume'
 		value 0
@@ -5638,13 +5660,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.230 {
+	control.232 {
 		iface MIXER
 		name 'Mix H Input 11 Playback Volume'
 		value 0
@@ -5652,13 +5674,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.231 {
+	control.233 {
 		iface MIXER
 		name 'Mix H Input 12 Playback Volume'
 		value 0
@@ -5666,13 +5688,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.232 {
+	control.234 {
 		iface MIXER
 		name 'Mix H Input 13 Playback Volume'
 		value 0
@@ -5680,13 +5702,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.233 {
+	control.235 {
 		iface MIXER
 		name 'Mix H Input 14 Playback Volume'
 		value 0
@@ -5694,13 +5716,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.234 {
+	control.236 {
 		iface MIXER
 		name 'Mix H Input 15 Playback Volume'
 		value 0
@@ -5708,13 +5730,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.235 {
+	control.237 {
 		iface MIXER
 		name 'Mix H Input 16 Playback Volume'
 		value 0
@@ -5722,13 +5744,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.236 {
+	control.238 {
 		iface MIXER
 		name 'Mix H Input 17 Playback Volume'
 		value 0
@@ -5736,13 +5758,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.237 {
+	control.239 {
 		iface MIXER
 		name 'Mix H Input 18 Playback Volume'
 		value 0
@@ -5750,13 +5772,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.238 {
+	control.240 {
 		iface MIXER
 		name 'Mix I Input 01 Playback Volume'
 		value 0
@@ -5764,13 +5786,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.239 {
+	control.241 {
 		iface MIXER
 		name 'Mix I Input 02 Playback Volume'
 		value 0
@@ -5778,13 +5800,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.240 {
+	control.242 {
 		iface MIXER
 		name 'Mix I Input 03 Playback Volume'
 		value 0
@@ -5792,13 +5814,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.241 {
+	control.243 {
 		iface MIXER
 		name 'Mix I Input 04 Playback Volume'
 		value 0
@@ -5806,13 +5828,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.242 {
+	control.244 {
 		iface MIXER
 		name 'Mix I Input 05 Playback Volume'
 		value 0
@@ -5820,13 +5842,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.243 {
+	control.245 {
 		iface MIXER
 		name 'Mix I Input 06 Playback Volume'
 		value 0
@@ -5834,13 +5856,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.244 {
+	control.246 {
 		iface MIXER
 		name 'Mix I Input 07 Playback Volume'
 		value 0
@@ -5848,13 +5870,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.245 {
+	control.247 {
 		iface MIXER
 		name 'Mix I Input 08 Playback Volume'
 		value 0
@@ -5862,13 +5884,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.246 {
+	control.248 {
 		iface MIXER
 		name 'Mix I Input 09 Playback Volume'
 		value 0
@@ -5876,13 +5898,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.247 {
+	control.249 {
 		iface MIXER
 		name 'Mix I Input 10 Playback Volume'
 		value 0
@@ -5890,13 +5912,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.248 {
+	control.250 {
 		iface MIXER
 		name 'Mix I Input 11 Playback Volume'
 		value 0
@@ -5904,13 +5926,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.249 {
+	control.251 {
 		iface MIXER
 		name 'Mix I Input 12 Playback Volume'
 		value 0
@@ -5918,13 +5940,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.250 {
+	control.252 {
 		iface MIXER
 		name 'Mix I Input 13 Playback Volume'
 		value 0
@@ -5932,13 +5954,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.251 {
+	control.253 {
 		iface MIXER
 		name 'Mix I Input 14 Playback Volume'
 		value 0
@@ -5946,13 +5968,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.252 {
+	control.254 {
 		iface MIXER
 		name 'Mix I Input 15 Playback Volume'
 		value 0
@@ -5960,13 +5982,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.253 {
+	control.255 {
 		iface MIXER
 		name 'Mix I Input 16 Playback Volume'
 		value 0
@@ -5974,13 +5996,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.254 {
+	control.256 {
 		iface MIXER
 		name 'Mix I Input 17 Playback Volume'
 		value 0
@@ -5988,13 +6010,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.255 {
+	control.257 {
 		iface MIXER
 		name 'Mix I Input 18 Playback Volume'
 		value 0
@@ -6002,13 +6024,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.256 {
+	control.258 {
 		iface MIXER
 		name 'Mix J Input 01 Playback Volume'
 		value 0
@@ -6016,13 +6038,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.257 {
+	control.259 {
 		iface MIXER
 		name 'Mix J Input 02 Playback Volume'
 		value 0
@@ -6030,13 +6052,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.258 {
+	control.260 {
 		iface MIXER
 		name 'Mix J Input 03 Playback Volume'
 		value 0
@@ -6044,13 +6066,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.259 {
+	control.261 {
 		iface MIXER
 		name 'Mix J Input 04 Playback Volume'
 		value 0
@@ -6058,13 +6080,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.260 {
+	control.262 {
 		iface MIXER
 		name 'Mix J Input 05 Playback Volume'
 		value 0
@@ -6072,13 +6094,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.261 {
+	control.263 {
 		iface MIXER
 		name 'Mix J Input 06 Playback Volume'
 		value 0
@@ -6086,13 +6108,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.262 {
+	control.264 {
 		iface MIXER
 		name 'Mix J Input 07 Playback Volume'
 		value 0
@@ -6100,13 +6122,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.263 {
+	control.265 {
 		iface MIXER
 		name 'Mix J Input 08 Playback Volume'
 		value 0
@@ -6114,13 +6136,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.264 {
+	control.266 {
 		iface MIXER
 		name 'Mix J Input 09 Playback Volume'
 		value 0
@@ -6128,13 +6150,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.265 {
+	control.267 {
 		iface MIXER
 		name 'Mix J Input 10 Playback Volume'
 		value 0
@@ -6142,13 +6164,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.266 {
+	control.268 {
 		iface MIXER
 		name 'Mix J Input 11 Playback Volume'
 		value 0
@@ -6156,13 +6178,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.267 {
+	control.269 {
 		iface MIXER
 		name 'Mix J Input 12 Playback Volume'
 		value 0
@@ -6170,13 +6192,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.268 {
+	control.270 {
 		iface MIXER
 		name 'Mix J Input 13 Playback Volume'
 		value 0
@@ -6184,13 +6206,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.269 {
+	control.271 {
 		iface MIXER
 		name 'Mix J Input 14 Playback Volume'
 		value 0
@@ -6198,13 +6220,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.270 {
+	control.272 {
 		iface MIXER
 		name 'Mix J Input 15 Playback Volume'
 		value 0
@@ -6212,13 +6234,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.271 {
+	control.273 {
 		iface MIXER
 		name 'Mix J Input 16 Playback Volume'
 		value 0
@@ -6226,13 +6248,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.272 {
+	control.274 {
 		iface MIXER
 		name 'Mix J Input 17 Playback Volume'
 		value 0
@@ -6240,13 +6262,13 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.273 {
+	control.275 {
 		iface MIXER
 		name 'Mix J Input 18 Playback Volume'
 		value 0
@@ -6254,25 +6276,25 @@ state.USB {
 			access 'read write'
 			type INTEGER
 			count 1
-			range '0 - 172 (step 1)'
+			range '0 - 184 (step 1)'
 			dbmin -8000
-			dbmax 600
+			dbmax 1200
 			dbvalue.0 -8000
 		}
 	}
-	control.274 {
+	control.276 {
 		iface PCM
 		name 'Level Meter'
-		value.0 6
-		value.1 66
-		value.2 6
+		value.0 0
+		value.1 0
+		value.2 0
 		value.3 0
 		value.4 0
 		value.5 0
-		value.6 65
-		value.7 65
-		value.8 4095
-		value.9 4095
+		value.6 0
+		value.7 0
+		value.8 0
+		value.9 0
 		value.10 0
 		value.11 0
 		value.12 0
@@ -6281,12 +6303,12 @@ state.USB {
 		value.15 0
 		value.16 0
 		value.17 0
-		value.18 2099
-		value.19 2029
-		value.20 2099
-		value.21 2029
-		value.22 3367
-		value.23 3237
+		value.18 0
+		value.19 0
+		value.20 0
+		value.21 0
+		value.22 0
+		value.23 0
 		value.24 0
 		value.25 0
 		value.26 0
@@ -6301,24 +6323,24 @@ state.USB {
 		value.35 0
 		value.36 0
 		value.37 0
-		value.38 6
-		value.39 66
-		value.40 64
-		value.41 66
-		value.42 0
-		value.43 0
-		value.44 6
-		value.45 6
-		value.46 6
-		value.47 6
-		value.48 6
-		value.49 6
-		value.50 6
-		value.51 6
-		value.52 6
-		value.53 6
-		value.54 6
-		value.55 6
+		value.38 0
+		value.39 0
+		value.40 0
+		value.41 0
+		value.42 10
+		value.43 8
+		value.44 0
+		value.45 0
+		value.46 32
+		value.47 29
+		value.48 0
+		value.49 0
+		value.50 0
+		value.51 0
+		value.52 0
+		value.53 0
+		value.54 0
+		value.55 0
 		comment {
 			access 'read volatile'
 			type INTEGER
@@ -6326,7 +6348,7 @@ state.USB {
 			range '0 - 4095 (step 1)'
 		}
 	}
-	control.275 {
+	control.277 {
 		iface MIXER
 		name 'Sync Status'
 		value Locked
@@ -6336,6 +6358,16 @@ state.USB {
 			count 1
 			item.0 Unlocked
 			item.1 Locked
+		}
+	}
+	control.278 {
+		iface MIXER
+		name 'Standalone Switch'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
 		}
 	}
 }

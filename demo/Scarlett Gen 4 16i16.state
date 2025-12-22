@@ -45,7 +45,7 @@ state.Gen {
 	control.5 {
 		iface MIXER
 		name 'Sync Status'
-		value Locked
+		value Unlocked
 		comment {
 			access 'read write locked user'
 			type ENUMERATED
@@ -57,7 +57,7 @@ state.Gen {
 	control.6 {
 		iface PCM
 		name 'Level Meter'
-		value.0 80
+		value.0 0
 		value.1 0
 		value.2 0
 		value.3 0
@@ -73,8 +73,8 @@ state.Gen {
 		value.13 0
 		value.14 0
 		value.15 0
-		value.16 4071
-		value.17 4092
+		value.16 0
+		value.17 0
 		value.18 0
 		value.19 0
 		value.20 0
@@ -91,8 +91,8 @@ state.Gen {
 		value.31 0
 		value.32 0
 		value.33 0
-		value.34 4045
-		value.35 4038
+		value.34 0
+		value.35 0
 		value.36 0
 		value.37 0
 		value.38 0
@@ -103,14 +103,14 @@ state.Gen {
 		value.43 0
 		value.44 0
 		value.45 0
-		value.46 4071
-		value.47 4092
+		value.46 0
+		value.47 0
 		value.48 0
 		value.49 0
-		value.50 4095
-		value.51 4095
-		value.52 4095
-		value.53 4095
+		value.50 0
+		value.51 0
+		value.52 0
+		value.53 0
 		comment {
 			access 'read volatile'
 			type INTEGER
@@ -391,7 +391,7 @@ state.Gen {
 	control.25 {
 		iface MIXER
 		name 'Mix A Input 19 Playback Volume'
-		value 8192
+		value 0
 		comment {
 			access 'read write user'
 			type INTEGER
@@ -400,7 +400,7 @@ state.Gen {
 			tlv '0000000200000008ff676981000004b0'
 			dbmin -9999999
 			dbmax 1200
-			dbvalue.0 0
+			dbvalue.0 -9999999
 		}
 	}
 	control.26 {
@@ -901,7 +901,7 @@ state.Gen {
 	control.59 {
 		iface MIXER
 		name 'Mix B Input 19 Playback Volume'
-		value 8192
+		value 0
 		comment {
 			access 'read write user'
 			type INTEGER
@@ -910,7 +910,7 @@ state.Gen {
 			tlv '0000000200000008ff676981000004b0'
 			dbmin -9999999
 			dbmax 1200
-			dbvalue.0 0
+			dbvalue.0 -9999999
 		}
 	}
 	control.60 {
@@ -6241,7 +6241,7 @@ state.Gen {
 	control.415 {
 		iface MIXER
 		name 'Analogue 1 Playback Enum'
-		value 'PCM 1'
+		value 'Mix A'
 		comment {
 			access 'read write user'
 			type ENUMERATED
@@ -6298,7 +6298,7 @@ state.Gen {
 	control.416 {
 		iface MIXER
 		name 'Analogue 2 Playback Enum'
-		value 'PCM 2'
+		value 'Mix B'
 		comment {
 			access 'read write user'
 			type ENUMERATED
@@ -6355,7 +6355,7 @@ state.Gen {
 	control.417 {
 		iface MIXER
 		name 'Analogue 3 Playback Enum'
-		value Off
+		value 'PCM 3'
 		comment {
 			access 'read write user'
 			type ENUMERATED
@@ -6412,7 +6412,7 @@ state.Gen {
 	control.418 {
 		iface MIXER
 		name 'Analogue 4 Playback Enum'
-		value Off
+		value 'PCM 4'
 		comment {
 			access 'read write user'
 			type ENUMERATED
@@ -10314,7 +10314,7 @@ state.Gen {
 	control.492 {
 		iface MIXER
 		name 'Line In 1 Gain Capture Volume'
-		value 70
+		value 0
 		comment {
 			access 'read write user'
 			type INTEGER
@@ -10323,7 +10323,7 @@ state.Gen {
 			tlv '00000004000000080000000000001af4'
 			dbmin 0
 			dbmax 6900
-			dbvalue.0 6900
+			dbvalue.0 0
 		}
 	}
 	control.493 {
@@ -10426,23 +10426,28 @@ state.Gen {
 	}
 	control.501 {
 		iface MIXER
-		name 'Analogue 1 Playback Volume'
-		value -42
+		name 'Line In 1 Mute Capture Switch'
+		value false
 		comment {
 			access 'read write user'
-			type INTEGER
+			type BOOLEAN
 			count 1
-			range '-127 - 0 (step 1)'
-			tlv '0000000400000008ffffce6400000000'
-			dbmin -12700
-			dbmax 0
-			dbvalue.0 -4200
 		}
 	}
 	control.502 {
 		iface MIXER
-		name 'Analogue 2 Playback Volume'
-		value -42
+		name 'Line In 2 Mute Capture Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.503 {
+		iface MIXER
+		name 'Analogue 1 Playback Volume'
+		value -127
 		comment {
 			access 'read write user'
 			type INTEGER
@@ -10451,10 +10456,25 @@ state.Gen {
 			tlv '0000000400000008ffffce6400000000'
 			dbmin -12700
 			dbmax 0
-			dbvalue.0 -4200
+			dbvalue.0 -12700
 		}
 	}
-	control.503 {
+	control.504 {
+		iface MIXER
+		name 'Analogue 2 Playback Volume'
+		value -127
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-127 - 0 (step 1)'
+			tlv '0000000400000008ffffce6400000000'
+			dbmin -12700
+			dbmax 0
+			dbvalue.0 -12700
+		}
+	}
+	control.505 {
 		iface MIXER
 		name 'Analogue 3 Playback Volume'
 		value 0
@@ -10469,7 +10489,7 @@ state.Gen {
 			dbvalue.0 0
 		}
 	}
-	control.504 {
+	control.506 {
 		iface MIXER
 		name 'Analogue 4 Playback Volume'
 		value 0
@@ -10484,7 +10504,7 @@ state.Gen {
 			dbvalue.0 0
 		}
 	}
-	control.505 {
+	control.507 {
 		iface MIXER
 		name 'Analogue 5 Playback Volume'
 		value -30
@@ -10499,7 +10519,7 @@ state.Gen {
 			dbvalue.0 -3000
 		}
 	}
-	control.506 {
+	control.508 {
 		iface MIXER
 		name 'Analogue 6 Playback Volume'
 		value -30
@@ -10514,7 +10534,7 @@ state.Gen {
 			dbvalue.0 -3000
 		}
 	}
-	control.507 {
+	control.509 {
 		iface MIXER
 		name 'Analogue 7 Playback Volume'
 		value -127
@@ -10529,7 +10549,7 @@ state.Gen {
 			dbvalue.0 -12700
 		}
 	}
-	control.508 {
+	control.510 {
 		iface MIXER
 		name 'Analogue 8 Playback Volume'
 		value -127
@@ -10544,28 +10564,1414 @@ state.Gen {
 			dbvalue.0 -12700
 		}
 	}
-	control.509 {
+	control.511 {
+		iface MIXER
+		name 'Line 1 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.512 {
+		iface MIXER
+		name 'Line 2 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.513 {
+		iface MIXER
+		name 'Line 3 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.514 {
+		iface MIXER
+		name 'Line 4 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.515 {
+		iface MIXER
+		name 'Line 5 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.516 {
+		iface MIXER
+		name 'Line 6 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.517 {
+		iface MIXER
+		name 'Line 7 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.518 {
+		iface MIXER
+		name 'Line 8 Mute Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.519 {
+		iface MIXER
+		name 'Main Group Output 1 Playback Switch'
+		value true
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.520 {
+		iface MIXER
+		name 'Main Group Output 2 Playback Switch'
+		value true
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.521 {
+		iface MIXER
+		name 'Main Group Output 3 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.522 {
+		iface MIXER
+		name 'Main Group Output 4 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.523 {
+		iface MIXER
+		name 'Main Group Output 5 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.524 {
+		iface MIXER
+		name 'Main Group Output 6 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.525 {
+		iface MIXER
+		name 'Main Group Output 7 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.526 {
+		iface MIXER
+		name 'Main Group Output 8 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.527 {
+		iface MIXER
+		name 'Main Group Output 1 Source Playback Enum'
+		value 'Mix A'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.528 {
+		iface MIXER
+		name 'Main Group Output 2 Source Playback Enum'
+		value 'Mix B'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.529 {
+		iface MIXER
+		name 'Main Group Output 3 Source Playback Enum'
+		value 'PCM 1'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.530 {
+		iface MIXER
+		name 'Main Group Output 4 Source Playback Enum'
+		value 'PCM 2'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.531 {
+		iface MIXER
+		name 'Main Group Output 5 Source Playback Enum'
+		value 'PCM 1'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.532 {
+		iface MIXER
+		name 'Main Group Output 6 Source Playback Enum'
+		value 'PCM 2'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.533 {
+		iface MIXER
+		name 'Main Group Output 7 Source Playback Enum'
+		value 'PCM 1'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.534 {
+		iface MIXER
+		name 'Main Group Output 8 Source Playback Enum'
+		value 'PCM 2'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.535 {
+		iface MIXER
+		name 'Main Group Output 1 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.536 {
+		iface MIXER
+		name 'Main Group Output 2 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.537 {
+		iface MIXER
+		name 'Main Group Output 3 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.538 {
+		iface MIXER
+		name 'Main Group Output 4 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.539 {
+		iface MIXER
+		name 'Main Group Output 5 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.540 {
+		iface MIXER
+		name 'Main Group Output 6 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.541 {
+		iface MIXER
+		name 'Main Group Output 7 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.542 {
+		iface MIXER
+		name 'Main Group Output 8 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.543 {
+		iface MIXER
+		name 'Alt Group Output 1 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.544 {
+		iface MIXER
+		name 'Alt Group Output 2 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.545 {
+		iface MIXER
+		name 'Alt Group Output 3 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.546 {
+		iface MIXER
+		name 'Alt Group Output 4 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.547 {
+		iface MIXER
+		name 'Alt Group Output 5 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.548 {
+		iface MIXER
+		name 'Alt Group Output 6 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.549 {
+		iface MIXER
+		name 'Alt Group Output 7 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.550 {
+		iface MIXER
+		name 'Alt Group Output 8 Playback Switch'
+		value false
+		comment {
+			access 'read write user'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.551 {
+		iface MIXER
+		name 'Alt Group Output 1 Source Playback Enum'
+		value 'PCM 1'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.552 {
+		iface MIXER
+		name 'Alt Group Output 2 Source Playback Enum'
+		value 'PCM 2'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.553 {
+		iface MIXER
+		name 'Alt Group Output 3 Source Playback Enum'
+		value 'PCM 3'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.554 {
+		iface MIXER
+		name 'Alt Group Output 4 Source Playback Enum'
+		value 'PCM 4'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.555 {
+		iface MIXER
+		name 'Alt Group Output 5 Source Playback Enum'
+		value 'PCM 1'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.556 {
+		iface MIXER
+		name 'Alt Group Output 6 Source Playback Enum'
+		value 'PCM 2'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.557 {
+		iface MIXER
+		name 'Alt Group Output 7 Source Playback Enum'
+		value 'PCM 1'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.558 {
+		iface MIXER
+		name 'Alt Group Output 8 Source Playback Enum'
+		value 'PCM 2'
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 'PCM 1'
+			item.1 'PCM 2'
+			item.2 'PCM 3'
+			item.3 'PCM 4'
+			item.4 'PCM 5'
+			item.5 'PCM 6'
+			item.6 'PCM 7'
+			item.7 'PCM 8'
+			item.8 'PCM 9'
+			item.9 'PCM 10'
+			item.10 'PCM 11'
+			item.11 'PCM 12'
+			item.12 'PCM 13'
+			item.13 'PCM 14'
+			item.14 'PCM 15'
+			item.15 'PCM 16'
+			item.16 'PCM 17'
+			item.17 'PCM 18'
+			item.18 'Analogue 1'
+			item.19 'Analogue 2'
+			item.20 'Analogue 3'
+			item.21 'Analogue 4'
+			item.22 'Analogue 5'
+			item.23 'Analogue 6'
+			item.24 'S/PDIF 1'
+			item.25 'S/PDIF 2'
+			item.26 'ADAT 1'
+			item.27 'ADAT 2'
+			item.28 'ADAT 3'
+			item.29 'ADAT 4'
+			item.30 'ADAT 5'
+			item.31 'ADAT 6'
+			item.32 'ADAT 7'
+			item.33 'ADAT 8'
+			item.34 'Mix A'
+			item.35 'Mix B'
+			item.36 'Mix C'
+			item.37 'Mix D'
+			item.38 'Mix E'
+			item.39 'Mix F'
+			item.40 'Mix G'
+			item.41 'Mix H'
+			item.42 'Mix I'
+			item.43 'Mix J'
+			item.44 'Mix K'
+			item.45 'Mix L'
+		}
+	}
+	control.559 {
+		iface MIXER
+		name 'Alt Group Output 1 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.560 {
+		iface MIXER
+		name 'Alt Group Output 2 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.561 {
+		iface MIXER
+		name 'Alt Group Output 3 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.562 {
+		iface MIXER
+		name 'Alt Group Output 4 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.563 {
+		iface MIXER
+		name 'Alt Group Output 5 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.564 {
+		iface MIXER
+		name 'Alt Group Output 6 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.565 {
+		iface MIXER
+		name 'Alt Group Output 7 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.566 {
+		iface MIXER
+		name 'Alt Group Output 8 Trim Playback Volume'
+		value 0
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-128 - 0 (step 1)'
+			tlv '0000000400000008ffffce0000000000'
+			dbmin -12800
+			dbmax 0
+			dbvalue.0 0
+		}
+	}
+	control.567 {
 		iface CARD
 		name 'Firmware Version'
 		value.0 2
 		value.1 0
-		value.2 2403
+		value.2 2464
 		value.3 0
 		comment {
 			access 'read write locked user'
 			type INTEGER
 			count 4
 			range '0 - 65535 (step 1)'
-			tlv '53434b54000000206e75722f7063662f7265732d2d72657663662f312e312d706b636f7300000000'
+			tlv '53434b54000000206e75722f7063662f7265732d2d72657663662f302e302d706b636f7300000000'
 		}
 	}
-	control.510 {
+	control.568 {
+		iface MIXER
+		name Name
+		value '536361726c657474203136693136203474682047656e2d353900000000000000'
+		comment {
+			access 'read write user'
+			type BYTES
+			count 32
+		}
+	}
+	control.569 {
 		iface CARD
 		name 'ESP Firmware Version'
 		value.0 1
 		value.1 0
 		value.2 0
-		value.3 348
+		value.3 364
 		comment {
 			access 'read write locked user'
 			type INTEGER
@@ -10573,7 +11979,7 @@ state.Gen {
 			range '0 - 65535 (step 1)'
 		}
 	}
-	control.511 {
+	control.570 {
 		iface MIXER
 		name 'Input Select Capture Enum'
 		value 'Input 1'
@@ -10585,7 +11991,22 @@ state.Gen {
 			item.1 'Input 2'
 		}
 	}
-	control.512 {
+	control.571 {
+		iface MIXER
+		name 'Master Playback Volume'
+		value -127
+		comment {
+			access 'read write user'
+			type INTEGER
+			count 1
+			range '-127 - 0 (step 1)'
+			tlv '0000000400000008ffffce6400000000'
+			dbmin -12700
+			dbmax 0
+			dbvalue.0 -12700
+		}
+	}
+	control.572 {
 		iface MIXER
 		name 'Mute Playback Switch'
 		value false
@@ -10595,7 +12016,7 @@ state.Gen {
 			count 1
 		}
 	}
-	control.513 {
+	control.573 {
 		iface MIXER
 		name 'Dim Playback Switch'
 		value false
@@ -10605,17 +12026,7 @@ state.Gen {
 			count 1
 		}
 	}
-	control.514 {
-		iface MIXER
-		name 'Speaker Switching Playback Switch'
-		value false
-		comment {
-			access 'read write user'
-			type BOOLEAN
-			count 1
-		}
-	}
-	control.515 {
+	control.574 {
 		iface MIXER
 		name 'Speaker Switching Alt Playback Switch'
 		value false
@@ -10625,7 +12036,19 @@ state.Gen {
 			count 1
 		}
 	}
-	control.516 {
+	control.575 {
+		iface MIXER
+		name 'Digital I/O Mode Capture Enum'
+		value ADAT
+		comment {
+			access 'read write user'
+			type ENUMERATED
+			count 1
+			item.0 ADAT
+			item.1 'Optical S/PDIF'
+		}
+	}
+	control.576 {
 		iface MIXER
 		name 'Standalone Switch'
 		value true
@@ -10635,7 +12058,7 @@ state.Gen {
 			count 1
 		}
 	}
-	control.517 {
+	control.577 {
 		iface MIXER
 		name 'Phantom Power Persistence Capture Switch'
 		value false
