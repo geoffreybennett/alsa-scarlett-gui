@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include "optional-state.h"
 
@@ -173,6 +174,25 @@ static void free_pending_entries(GArray *entries) {
     free_pending_entry(entry);
   }
   g_array_free(entries, TRUE);
+}
+
+// Remove the state file for a given serial
+int optional_state_remove(const char *serial) {
+  if (!serial || !*serial)
+    return -1;
+
+  char *path = get_state_path(serial);
+  int ret = 0;
+
+  if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+    if (g_unlink(path) < 0) {
+      g_warning("Failed to remove state file: %s", path);
+      ret = -1;
+    }
+  }
+
+  g_free(path);
+  return ret;
 }
 
 // Save optional control state to file using GKeyFile (debounced)
