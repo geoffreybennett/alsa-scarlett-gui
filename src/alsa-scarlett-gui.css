@@ -83,6 +83,10 @@
   border-radius: 5px;
 }
 
+.filter-stage checkbutton {
+  padding: 0;
+}
+
 label.gain {
   font-size: smaller;
 }

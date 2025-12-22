@@ -40,7 +40,6 @@ struct filter_stage {
   struct biquad_params params;
   gboolean             enabled;
   gboolean             editing;  // true while user is editing an entry
-  GtkWidget           *box;
   GtkWidget           *enable_check;
   GtkWidget           *type_dropdown;
   GtkWidget           *freq_box;
@@ -469,14 +468,14 @@ static void response_highlight_changed(
 ) {
   // Remove highlight from all stages
   for (int i = 0; i < data->num_stages; i++) {
-    if (data->stages[i] && data->stages[i]->box)
-      gtk_widget_remove_css_class(data->stages[i]->box, "filter-stage-hover");
+    if (data->stages[i] && data->stages[i]->enable_check)
+      gtk_widget_remove_css_class(data->stages[i]->enable_check, "filter-stage-hover");
   }
 
   // Add highlight to the selected stage
   if (band >= 0 && band < data->num_stages &&
-      data->stages[band] && data->stages[band]->box) {
-    gtk_widget_add_css_class(data->stages[band]->box, "filter-stage-hover");
+      data->stages[band] && data->stages[band]->enable_check) {
+    gtk_widget_add_css_class(data->stages[band]->enable_check, "filter-stage-hover");
   }
 }
 
@@ -568,9 +567,7 @@ static void filter_stage_enter(
 ) {
   if (stage->response)
     gtk_filter_response_set_highlight(stage->response, stage->band_index);
-
-  GtkWidget *box = gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
-  gtk_widget_add_css_class(box, "filter-stage-hover");
+  gtk_widget_add_css_class(stage->enable_check, "filter-stage-hover");
 }
 
 static void filter_stage_leave(
@@ -579,13 +576,18 @@ static void filter_stage_leave(
 ) {
   if (stage->response)
     gtk_filter_response_set_highlight(stage->response, -1);
-
-  GtkWidget *box = gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
-  gtk_widget_remove_css_class(box, "filter-stage-hover");
+  gtk_widget_remove_css_class(stage->enable_check, "filter-stage-hover");
 }
 
-// Create controls for one filter stage
-static GtkWidget *make_filter_stage(
+static void add_hover_controller(GtkWidget *widget, struct filter_stage *stage) {
+  GtkEventController *motion = gtk_event_controller_motion_new();
+  g_signal_connect(motion, "enter", G_CALLBACK(filter_stage_enter), stage);
+  g_signal_connect(motion, "leave", G_CALLBACK(filter_stage_leave), stage);
+  gtk_widget_add_controller(widget, motion);
+}
+
+// Create controls for one filter stage in a grid row
+static void make_filter_stage(
   struct alsa_card   *card,
   struct alsa_elem   *coeff_elem,
   int                 band_index,
@@ -595,6 +597,8 @@ static GtkWidget *make_filter_stage(
   const char         *filter_type,
   int                 channel,
   int                 stage_num,
+  GtkWidget          *grid,
+  int                 row,
   struct filter_stage **stage_out
 ) {
   struct filter_stage *stage = g_malloc0(sizeof(struct filter_stage));
@@ -663,18 +667,18 @@ static GtkWidget *make_filter_stage(
   // Save initial state to simulated elements
   filter_stage_save_state(stage);
 
-  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  stage->box = box;
+  int col = 0;
 
   // Enable checkbox with stage label
   stage->enable_check = gtk_check_button_new_with_label(label_text);
   gtk_check_button_set_active(GTK_CHECK_BUTTON(stage->enable_check), stage->enabled);
-  gtk_widget_set_size_request(stage->enable_check, 70, -1);
-  gtk_box_append(GTK_BOX(box), stage->enable_check);
+  gtk_grid_attach(GTK_GRID(grid), stage->enable_check, col++, row, 1, 1);
+  add_hover_controller(stage->enable_check, stage);
 
   // Filter type dropdown with icons
   stage->type_dropdown = make_filter_type_dropdown(stage->params.type);
-  gtk_box_append(GTK_BOX(box), stage->type_dropdown);
+  gtk_grid_attach(GTK_GRID(grid), stage->type_dropdown, col++, row, 1, 1);
+  add_hover_controller(stage->type_dropdown, stage);
 
   // Frequency entry
   stage->freq_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
@@ -684,7 +688,8 @@ static GtkWidget *make_filter_stage(
   gtk_box_append(GTK_BOX(stage->freq_box), stage->freq_entry);
   gtk_box_append(GTK_BOX(stage->freq_box), gtk_label_new("Hz"));
   format_freq_entry(stage);
-  gtk_box_append(GTK_BOX(box), stage->freq_box);
+  gtk_grid_attach(GTK_GRID(grid), stage->freq_box, col++, row, 1, 1);
+  add_hover_controller(stage->freq_box, stage);
 
   // Q entry
   stage->q_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
@@ -694,7 +699,8 @@ static GtkWidget *make_filter_stage(
   gtk_entry_set_max_length(GTK_ENTRY(stage->q_entry), 4);
   format_q_entry(stage->q_entry, stage->params.q);
   gtk_box_append(GTK_BOX(stage->q_box), stage->q_entry);
-  gtk_box_append(GTK_BOX(box), stage->q_box);
+  gtk_grid_attach(GTK_GRID(grid), stage->q_box, col++, row, 1, 1);
+  add_hover_controller(stage->q_box, stage);
 
   // Gain entry (shown only for peaking/shelving types)
   stage->gain_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
@@ -704,7 +710,8 @@ static GtkWidget *make_filter_stage(
   format_gain_entry(stage->gain_entry, stage->params.gain_db);
   gtk_box_append(GTK_BOX(stage->gain_box), stage->gain_entry);
   gtk_box_append(GTK_BOX(stage->gain_box), gtk_label_new("dB"));
-  gtk_box_append(GTK_BOX(box), stage->gain_box);
+  gtk_grid_attach(GTK_GRID(grid), stage->gain_box, col++, row, 1, 1);
+  add_hover_controller(stage->gain_box, stage);
 
   // Update control visibility based on filter type
   filter_stage_update_gain_visibility(stage);
@@ -747,13 +754,7 @@ static GtkWidget *make_filter_stage(
   g_signal_connect(gain_focus, "leave", G_CALLBACK(filter_gain_focus_leave), stage);
   gtk_widget_add_controller(stage->gain_entry, gain_focus);
 
-  // Hover detection for highlighting in the response graph
-  GtkEventController *motion = gtk_event_controller_motion_new();
-  g_signal_connect(motion, "enter", G_CALLBACK(filter_stage_enter), stage);
-  g_signal_connect(motion, "leave", G_CALLBACK(filter_stage_leave), stage);
-  gtk_widget_add_controller(box, motion);
-
-  g_object_weak_ref(G_OBJECT(box), (GWeakNotify)filter_stage_destroy, stage);
+  g_object_weak_ref(G_OBJECT(grid), (GWeakNotify)filter_stage_destroy, stage);
 
   // Register callback for external coefficient changes
   alsa_elem_add_callback(coeff_elem, filter_stage_coeffs_updated, stage, NULL);
@@ -767,8 +768,6 @@ static GtkWidget *make_filter_stage(
       stage->response, stage->band_index, stage->enabled
     );
   }
-
-  return box;
 }
 
 // Callback data for enable switches that update the response widget
@@ -1019,11 +1018,19 @@ static void add_channel_controls(
                            (GDestroyNotify)enable_switch_destroy);
     enable_switch_updated(precomp_enable, en_data);
 
-    // Filter stages
+    // Filter stages grid
+    GtkWidget *precomp_grid = gtk_grid_new();
+    gtk_widget_add_css_class(precomp_grid, "filter-stage");
+    gtk_widget_set_hexpand(precomp_grid, TRUE);
+    gtk_grid_set_column_spacing(GTK_GRID(precomp_grid), 10);
+    gtk_grid_set_row_spacing(GTK_GRID(precomp_grid), 3);
+    gtk_box_append(GTK_BOX(precomp_box), precomp_grid);
+
     struct filter_response_stages *precomp_stages = g_malloc0(
       sizeof(struct filter_response_stages)
     );
 
+    int precomp_row = 0;
     for (int i = 1; i <= 2; i++) {
       name = g_strdup_printf("%sPre-Comp Coefficients %d", prefix, i);
       elem = get_elem_by_name(elems, name);
@@ -1033,13 +1040,12 @@ static void add_channel_controls(
         char stage_label[16];
         snprintf(stage_label, sizeof(stage_label), "Stage %d", i);
         struct filter_stage *stage;
-        w = make_filter_stage(
+        make_filter_stage(
           card, elem, i - 1, precomp_response, stage_label, BIQUAD_TYPE_HIGHPASS,
-          "Pre-Comp", channel, i, &stage
+          "Pre-Comp", channel, i, precomp_grid, precomp_row++, &stage
         );
         precomp_stages->stages[i - 1] = stage;
         precomp_stages->num_stages = i;
-        gtk_box_append(GTK_BOX(precomp_box), w);
       }
     }
 
@@ -1188,11 +1194,19 @@ static void add_channel_controls(
                            (GDestroyNotify)enable_switch_destroy);
     enable_switch_updated(peq_enable, en_data);
 
-    // Filter bands
+    // Filter bands grid
+    GtkWidget *peq_grid = gtk_grid_new();
+    gtk_widget_add_css_class(peq_grid, "filter-stage");
+    gtk_widget_set_hexpand(peq_grid, TRUE);
+    gtk_grid_set_column_spacing(GTK_GRID(peq_grid), 10);
+    gtk_grid_set_row_spacing(GTK_GRID(peq_grid), 3);
+    gtk_box_append(GTK_BOX(peq_box), peq_grid);
+
     struct filter_response_stages *peq_stages = g_malloc0(
       sizeof(struct filter_response_stages)
     );
 
+    int peq_row = 0;
     for (int i = 1; i <= 3; i++) {
       name = g_strdup_printf("%sPEQ Coefficients %d", prefix, i);
       elem = get_elem_by_name(elems, name);
@@ -1202,13 +1216,12 @@ static void add_channel_controls(
         char band_label[16];
         snprintf(band_label, sizeof(band_label), "Band %d", i);
         struct filter_stage *stage;
-        w = make_filter_stage(
+        make_filter_stage(
           card, elem, i - 1, peq_response, band_label, BIQUAD_TYPE_PEAKING,
-          "PEQ", channel, i, &stage
+          "PEQ", channel, i, peq_grid, peq_row++, &stage
         );
         peq_stages->stages[i - 1] = stage;
         peq_stages->num_stages = i;
-        gtk_box_append(GTK_BOX(peq_box), w);
       }
     }
 
