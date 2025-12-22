@@ -10,7 +10,8 @@
 #define PREF_HEIGHT 300
 
 // Margins (fixed in pixels)
-#define LABEL_MARGIN_LEFT   25
+#define LABEL_MARGIN_LEFT   28
+#define LABEL_MARGIN_RIGHT  12
 #define LABEL_MARGIN_BOTTOM 15
 #define PADDING 3
 
@@ -72,7 +73,7 @@ static guint signals[N_SIGNALS];
 // Calculate graph area from widget dimensions
 static void calc_graph_area(int width, int height, struct graph_area *g) {
   g->left = LABEL_MARGIN_LEFT;
-  g->right = width - PADDING;
+  g->right = width - LABEL_MARGIN_RIGHT;
   g->top = PADDING;
   g->bottom = height - LABEL_MARGIN_BOTTOM;
   g->width = g->right - g->left;
@@ -529,9 +530,12 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   }
   cairo_stroke(cr);
 
-  // Grid lines - vertical (frequency) at octave points
-  double freqs[] = { 50, 100, 200, 500, 1000, 2000, 5000, 10000 };
-  for (int i = 0; i < 8; i++) {
+  // Grid lines - vertical (frequency)
+  double freqs[] = { 20, 30, 40, 50, 60, 70, 80, 90,
+                     100, 200, 300, 400, 500, 600, 700, 800, 900,
+                     1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
+                     10000, 20000 };
+  for (int i = 0; i < 28; i++) {
     double x = freq_to_x(&g, freqs[i]);
     cairo_move_to(cr, x, g.top);
     cairo_line_to(cr, x, g.bottom);
@@ -554,7 +558,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_set_font_size(cr, 8);
 
   // Y-axis labels (dB)
-  for (double db = -18; db <= 18; db += 12) {
+  for (double db = -18; db <= 18; db += 6) {
     char label[8];
     snprintf(label, sizeof(label), "%+.0f", db);
     cairo_text_extents_t extents;
@@ -565,9 +569,9 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   }
 
   // X-axis labels (frequency)
-  const char *freq_labels[] = { "100", "1k", "10k" };
-  double freq_values[] = { 100, 1000, 10000 };
-  for (int i = 0; i < 3; i++) {
+  const char *freq_labels[] = { "20", "50", "100", "200", "500", "1k", "2k", "5k", "10k", "20k" };
+  double freq_values[] = { 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
+  for (int i = 0; i < 10; i++) {
     cairo_text_extents_t extents;
     cairo_text_extents(cr, freq_labels[i], &extents);
     double x = freq_to_x(&g, freq_values[i]);
