@@ -336,6 +336,14 @@ struct alsa_elem *alsa_create_optional_elem(
   size_t            max_size
 );
 
+// create simulated optional enumerated element with item names
+struct alsa_elem *alsa_create_optional_enum_elem(
+  struct alsa_card *card,
+  const char       *name,
+  const char      **item_names,
+  int               item_count
+);
+
 // add to alsa_cards array
 struct alsa_card *card_create(int card_num);
 

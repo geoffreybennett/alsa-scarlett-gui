@@ -4,9 +4,10 @@
 #include <alsa/asoundlib.h>
 #include <string.h>
 
+#include "alsa.h"
+#include "biquad.h"
 #include "dsp-state.h"
 #include "optional-state.h"
-#include "alsa.h"
 
 // Scaling factors for storing float values as integers
 #define FREQ_SCALE 10    // Hz * 10 (1000.5 Hz = 10005)
@@ -74,6 +75,52 @@ static struct alsa_elem *create_dsp_elem(
   return elem;
 }
 
+// Create a simulated enum element for a DSP parameter
+static struct alsa_elem *create_dsp_enum_elem(
+  struct alsa_card *card,
+  const char       *elem_name,
+  const char      **item_names,
+  int               item_count,
+  int               default_val,
+  GHashTable       *state
+) {
+  // check if element already exists
+  struct alsa_elem *elem = get_elem_by_name(card->elems, elem_name);
+  if (elem)
+    return elem;
+
+  // create simulated enum element
+  elem = alsa_create_optional_enum_elem(
+    card,
+    elem_name,
+    item_names,
+    item_count
+  );
+
+  if (!elem) {
+    fprintf(stderr, "Failed to create DSP element %s\n", elem_name);
+    return NULL;
+  }
+
+  // load value from state file (by name)
+  const char *value_str = g_hash_table_lookup(state, elem_name);
+  int value = default_val;
+
+  if (value_str && *value_str) {
+    // look up by name
+    for (int i = 0; i < item_count; i++) {
+      if (strcmp(item_names[i], value_str) == 0) {
+        value = i;
+        break;
+      }
+    }
+  }
+
+  elem->value = value;
+
+  return elem;
+}
+
 // Create all filter parameter elements for one filter stage
 static void create_filter_stage_elems(
   struct alsa_card *card,
@@ -92,7 +139,11 @@ static void create_filter_stage_elems(
 
   // Type (BiquadFilterType enum)
   name = get_filter_elem_name(filter_type, channel, stage, "Type");
-  create_dsp_elem(card, name, 0, BIQUAD_TYPE_COUNT - 1, default_type, state);
+  create_dsp_enum_elem(
+    card, name,
+    biquad_get_type_names(), BIQUAD_TYPE_COUNT,
+    default_type, state
+  );
   g_free(name);
 
   // Freq (Hz * FREQ_SCALE, 20-20000 Hz)
