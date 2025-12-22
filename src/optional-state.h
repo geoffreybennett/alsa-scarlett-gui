@@ -25,3 +25,7 @@ int optional_state_save(
   const char       *key,
   const char       *value
 );
+
+// Remove the state file for a given serial
+// Returns 0 on success, -1 on error
+int optional_state_remove(const char *serial);

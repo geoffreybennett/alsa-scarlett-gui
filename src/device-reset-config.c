@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 #include "device-reset-config.h"
+#include "optional-state.h"
 #include "scarlett2.h"
 #include "scarlett2-ioctls.h"
 #include "window-modal.h"
@@ -33,6 +34,9 @@ gpointer reset_config_thread(gpointer user_data) {
   struct modal_data *modal_data = user_data;
 
   update_progress(modal_data, g_strdup("Resetting configuration..."), 0);
+
+  // Remove the application config file for this device
+  optional_state_remove(modal_data->card->serial);
 
   snd_hwdep_t *hwdep;
 
