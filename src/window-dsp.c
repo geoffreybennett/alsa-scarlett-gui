@@ -972,29 +972,364 @@ static void dsp_enable_destroy(struct dsp_enable_data *data) {
   g_free(data);
 }
 
-// Create a section box with header, enable, and content
+// Preset types
+enum {
+  PRESET_TYPE_PRECOMP,
+  PRESET_TYPE_COMPRESSOR,
+  PRESET_TYPE_PEQ
+};
+
+// Pre-comp preset coefficients (2 stages, 5 coefficients each)
+struct precomp_preset {
+  const char *name;
+  long stage1[5];
+  long stage2[5];
+};
+
+static const struct precomp_preset precomp_presets[] = {
+  {
+    "None",
+    { 268435456, 0, 0, 0, 0 },
+    { 268435456, 0, 0, 0, 0 }
+  },
+  {
+    "Rumble Reduction Low",
+    { 266497594, -532995188, 266497594, 532986969, -264567952 },
+    { 267626948, -535253896, 267626948, 535245642, -266826694 }
+  },
+  {
+    "Rumble Reduction High",
+    { 265856028, -531712056, 265856028, 531697479, -263291177 },
+    { 267356697, -534713394, 267356697, 534698735, -266292598 }
+  }
+};
+
+#define NUM_PRECOMP_PRESETS (sizeof(precomp_presets) / sizeof(precomp_presets[0]))
+
+// Compressor preset values (threshold, ratio*2, knee, attack, release, makeup)
+struct compressor_preset {
+  const char *name;
+  int threshold;  // dB
+  int ratio;      // stored as ratio * 2 (so 4:1 = 8)
+  int knee;       // dB
+  int attack;     // ms
+  int release;    // ms
+  int makeup;     // dB
+};
+
+static const struct compressor_preset compressor_presets[] = {
+  { "Off",    0, 8, 3, 10, 30, 0 },
+  { "Low",  -10, 8, 3, 10, 30, 2 },
+  { "Med",  -20, 8, 3, 10, 30, 3 },
+  { "High", -30, 8, 3, 10, 30, 5 }
+};
+
+#define NUM_COMPRESSOR_PRESETS (sizeof(compressor_presets) / sizeof(compressor_presets[0]))
+
+// Compressor elements for presets
+struct compressor_elems {
+  struct alsa_elem *threshold;
+  struct alsa_elem *ratio;
+  struct alsa_elem *knee;
+  struct alsa_elem *attack;
+  struct alsa_elem *release;
+  struct alsa_elem *makeup;
+};
+
+// PEQ preset coefficients (3 bands, 5 coefficients each)
+struct peq_preset {
+  const char *name;
+  long band1[5];
+  long band2[5];
+  long band3[5];
+};
+
+static const struct peq_preset peq_presets[] = {
+  {
+    "Radio",
+    { 268764056, -534822977, 266136367, 534822977, -266464967 },
+    { 264343107, -475942323, 220923477, 475942323, -216831129 },
+    { 280826929, -286659621, 124570994, 286659621, -136962468 }
+  },
+  {
+    "Clean",
+    { 268173186, -534243182, 266147357, 534243182, -265885087 },
+    { 273994701, -484439285, 219935310, 484439285, -225494556 },
+    { 285089098, -288665257, 123145223, 288665257, -139798866 }
+  },
+  {
+    "Warm",
+    { 268304503, -534385186, 266158065, 534385186, -266027113 },
+    { 275408969, -485541124, 219644468, 485541124, -226617981 },
+    { 260481651, -276190834, 130111172, 276190834, -122157368 }
+  },
+  {
+    "Bright",
+    { 268173186, -534243182, 266147357, 534243182, -265885087 },
+    { 276834931, -486616512, 219314962, 486616512, -227714437 },
+    { 293825201, -292586874, 119955124, 292586874, -145344869 }
+  }
+};
+
+#define NUM_PEQ_PRESETS (sizeof(peq_presets) / sizeof(peq_presets[0]))
+
+// Data passed to preset callbacks
+struct preset_callback_data {
+  int preset_type;
+  struct filter_response_stages *stages;
+  struct compressor_elems *comp_elems;
+  GtkWidget *popover;
+};
+
+// Apply a pre-comp preset
+static void apply_precomp_preset(
+  struct filter_response_stages *stages,
+  const struct precomp_preset   *preset
+) {
+  if (stages->num_stages >= 1 && stages->stages[0]) {
+    alsa_set_elem_int_values(stages->stages[0]->coeff_elem, preset->stage1, 5);
+  }
+  if (stages->num_stages >= 2 && stages->stages[1]) {
+    alsa_set_elem_int_values(stages->stages[1]->coeff_elem, preset->stage2, 5);
+  }
+}
+
+// Apply a compressor preset
+static void apply_compressor_preset(
+  struct compressor_elems       *elems,
+  const struct compressor_preset *preset
+) {
+  if (elems->threshold)
+    alsa_set_elem_value(elems->threshold, preset->threshold);
+  if (elems->ratio)
+    alsa_set_elem_value(elems->ratio, preset->ratio);
+  if (elems->knee)
+    alsa_set_elem_value(elems->knee, preset->knee);
+  if (elems->attack)
+    alsa_set_elem_value(elems->attack, preset->attack);
+  if (elems->release)
+    alsa_set_elem_value(elems->release, preset->release);
+  if (elems->makeup)
+    alsa_set_elem_value(elems->makeup, preset->makeup);
+}
+
+// Apply a PEQ preset
+static void apply_peq_preset(
+  struct filter_response_stages *stages,
+  const struct peq_preset       *preset
+) {
+  if (stages->num_stages >= 1 && stages->stages[0]) {
+    alsa_set_elem_int_values(stages->stages[0]->coeff_elem, preset->band1, 5);
+  }
+  if (stages->num_stages >= 2 && stages->stages[1]) {
+    alsa_set_elem_int_values(stages->stages[1]->coeff_elem, preset->band2, 5);
+  }
+  if (stages->num_stages >= 3 && stages->stages[2]) {
+    alsa_set_elem_int_values(stages->stages[2]->coeff_elem, preset->band3, 5);
+  }
+}
+
+// Callback when a preset is selected from the list
+static void preset_list_activated(
+  GtkListView                 *listview,
+  guint                        index,
+  struct preset_callback_data *data
+) {
+  if (data->preset_type == PRESET_TYPE_PRECOMP && index < NUM_PRECOMP_PRESETS) {
+    apply_precomp_preset(data->stages, &precomp_presets[index]);
+  } else if (data->preset_type == PRESET_TYPE_COMPRESSOR && index < NUM_COMPRESSOR_PRESETS) {
+    apply_compressor_preset(data->comp_elems, &compressor_presets[index]);
+  } else if (data->preset_type == PRESET_TYPE_PEQ && index < NUM_PEQ_PRESETS) {
+    apply_peq_preset(data->stages, &peq_presets[index]);
+  }
+
+  gtk_popover_popdown(GTK_POPOVER(data->popover));
+}
+
+// Setup callback for preset list items
+static void preset_list_item_setup(
+  GtkListItemFactory *factory,
+  GtkListItem        *list_item,
+  gpointer            user_data
+) {
+  GtkWidget *label = gtk_label_new(NULL);
+  gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+  gtk_list_item_set_child(list_item, label);
+}
+
+// Bind callback for preset list items
+static void preset_list_item_bind(
+  GtkListItemFactory *factory,
+  GtkListItem        *list_item,
+  gpointer            user_data
+) {
+  GtkWidget *label = gtk_list_item_get_child(list_item);
+  GtkStringObject *str_obj = gtk_list_item_get_item(list_item);
+  gtk_label_set_text(GTK_LABEL(label), gtk_string_object_get_string(str_obj));
+}
+
+// Callback for preset button clicks - shows a popover with preset list
+static void preset_button_clicked(GtkButton *button, gpointer user_data) {
+  struct preset_callback_data *data = user_data;
+
+  GtkWidget *popover = gtk_popover_new();
+  gtk_popover_set_has_arrow(GTK_POPOVER(popover), FALSE);
+  gtk_widget_set_parent(popover, GTK_WIDGET(button));
+  data->popover = popover;
+
+  GtkStringList *model = NULL;
+
+  if (data->preset_type == PRESET_TYPE_PRECOMP && data->stages) {
+    model = gtk_string_list_new(NULL);
+    for (size_t i = 0; i < NUM_PRECOMP_PRESETS; i++)
+      gtk_string_list_append(model, precomp_presets[i].name);
+  } else if (data->preset_type == PRESET_TYPE_COMPRESSOR && data->comp_elems) {
+    model = gtk_string_list_new(NULL);
+    for (size_t i = 0; i < NUM_COMPRESSOR_PRESETS; i++)
+      gtk_string_list_append(model, compressor_presets[i].name);
+  } else if (data->preset_type == PRESET_TYPE_PEQ && data->stages) {
+    model = gtk_string_list_new(NULL);
+    for (size_t i = 0; i < NUM_PEQ_PRESETS; i++)
+      gtk_string_list_append(model, peq_presets[i].name);
+  }
+
+  if (model) {
+    // Factory for list items
+    GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
+    g_signal_connect(factory, "setup", G_CALLBACK(preset_list_item_setup), NULL);
+    g_signal_connect(factory, "bind", G_CALLBACK(preset_list_item_bind), NULL);
+
+    GtkSingleSelection *selection = gtk_single_selection_new(G_LIST_MODEL(model));
+
+    GtkWidget *listview = gtk_list_view_new(
+      GTK_SELECTION_MODEL(selection), factory
+    );
+    gtk_list_view_set_single_click_activate(GTK_LIST_VIEW(listview), TRUE);
+    gtk_widget_add_css_class(listview, "filter-type-list");
+    gtk_popover_set_child(GTK_POPOVER(popover), listview);
+
+    g_signal_connect(listview, "activate", G_CALLBACK(preset_list_activated), data);
+  } else {
+    GtkWidget *label = gtk_label_new("Presets TBD");
+    gtk_widget_set_margin_start(label, 10);
+    gtk_widget_set_margin_end(label, 10);
+    gtk_widget_set_margin_top(label, 5);
+    gtk_widget_set_margin_bottom(label, 5);
+    gtk_popover_set_child(GTK_POPOVER(popover), label);
+  }
+
+  gtk_popover_popup(GTK_POPOVER(popover));
+}
+
+static void preset_callback_data_destroy(struct preset_callback_data *data) {
+  if (data->comp_elems)
+    g_free(data->comp_elems);
+  g_free(data);
+}
+
+// Create a section box with header, enable, presets button, and content
+// Returns the presets button via presets_button_out for later configuration
 static GtkWidget *create_section_box(
   const char       *title,
-  struct alsa_elem *enable_elem
+  struct alsa_elem *enable_elem,
+  int               preset_type,
+  GtkWidget       **presets_button_out
 ) {
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_margin_start(box, 5);
   gtk_widget_set_margin_end(box, 5);
 
-  // Header with enable toggle button
+  // Header row with enable toggle and presets button
+  GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_append(GTK_BOX(box), header_box);
+
   if (enable_elem) {
     GtkWidget *enable = make_boolean_alsa_elem(enable_elem, title, NULL);
     gtk_widget_add_css_class(enable, "dsp");
-    gtk_box_append(GTK_BOX(box), enable);
+    gtk_widget_set_hexpand(enable, TRUE);
+    gtk_box_append(GTK_BOX(header_box), enable);
   } else {
     GtkWidget *label = gtk_label_new(NULL);
     char *markup = g_strdup_printf("<b>%s</b>", title);
     gtk_label_set_markup(GTK_LABEL(label), markup);
     g_free(markup);
-    gtk_box_append(GTK_BOX(box), label);
+    gtk_widget_set_hexpand(label, TRUE);
+    gtk_box_append(GTK_BOX(header_box), label);
   }
 
+  // Presets button - callback data will be set up after stages are created
+  GtkWidget *presets_button = gtk_button_new_with_label("Presets");
+  gtk_widget_add_css_class(presets_button, "presets-button");
+  gtk_widget_set_valign(presets_button, GTK_ALIGN_CENTER);
+  gtk_box_append(GTK_BOX(header_box), presets_button);
+
+  if (presets_button_out)
+    *presets_button_out = presets_button;
+
+  // Store preset type on the button for later
+  g_object_set_data(G_OBJECT(presets_button), "preset_type", GINT_TO_POINTER(preset_type));
+
+  // Default callback shows TBD until connect_presets_button is called
+  struct preset_callback_data *default_data = g_malloc0(sizeof(struct preset_callback_data));
+  default_data->preset_type = preset_type;
+  default_data->stages = NULL;
+  g_signal_connect(presets_button, "clicked", G_CALLBACK(preset_button_clicked), default_data);
+  g_object_set_data_full(G_OBJECT(presets_button), "preset_data", default_data,
+                         (GDestroyNotify)preset_callback_data_destroy);
+
   return box;
+}
+
+// Connect presets button to stages after stages are created
+static void connect_presets_button(
+  GtkWidget                     *presets_button,
+  struct filter_response_stages *stages
+) {
+  int preset_type = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(presets_button), "preset_type"));
+
+  // Get old data and disconnect old handler
+  struct preset_callback_data *old_data = g_object_get_data(
+    G_OBJECT(presets_button), "preset_data"
+  );
+  if (old_data) {
+    g_signal_handlers_disconnect_by_func(
+      presets_button, preset_button_clicked, old_data
+    );
+  }
+
+  struct preset_callback_data *data = g_malloc0(sizeof(struct preset_callback_data));
+  data->preset_type = preset_type;
+  data->stages = stages;
+
+  g_signal_connect(presets_button, "clicked", G_CALLBACK(preset_button_clicked), data);
+  g_object_set_data_full(G_OBJECT(presets_button), "preset_data", data,
+                         (GDestroyNotify)preset_callback_data_destroy);
+}
+
+// Connect compressor presets button to elements
+static void connect_compressor_presets_button(
+  GtkWidget             *presets_button,
+  struct compressor_elems *comp_elems
+) {
+  int preset_type = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(presets_button), "preset_type"));
+
+  // Get old data and disconnect old handler
+  struct preset_callback_data *old_data = g_object_get_data(
+    G_OBJECT(presets_button), "preset_data"
+  );
+  if (old_data) {
+    g_signal_handlers_disconnect_by_func(
+      presets_button, preset_button_clicked, old_data
+    );
+  }
+
+  struct preset_callback_data *data = g_malloc0(sizeof(struct preset_callback_data));
+  data->preset_type = preset_type;
+  data->comp_elems = comp_elems;
+
+  g_signal_connect(presets_button, "clicked", G_CALLBACK(preset_button_clicked), data);
+  g_object_set_data_full(G_OBJECT(presets_button), "preset_data", data,
+                         (GDestroyNotify)preset_callback_data_destroy);
 }
 
 // Create controls for one line input channel
@@ -1101,7 +1436,11 @@ static void add_channel_controls(
   g_free(name);
 
   if (precomp_enable) {
-    GtkWidget *precomp_box = create_section_box("Pre-Compressor Filter", precomp_enable);
+    GtkWidget *precomp_presets_button;
+    GtkWidget *precomp_box = create_section_box(
+      "Pre-Compressor Filter", precomp_enable,
+      PRESET_TYPE_PRECOMP, &precomp_presets_button
+    );
     gtk_box_append(GTK_BOX(sections_box), precomp_box);
 
     // Response widget
@@ -1149,6 +1488,9 @@ static void add_channel_controls(
       }
     }
 
+    // Connect presets button now that stages are created
+    connect_presets_button(precomp_presets_button, precomp_stages);
+
     // Connect signals for drag and highlight updates
     g_signal_connect(precomp_response, "filter-changed",
                      G_CALLBACK(response_filter_changed), precomp_stages);
@@ -1164,7 +1506,11 @@ static void add_channel_controls(
   g_free(name);
 
   if (comp_enable) {
-    GtkWidget *comp_box = create_section_box("Compressor", comp_enable);
+    GtkWidget *comp_presets_button;
+    GtkWidget *comp_box = create_section_box(
+      "Compressor", comp_enable,
+      PRESET_TYPE_COMPRESSOR, &comp_presets_button
+    );
     gtk_box_append(GTK_BOX(sections_box), comp_box);
 
     // Curve widget
@@ -1188,6 +1534,9 @@ static void add_channel_controls(
     dcw->output_src = dsp_src;
     card->dsp_comp_widgets = g_list_append(card->dsp_comp_widgets, dcw);
 
+    // Collect compressor elements for presets
+    struct compressor_elems *comp_elems = g_malloc0(sizeof(struct compressor_elems));
+
     // Sliders grid
     GtkWidget *slider_grid = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(slider_grid), 5);
@@ -1201,6 +1550,7 @@ static void add_channel_controls(
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
+      comp_elems->threshold = elem;
       w = gtk_label_new("Thresh");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
@@ -1213,6 +1563,7 @@ static void add_channel_controls(
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
+      comp_elems->ratio = elem;
       w = gtk_label_new("Ratio");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
@@ -1225,6 +1576,7 @@ static void add_channel_controls(
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
+      comp_elems->knee = elem;
       w = gtk_label_new("Knee");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
@@ -1237,6 +1589,7 @@ static void add_channel_controls(
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
+      comp_elems->attack = elem;
       w = gtk_label_new("Attack");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
@@ -1249,6 +1602,7 @@ static void add_channel_controls(
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
+      comp_elems->release = elem;
       w = gtk_label_new("Release");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
@@ -1261,12 +1615,16 @@ static void add_channel_controls(
     elem = get_elem_by_name(elems, name);
     g_free(name);
     if (elem) {
+      comp_elems->makeup = elem;
       w = gtk_label_new("Makeup");
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, " dB", 1, comp_curve, update_curve_makeup);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 1, row++, 1, 1);
     }
+
+    // Connect presets button now that elements are collected
+    connect_compressor_presets_button(comp_presets_button, comp_elems);
   }
 
   // === PEQ Filter section ===
@@ -1275,7 +1633,11 @@ static void add_channel_controls(
   g_free(name);
 
   if (peq_enable) {
-    GtkWidget *peq_box = create_section_box("Parametric EQ Filter", peq_enable);
+    GtkWidget *peq_presets_button;
+    GtkWidget *peq_box = create_section_box(
+      "Parametric EQ Filter", peq_enable,
+      PRESET_TYPE_PEQ, &peq_presets_button
+    );
     gtk_widget_set_hexpand(peq_box, TRUE);
     gtk_box_append(GTK_BOX(sections_box), peq_box);
 
@@ -1324,6 +1686,9 @@ static void add_channel_controls(
         peq_stages->num_stages = i;
       }
     }
+
+    // Connect presets button now that stages are created
+    connect_presets_button(peq_presets_button, peq_stages);
 
     // Connect signals for drag and highlight updates
     g_signal_connect(peq_response, "filter-changed",
