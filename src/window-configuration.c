@@ -12,6 +12,7 @@
 #include "port-enable.h"
 #include "widget-text-entry.h"
 #include "window-configuration.h"
+#include "config-autogain.h"
 #include "config-device-name.h"
 #include "config-io.h"
 #include "config-monitor-groups.h"
@@ -138,6 +139,9 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
 
   // I/O Configuration tab
   add_io_tab(top_notebook, card);
+
+  // Autogain tab
+  add_autogain_tab(top_notebook, card);
 
   // Monitor Groups tab
   add_monitor_groups_tab(top_notebook, card);
