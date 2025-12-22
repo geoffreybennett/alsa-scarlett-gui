@@ -87,6 +87,11 @@
   padding: 0;
 }
 
+.presets-button {
+  font-size: smaller;
+  padding: 0 6px;
+}
+
 label.gain {
   font-size: smaller;
 }
