@@ -60,6 +60,9 @@ static void on_destroy(
 #define CONFIG_TAB_KEY "configuration-tab"
 #define CONFIG_IO_TAB_KEY "configuration-io-tab"
 
+// Key for storing page ID on notebook pages
+#define PAGE_ID_KEY "page-id"
+
 // Data for notebook tab persistence
 struct notebook_tab_data {
   struct alsa_card *card;
@@ -75,14 +78,28 @@ static void on_tab_changed(
 ) {
   struct notebook_tab_data *data = user_data;
 
-  char value[16];
-  snprintf(value, sizeof(value), "%u", page_num);
-  optional_state_save(data->card, CONFIG_SECTION_UI, data->key, value);
+  const char *page_id = g_object_get_data(G_OBJECT(page), PAGE_ID_KEY);
+  if (page_id)
+    optional_state_save(data->card, CONFIG_SECTION_UI, data->key, page_id);
 }
 
 // Free notebook tab data
 static void free_notebook_tab_data(gpointer data) {
   g_free(data);
+}
+
+// Find page index by ID, returns -1 if not found
+static int find_page_by_id(GtkNotebook *notebook, const char *page_id) {
+  int n_pages = gtk_notebook_get_n_pages(notebook);
+
+  for (int i = 0; i < n_pages; i++) {
+    GtkWidget *page = gtk_notebook_get_nth_page(notebook, i);
+    const char *id = g_object_get_data(G_OBJECT(page), PAGE_ID_KEY);
+    if (id && strcmp(id, page_id) == 0)
+      return i;
+  }
+
+  return -1;
 }
 
 // Restore the saved tab selection and connect signal to save changes
@@ -96,9 +113,8 @@ static void setup_notebook_tab_persistence(
   if (state) {
     const char *value = g_hash_table_lookup(state, key);
     if (value) {
-      int page_num = atoi(value);
-      int n_pages = gtk_notebook_get_n_pages(notebook);
-      if (page_num >= 0 && page_num < n_pages)
+      int page_num = find_page_by_id(notebook, value);
+      if (page_num >= 0)
         gtk_notebook_set_current_page(notebook, page_num);
     }
     g_hash_table_destroy(state);
@@ -1045,6 +1061,13 @@ static GtkWidget *wrap_tab_content_scrolled(GtkWidget *content) {
   return scrolled;
 }
 
+// Page IDs for hardware type tabs
+static const char *hw_type_page_ids[] = {
+  "analogue",
+  "spdif",
+  "adat"
+};
+
 // Add a hardware tab (Analogue, S/PDIF, or ADAT)
 static void add_hw_tab(
   GtkWidget        *notebook,
@@ -1111,6 +1134,7 @@ static void add_hw_tab(
   gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
   GtkWidget *scrolled = wrap_tab_content_scrolled(content);
+  g_object_set_data(G_OBJECT(scrolled), PAGE_ID_KEY, (gpointer)hw_type_page_ids[hw_type]);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scrolled, tab_label_box);
 
   // Update tab checkbox initial state
@@ -1122,6 +1146,14 @@ static void add_hw_tab(
     (GWeakNotify)free_tab_checkbox_data,
     tab_data
   );
+}
+
+// Page IDs for category tabs (matched by tab_name parameter)
+static const char *get_category_page_id(const char *tab_name) {
+  if (strcmp(tab_name, "PCM") == 0) return "pcm";
+  if (strcmp(tab_name, "Mixer") == 0) return "mixer";
+  if (strcmp(tab_name, "DSP") == 0) return "dsp";
+  return tab_name;
 }
 
 // Add a non-hardware tab (PCM, Mixer, DSP)
@@ -1195,6 +1227,9 @@ static void add_category_tab(
   gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
   GtkWidget *scrolled = wrap_tab_content_scrolled(content);
+  g_object_set_data(
+    G_OBJECT(scrolled), PAGE_ID_KEY, (gpointer)get_category_page_id(tab_name)
+  );
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scrolled, tab_label_box);
 
   // Update tab checkbox initial state
@@ -1621,6 +1656,9 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     gtk_box_append(GTK_BOX(name_tab_content), name_entry);
 
     GtkWidget *name_tab_label = gtk_label_new("Device Name");
+    g_object_set_data(
+      G_OBJECT(name_tab_content), PAGE_ID_KEY, (gpointer)"device-name"
+    );
     gtk_notebook_append_page(
       GTK_NOTEBOOK(top_notebook), name_tab_content, name_tab_label
     );
@@ -1818,6 +1856,7 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
     GtkWidget *scrolled = wrap_tab_content_scrolled(content);
+    g_object_set_data(G_OBJECT(scrolled), PAGE_ID_KEY, (gpointer)"mixer");
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scrolled, tab_label_box);
 
     // Update tab checkbox initial state
@@ -1855,6 +1894,9 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     );
 
     GtkWidget *io_tab_label = gtk_label_new("I/O Configuration");
+    g_object_set_data(
+      G_OBJECT(io_tab_content), PAGE_ID_KEY, (gpointer)"io-config"
+    );
     gtk_notebook_append_page(
       GTK_NOTEBOOK(top_notebook), io_tab_content, io_tab_label
     );
@@ -1885,6 +1927,9 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     gtk_box_append(GTK_BOX(group_tab_content), group_grid);
 
     GtkWidget *group_scrolled = wrap_tab_content_scrolled(group_tab_content);
+    g_object_set_data(
+      G_OBJECT(group_scrolled), PAGE_ID_KEY, (gpointer)"monitor-groups"
+    );
     GtkWidget *group_tab_label = gtk_label_new("Monitor Groups");
     gtk_notebook_append_page(
       GTK_NOTEBOOK(top_notebook), group_scrolled, group_tab_label

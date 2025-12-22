@@ -358,7 +358,7 @@ static void alsa_get_elem_int_range(struct alsa_elem *elem) {
 
 // get the number of items this enum element has
 int alsa_get_item_count(struct alsa_elem *elem) {
-  if (elem->card->num == SIMULATED_CARD_NUM)
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
     return elem->item_count;
 
   snd_ctl_elem_info_t *elem_info;
@@ -372,8 +372,8 @@ int alsa_get_item_count(struct alsa_elem *elem) {
 
 // get the name of an item of the given enum element
 char *alsa_get_item_name(struct alsa_elem *elem, int i) {
-  if (elem->card->num == SIMULATED_CARD_NUM)
-    return elem->item_names[i];
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
+    return strdup(elem->item_names[i]);
 
   snd_ctl_elem_info_t *elem_info;
 
@@ -486,6 +486,49 @@ struct alsa_elem *alsa_create_optional_elem(
     elem->count = 0;  // actual length, starts at 0
     elem->bytes_size = max_size;  // max capacity
   }
+
+  // add to card->elems array
+  g_ptr_array_add(card->elems, elem);
+
+  return elem;
+}
+
+// create a simulated optional enumerated element with item names
+struct alsa_elem *alsa_create_optional_enum_elem(
+  struct alsa_card *card,
+  const char       *name,
+  const char      **item_names,
+  int               item_count
+) {
+  // check if element already exists
+  struct alsa_elem *elem = get_elem_by_name(card->elems, name);
+  if (elem)
+    return elem;
+
+  // allocate new element
+  elem = calloc(1, sizeof(struct alsa_elem));
+
+  elem->card = card;
+  elem->numid = 0;  // simulated elements have no numid
+  elem->name = strdup(name);
+  elem->type = SND_CTL_ELEM_TYPE_ENUMERATED;
+  elem->count = 1;
+  elem->index = 0;
+
+  // mark as simulated
+  elem->is_simulated = 1;
+  elem->is_writable = 1;
+  elem->is_volatile = 0;
+
+  // set up enum items
+  elem->item_count = item_count;
+  elem->item_names = calloc(item_count, sizeof(char *));
+  for (int i = 0; i < item_count; i++)
+    elem->item_names[i] = strdup(item_names[i]);
+
+  elem->min_val = 0;
+  elem->max_val = item_count - 1;
+  elem->value = 0;
 
   // add to card->elems array
   g_ptr_array_add(card->elems, elem);

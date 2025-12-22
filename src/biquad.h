@@ -65,6 +65,9 @@ double biquad_response_db(
 // Get human-readable filter type name
 const char *biquad_type_name(BiquadFilterType type);
 
+// Get array of filter type names (for creating enum elements)
+const char **biquad_get_type_names(void);
+
 // Check if filter type uses gain parameter
 gboolean biquad_type_uses_gain(BiquadFilterType type);
 

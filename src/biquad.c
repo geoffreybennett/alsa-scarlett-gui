@@ -26,6 +26,10 @@ const char *biquad_type_name(BiquadFilterType type) {
   return filter_type_names[type];
 }
 
+const char **biquad_get_type_names(void) {
+  return filter_type_names;
+}
+
 gboolean biquad_type_uses_gain(BiquadFilterType type) {
   return type == BIQUAD_TYPE_PEAKING ||
          type == BIQUAD_TYPE_LOW_SHELF ||

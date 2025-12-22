@@ -57,6 +57,9 @@ struct filter_stage {
   struct alsa_elem    *state_freq_elem;
   struct alsa_elem    *state_q_elem;
   struct alsa_elem    *state_gain_elem;
+
+  // Re-entrancy guard: set when updating coefficients from state elements
+  gboolean             updating_from_state;
 };
 
 // Data for connecting filter stages to a response widget
@@ -419,6 +422,90 @@ static void format_freq_entry(struct filter_stage *stage);
 static void format_q_entry(GtkWidget *entry, double q);
 static void format_gain_entry(GtkWidget *entry, double gain_db);
 
+// Callbacks for when state elements change externally (e.g., loading config)
+static void state_enable_updated(struct alsa_elem *elem, void *private) {
+  struct filter_stage *stage = private;
+
+  stage->enabled = alsa_get_elem_value(elem) ? TRUE : FALSE;
+
+  g_signal_handlers_block_by_func(stage->enable_check, filter_enable_toggled, stage);
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(stage->enable_check), stage->enabled);
+  g_signal_handlers_unblock_by_func(stage->enable_check, filter_enable_toggled, stage);
+
+  stage->updating_from_state = TRUE;
+  filter_stage_update_coeffs(stage);
+  stage->updating_from_state = FALSE;
+}
+
+static void state_type_updated(struct alsa_elem *elem, void *private) {
+  struct filter_stage *stage = private;
+
+  int type = alsa_get_elem_value(elem);
+  if (type >= 0 && type < BIQUAD_TYPE_COUNT) {
+    stage->params.type = type;
+    filter_type_dropdown_set_selected(stage->type_dropdown, type);
+    filter_stage_update_gain_visibility(stage);
+    filter_stage_update_freq_q_visibility(stage);
+    stage->updating_from_state = TRUE;
+    filter_stage_update_coeffs(stage);
+    stage->updating_from_state = FALSE;
+  }
+}
+
+static void state_freq_updated(struct alsa_elem *elem, void *private) {
+  struct filter_stage *stage = private;
+
+  stage->params.freq = alsa_get_elem_value(elem) / (double)FREQ_SCALE;
+  if (stage->params.freq < 20.0) stage->params.freq = 20.0;
+  if (stage->params.freq > 20000.0) stage->params.freq = 20000.0;
+
+  if (!stage->editing) {
+    g_signal_handlers_block_by_func(stage->freq_entry, filter_freq_changed, stage);
+    format_freq_entry(stage);
+    g_signal_handlers_unblock_by_func(stage->freq_entry, filter_freq_changed, stage);
+  }
+
+  stage->updating_from_state = TRUE;
+  filter_stage_update_coeffs(stage);
+  stage->updating_from_state = FALSE;
+}
+
+static void state_q_updated(struct alsa_elem *elem, void *private) {
+  struct filter_stage *stage = private;
+
+  stage->params.q = alsa_get_elem_value(elem) / (double)Q_SCALE;
+  if (stage->params.q < 0.1) stage->params.q = 0.1;
+  if (stage->params.q > 10.0) stage->params.q = 10.0;
+
+  if (!stage->editing) {
+    g_signal_handlers_block_by_func(stage->q_entry, filter_q_changed, stage);
+    format_q_entry(stage->q_entry, stage->params.q);
+    g_signal_handlers_unblock_by_func(stage->q_entry, filter_q_changed, stage);
+  }
+
+  stage->updating_from_state = TRUE;
+  filter_stage_update_coeffs(stage);
+  stage->updating_from_state = FALSE;
+}
+
+static void state_gain_updated(struct alsa_elem *elem, void *private) {
+  struct filter_stage *stage = private;
+
+  stage->params.gain_db = alsa_get_elem_value(elem) / (double)GAIN_SCALE;
+  if (stage->params.gain_db < -18.0) stage->params.gain_db = -18.0;
+  if (stage->params.gain_db > 18.0) stage->params.gain_db = 18.0;
+
+  if (!stage->editing) {
+    g_signal_handlers_block_by_func(stage->gain_entry, filter_gain_changed, stage);
+    format_gain_entry(stage->gain_entry, stage->params.gain_db);
+    g_signal_handlers_unblock_by_func(stage->gain_entry, filter_gain_changed, stage);
+  }
+
+  stage->updating_from_state = TRUE;
+  filter_stage_update_coeffs(stage);
+  stage->updating_from_state = FALSE;
+}
+
 // Callback for filter-changed signal from response widget
 static void response_filter_changed(
   GtkFilterResponse           *response,
@@ -554,8 +641,9 @@ static void filter_stage_coeffs_updated(
     );
   }
 
-  // Save state
-  filter_stage_save_state(stage);
+  // Save state (skip if this update originated from state elements to avoid loop)
+  if (!stage->updating_from_state)
+    filter_stage_save_state(stage);
 }
 
 // Hover callbacks for highlighting
@@ -753,6 +841,18 @@ static void make_filter_stage(
   g_signal_connect(gain_focus, "enter", G_CALLBACK(filter_gain_focus_enter), stage);
   g_signal_connect(gain_focus, "leave", G_CALLBACK(filter_gain_focus_leave), stage);
   gtk_widget_add_controller(stage->gain_entry, gain_focus);
+
+  // Register callbacks on state elements for external updates (e.g., loading config)
+  if (stage->state_enable_elem)
+    alsa_elem_add_callback(stage->state_enable_elem, state_enable_updated, stage, NULL);
+  if (stage->state_type_elem)
+    alsa_elem_add_callback(stage->state_type_elem, state_type_updated, stage, NULL);
+  if (stage->state_freq_elem)
+    alsa_elem_add_callback(stage->state_freq_elem, state_freq_updated, stage, NULL);
+  if (stage->state_q_elem)
+    alsa_elem_add_callback(stage->state_q_elem, state_q_updated, stage, NULL);
+  if (stage->state_gain_elem)
+    alsa_elem_add_callback(stage->state_gain_elem, state_gain_updated, stage, NULL);
 
   g_object_weak_ref(G_OBJECT(grid), (GWeakNotify)filter_stage_destroy, stage);
 
