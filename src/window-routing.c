@@ -916,6 +916,7 @@ static void make_src_routing_widget(
 
   if (!is_mixer_output_with_talkback) {
     GtkWidget *label = gtk_label_new(name);
+    r_src->label_widget = label;
     gtk_box_append(GTK_BOX(box), label);
     gtk_widget_add_css_class(box, "route-label");
 
@@ -1055,10 +1056,28 @@ void update_hw_output_label(struct routing_snk *r_snk) {
   // Get the display name (handles custom names)
   char *base_name = get_snk_display_name_formatted(r_snk);
 
-  // PCM outputs just get plain text label
+  // PCM outputs - check availability based on sample rate
   if (elem->port_category == PC_PCM) {
-    gtk_label_set_text(GTK_LABEL(r_snk->label_widget), base_name);
-    gtk_label_set_use_markup(GTK_LABEL(r_snk->label_widget), FALSE);
+    // PCM sinks are "PCM Inputs" in routing = capture to PC
+    // port_num is 0-based, capture_channels is count
+    int available = card->pcm_capture_channels == 0 ||
+                    elem->port_num < card->pcm_capture_channels;
+
+    if (!available) {
+      char *markup = g_strdup_printf(
+        "<span color=\"#808080\"><s>%s</s></span>", base_name
+      );
+      gtk_label_set_markup(GTK_LABEL(r_snk->label_widget), markup);
+      gtk_widget_set_tooltip_text(
+        r_snk->label_widget,
+        "Unavailable at current sample rate"
+      );
+      g_free(markup);
+    } else {
+      gtk_label_set_text(GTK_LABEL(r_snk->label_widget), base_name);
+      gtk_label_set_use_markup(GTK_LABEL(r_snk->label_widget), FALSE);
+      gtk_widget_set_tooltip_text(r_snk->label_widget, NULL);
+    }
     g_free(base_name);
     return;
   }
@@ -1141,6 +1160,62 @@ void update_hw_output_label(struct routing_snk *r_snk) {
 
   g_free(label_text);
   g_free(base_name);
+}
+
+// Update PCM source label based on channel availability
+static void update_pcm_src_label(struct routing_src *r_src) {
+  if (!r_src->label_widget || r_src->port_category != PC_PCM)
+    return;
+
+  struct alsa_card *card = r_src->card;
+  char *base_name = get_src_display_name_formatted(r_src);
+
+  // PCM sources are "PCM Outputs" in routing = playback from PC
+  // port_num is 0-based, playback_channels is count
+  int available = card->pcm_playback_channels == 0 ||
+                  r_src->port_num < card->pcm_playback_channels;
+
+  if (!available) {
+    char *markup = g_strdup_printf(
+      "<span color=\"#808080\"><s>%s</s></span>", base_name
+    );
+    gtk_label_set_markup(GTK_LABEL(r_src->label_widget), markup);
+    gtk_widget_set_tooltip_text(
+      r_src->label_widget,
+      "Unavailable at current sample rate"
+    );
+    g_free(markup);
+  } else {
+    gtk_label_set_text(GTK_LABEL(r_src->label_widget), base_name);
+    gtk_label_set_use_markup(GTK_LABEL(r_src->label_widget), FALSE);
+    gtk_widget_set_tooltip_text(r_src->label_widget, NULL);
+  }
+
+  g_free(base_name);
+}
+
+// Update all PCM labels when channel availability changes
+void update_all_pcm_labels(struct alsa_card *card) {
+  if (!card->window_routing)
+    return;
+
+  // Update PCM sources
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (r_src->port_category == PC_PCM)
+      update_pcm_src_label(r_src);
+  }
+
+  // Update PCM sinks
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (r_snk->elem->port_category == PC_PCM)
+      update_hw_output_label(r_snk);
+  }
 }
 
 // Callback when monitor group related controls change

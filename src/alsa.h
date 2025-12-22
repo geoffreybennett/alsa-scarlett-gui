@@ -97,6 +97,9 @@ struct routing_src {
   // the socket widget
   GtkWidget *widget2;
 
+  // the label widget (for updating text, e.g. PCM availability)
+  GtkWidget *label_widget;
+
   // optional/simulated element for custom name
   struct alsa_elem *custom_name_elem;
 
@@ -282,6 +285,13 @@ struct alsa_card {
   int                 pending_ui_updates;
   guint               pending_ui_update_timeout;
   guint               levels_timer;
+
+  // PCM channel availability based on sample rate
+  int                 playback_altset_channels[4]; // channels per altset (1-3)
+  int                 capture_altset_channels[4];  // channels per altset (1-3)
+  int                 altset_count;                // number of altsets
+  int                 pcm_playback_channels;       // current available (0=all)
+  int                 pcm_capture_channels;        // current available (0=all)
 };
 
 // flags for pending_ui_updates

@@ -14,3 +14,6 @@ void update_hw_output_label(struct routing_snk *r_snk);
 
 // Update cached effective source index for a routing sink
 void update_snk_effective_source(struct routing_snk *r_snk);
+
+// Update all PCM labels when channel availability changes
+void update_all_pcm_labels(struct alsa_card *card);

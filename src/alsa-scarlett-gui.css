@@ -323,6 +323,10 @@ button.toggle {
   text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
 }
 
+.window-frame button.sample-rate.inactive > label {
+  color: #808080;
+}
+
 /* Button controls where checked is dimmer */
 
 /* Mute button */
