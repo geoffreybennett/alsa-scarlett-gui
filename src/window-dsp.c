@@ -870,42 +870,6 @@ static void make_filter_stage(
   }
 }
 
-// Callback data for enable switches that update the response widget
-struct enable_switch_data {
-  GtkFilterResponse *response;
-};
-
-static void enable_switch_updated(
-  struct alsa_elem *elem,
-  void             *private
-) {
-  struct enable_switch_data *data = private;
-  gboolean enabled = alsa_get_elem_value(elem);
-  gtk_filter_response_set_enabled(data->response, enabled);
-}
-
-static void enable_switch_destroy(struct enable_switch_data *data) {
-  g_free(data);
-}
-
-// Callback data for compressor enable switch
-struct comp_enable_data {
-  GtkCompressorCurve *curve;
-};
-
-static void comp_enable_updated(
-  struct alsa_elem *elem,
-  void             *private
-) {
-  struct comp_enable_data *data = private;
-  gboolean enabled = alsa_get_elem_value(elem);
-  gtk_compressor_curve_set_enabled(data->curve, enabled);
-}
-
-static void comp_enable_destroy(struct comp_enable_data *data) {
-  g_free(data);
-}
-
 // Callback data for DSP enable switch (affects all visualizations)
 struct dsp_enable_data {
   GtkFilterResponse  *precomp_response;
@@ -1227,35 +1191,26 @@ static void preset_callback_data_destroy(struct preset_callback_data *data) {
   g_free(data);
 }
 
-// Create a section box with header, enable, presets button, and content
+// Create a section box with header, presets button, and content
 // Returns the presets button via presets_button_out for later configuration
 static GtkWidget *create_section_box(
-  const char       *title,
-  struct alsa_elem *enable_elem,
-  int               preset_type,
-  GtkWidget       **presets_button_out
+  const char  *title,
+  int          preset_type,
+  GtkWidget  **presets_button_out
 ) {
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_margin_start(box, 5);
   gtk_widget_set_margin_end(box, 5);
 
-  // Header row with enable toggle and presets button
+  // Header row with title and presets button
   GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_append(GTK_BOX(box), header_box);
 
-  if (enable_elem) {
-    GtkWidget *enable = make_boolean_alsa_elem(enable_elem, title, NULL);
-    gtk_widget_add_css_class(enable, "dsp");
-    gtk_widget_set_hexpand(enable, TRUE);
-    gtk_box_append(GTK_BOX(header_box), enable);
-  } else {
-    GtkWidget *label = gtk_label_new(NULL);
-    char *markup = g_strdup_printf("<b>%s</b>", title);
-    gtk_label_set_markup(GTK_LABEL(label), markup);
-    g_free(markup);
-    gtk_widget_set_hexpand(label, TRUE);
-    gtk_box_append(GTK_BOX(header_box), label);
-  }
+  GtkWidget *label = gtk_label_new(title);
+  gtk_widget_add_css_class(label, "dsp-section-header");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_widget_set_hexpand(label, TRUE);
+  gtk_box_append(GTK_BOX(header_box), label);
 
   // Presets button - callback data will be set up after stages are created
   GtkWidget *presets_button = gtk_button_new_with_label("Presets");
@@ -1438,8 +1393,7 @@ static void add_channel_controls(
   if (precomp_enable) {
     GtkWidget *precomp_presets_button;
     GtkWidget *precomp_box = create_section_box(
-      "Pre-Compressor Filter", precomp_enable,
-      PRESET_TYPE_PRECOMP, &precomp_presets_button
+      "Pre-Compressor Filter", PRESET_TYPE_PRECOMP, &precomp_presets_button
     );
     gtk_box_append(GTK_BOX(sections_box), precomp_box);
 
@@ -1447,15 +1401,6 @@ static void add_channel_controls(
     GtkWidget *precomp_response_widget = gtk_filter_response_new(2);
     precomp_response = GTK_FILTER_RESPONSE(precomp_response_widget);
     gtk_box_append(GTK_BOX(precomp_box), precomp_response_widget);
-
-    // Connect enable to response widget
-    struct enable_switch_data *en_data = g_malloc0(
-      sizeof(struct enable_switch_data)
-    );
-    en_data->response = precomp_response;
-    alsa_elem_add_callback(precomp_enable, enable_switch_updated, en_data,
-                           (GDestroyNotify)enable_switch_destroy);
-    enable_switch_updated(precomp_enable, en_data);
 
     // Filter stages grid
     GtkWidget *precomp_grid = gtk_grid_new();
@@ -1498,6 +1443,9 @@ static void add_channel_controls(
                      G_CALLBACK(response_highlight_changed), precomp_stages);
     g_object_weak_ref(G_OBJECT(precomp_response_widget),
                       (GWeakNotify)filter_response_stages_destroy, precomp_stages);
+
+    gtk_box_append(GTK_BOX(sections_box),
+                   gtk_separator_new(GTK_ORIENTATION_VERTICAL));
   }
 
   // === Compressor section ===
@@ -1508,8 +1456,7 @@ static void add_channel_controls(
   if (comp_enable) {
     GtkWidget *comp_presets_button;
     GtkWidget *comp_box = create_section_box(
-      "Compressor", comp_enable,
-      PRESET_TYPE_COMPRESSOR, &comp_presets_button
+      "Compressor", PRESET_TYPE_COMPRESSOR, &comp_presets_button
     );
     gtk_box_append(GTK_BOX(sections_box), comp_box);
 
@@ -1517,15 +1464,6 @@ static void add_channel_controls(
     GtkWidget *curve_widget = gtk_compressor_curve_new();
     comp_curve = GTK_COMPRESSOR_CURVE(curve_widget);
     gtk_box_append(GTK_BOX(comp_box), curve_widget);
-
-    // Connect enable to curve widget
-    struct comp_enable_data *comp_en_data = g_malloc0(
-      sizeof(struct comp_enable_data)
-    );
-    comp_en_data->curve = comp_curve;
-    alsa_elem_add_callback(comp_enable, comp_enable_updated, comp_en_data,
-                           (GDestroyNotify)comp_enable_destroy);
-    comp_enable_updated(comp_enable, comp_en_data);
 
     // Store for level updates
     struct dsp_comp_widget *dcw = g_malloc0(sizeof(struct dsp_comp_widget));
@@ -1625,6 +1563,9 @@ static void add_channel_controls(
 
     // Connect presets button now that elements are collected
     connect_compressor_presets_button(comp_presets_button, comp_elems);
+
+    gtk_box_append(GTK_BOX(sections_box),
+                   gtk_separator_new(GTK_ORIENTATION_VERTICAL));
   }
 
   // === PEQ Filter section ===
@@ -1635,8 +1576,7 @@ static void add_channel_controls(
   if (peq_enable) {
     GtkWidget *peq_presets_button;
     GtkWidget *peq_box = create_section_box(
-      "Parametric EQ Filter", peq_enable,
-      PRESET_TYPE_PEQ, &peq_presets_button
+      "Parametric EQ Filter", PRESET_TYPE_PEQ, &peq_presets_button
     );
     gtk_widget_set_hexpand(peq_box, TRUE);
     gtk_box_append(GTK_BOX(sections_box), peq_box);
@@ -1646,15 +1586,6 @@ static void add_channel_controls(
     peq_response = GTK_FILTER_RESPONSE(peq_response_widget);
     gtk_widget_set_hexpand(peq_response_widget, TRUE);
     gtk_box_append(GTK_BOX(peq_box), peq_response_widget);
-
-    // Connect enable to response widget
-    struct enable_switch_data *en_data = g_malloc0(
-      sizeof(struct enable_switch_data)
-    );
-    en_data->response = peq_response;
-    alsa_elem_add_callback(peq_enable, enable_switch_updated, en_data,
-                           (GDestroyNotify)enable_switch_destroy);
-    enable_switch_updated(peq_enable, en_data);
 
     // Filter bands grid
     GtkWidget *peq_grid = gtk_grid_new();

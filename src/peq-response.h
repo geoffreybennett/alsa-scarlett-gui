@@ -37,12 +37,6 @@ void gtk_filter_response_set_band_enabled(
   gboolean           enabled
 );
 
-// Global enable (e.g., when section is disabled)
-void gtk_filter_response_set_enabled(
-  GtkFilterResponse *response,
-  gboolean           enabled
-);
-
 // Overall DSP enable (e.g., when all DSP is disabled)
 void gtk_filter_response_set_dsp_enabled(
   GtkFilterResponse *response,

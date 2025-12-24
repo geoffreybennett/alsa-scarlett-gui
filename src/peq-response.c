@@ -49,7 +49,6 @@ struct _GtkFilterResponse {
   struct biquad_params bands[FILTER_RESPONSE_MAX_BANDS];
   struct biquad_coeffs coeffs[FILTER_RESPONSE_MAX_BANDS];
   gboolean band_enabled[FILTER_RESPONSE_MAX_BANDS];
-  gboolean enabled;
   gboolean dsp_enabled;  // overall DSP enable state
   int highlight_band;  // -1 for none
   int internal_highlight;  // -1 for none, set by hover
@@ -602,10 +601,10 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   }
 
   // Draw combined response curve
-  // White solid if fully enabled, grey dashed if section or DSP disabled
+  // White solid if enabled, grey dashed if DSP disabled
   cairo_save(cr);
   cairo_set_line_width(cr, 2);
-  if (response->enabled && response->dsp_enabled) {
+  if (response->dsp_enabled) {
     cairo_set_source_rgb(cr, 1, 1, 1);
   } else {
     cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
@@ -756,7 +755,6 @@ static void gtk_filter_response_class_init(GtkFilterResponseClass *klass) {
 
 static void gtk_filter_response_init(GtkFilterResponse *response) {
   response->num_bands = 0;
-  response->enabled = TRUE;
   response->dsp_enabled = TRUE;
   response->highlight_band = -1;
   response->internal_highlight = -1;
@@ -834,16 +832,6 @@ void gtk_filter_response_set_band_enabled(
 
   if (response->band_enabled[band] != enabled) {
     response->band_enabled[band] = enabled;
-    gtk_widget_queue_draw(GTK_WIDGET(response));
-  }
-}
-
-void gtk_filter_response_set_enabled(
-  GtkFilterResponse *response,
-  gboolean           enabled
-) {
-  if (response->enabled != enabled) {
-    response->enabled = enabled;
     gtk_widget_queue_draw(GTK_WIDGET(response));
   }
 }

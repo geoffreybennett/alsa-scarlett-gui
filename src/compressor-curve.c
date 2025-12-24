@@ -18,7 +18,6 @@ struct _GtkCompressorCurve {
   int ratio;        // 2-100 (divide by 2 for actual ratio)
   int knee_width;   // 0-10 dB
   int makeup_gain;  // 0-24 dB
-  gboolean enabled;     // section enable
   gboolean dsp_enabled; // overall DSP enable
   double input_level_db;  // current input level for dot display
   double output_level_db; // current output level for dot display
@@ -162,7 +161,7 @@ static void curve_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   // When disabled: grey dashed
   cairo_set_line_width(cr, 2);
 
-  gboolean is_enabled = curve->enabled && curve->dsp_enabled;
+  gboolean is_enabled = curve->dsp_enabled;
 
   if (!is_enabled) {
     double dashes[] = { 6.0, 4.0 };
@@ -287,7 +286,6 @@ static void gtk_compressor_curve_init(GtkCompressorCurve *curve) {
   curve->ratio = 8;      // 4:1
   curve->knee_width = 3;
   curve->makeup_gain = 5;
-  curve->enabled = TRUE;
   curve->dsp_enabled = TRUE;
   curve->input_level_db = -80.0;
   curve->output_level_db = -80.0;
@@ -321,13 +319,6 @@ void gtk_compressor_curve_set_knee_width(GtkCompressorCurve *curve, int knee_wid
 void gtk_compressor_curve_set_makeup_gain(GtkCompressorCurve *curve, int makeup_gain) {
   if (curve->makeup_gain != makeup_gain) {
     curve->makeup_gain = makeup_gain;
-    gtk_widget_queue_draw(GTK_WIDGET(curve));
-  }
-}
-
-void gtk_compressor_curve_set_enabled(GtkCompressorCurve *curve, gboolean enabled) {
-  if (curve->enabled != enabled) {
-    curve->enabled = enabled;
     gtk_widget_queue_draw(GTK_WIDGET(curve));
   }
 }

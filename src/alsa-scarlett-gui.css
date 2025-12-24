@@ -92,6 +92,13 @@
   padding: 0 6px;
 }
 
+.dsp-section-header {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #c0c0c0;
+  padding-left: 5px;
+}
+
 label.gain {
   font-size: smaller;
 }
