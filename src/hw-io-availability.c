@@ -79,8 +79,12 @@ static const struct io_limits limits_table[] = {
 void update_hw_io_limits(struct alsa_card *card) {
   const char *mode = NULL;
 
-  if (card->digital_io_mode_elem)
-    mode = alsa_get_item_name(card->digital_io_mode_elem, card->digital_io_mode);
+  if (card->digital_io_mode_elem) {
+    int mode_value = card->digital_io_mode_live
+      ? alsa_get_elem_value(card->digital_io_mode_elem)
+      : card->digital_io_mode;
+    mode = alsa_get_item_name(card->digital_io_mode_elem, mode_value);
+  }
 
   int sr_cat = get_sample_rate_category(card->current_sample_rate);
 

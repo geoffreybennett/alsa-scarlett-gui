@@ -1018,6 +1018,11 @@ void alsa_get_routing_controls(struct alsa_card *card) {
   if (!card->digital_io_mode_elem)
     card->digital_io_mode_elem =
       get_elem_by_prefix(card->elems, "S/PDIF Mode");
+  if (!card->digital_io_mode_elem) {
+    card->digital_io_mode_elem =
+      get_elem_by_prefix(card->elems, "S/PDIF Source");
+    card->digital_io_mode_live = 1;
+  }
 
   // cache the mode value at init time
   if (card->digital_io_mode_elem)
