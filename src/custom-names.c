@@ -172,7 +172,7 @@ static void update_snk_display_name(struct routing_snk *snk) {
   }
 
   // fall back to default name (device-specific or generic)
-  snk->display_name = get_snk_default_name_formatted(snk);
+  snk->display_name = get_snk_default_name_formatted(snk, 0);
 }
 
 // Callback when a routing source's custom name changes
@@ -347,12 +347,24 @@ char *get_snk_generic_name(struct routing_snk *snk) {
 }
 
 // Get formatted default name for a routing sink (ignoring custom name)
+// If abbreviated is true, Mix/DSP use short form ("1") for routing window
 // Returns newly allocated string that must be freed
-char *get_snk_default_name_formatted(struct routing_snk *snk) {
+char *get_snk_default_name_formatted(struct routing_snk *snk, int abbreviated) {
   if (!snk || !snk->elem)
     return g_strdup("");
 
   struct alsa_elem *elem = snk->elem;
+
+  // for abbreviated mode, always use short form for Mix/DSP
+  if (abbreviated) {
+    switch (elem->port_category) {
+      case PC_MIX:
+      case PC_DSP:
+        return g_strdup_printf("%d", elem->lr_num);
+      default:
+        break;
+    }
+  }
 
   // check device-specific default name
   const char *device_default = get_device_port_name(
@@ -370,24 +382,19 @@ char *get_snk_default_name_formatted(struct routing_snk *snk) {
 
 // Get formatted display name for a routing sink (for UI display)
 // Returns custom name if set, otherwise formatted default name
+// Mix/DSP sinks use abbreviated form for routing window
 // Returns newly allocated string that must be freed
 char *get_snk_display_name_formatted(struct routing_snk *snk) {
   if (!snk || !snk->elem)
     return g_strdup("");
 
-  // check if custom name is set
-  if (snk->custom_name_elem) {
-    size_t size;
-    const void *bytes = alsa_get_elem_bytes(snk->custom_name_elem, &size);
-    size_t str_len = bytes ? strnlen((const char *)bytes, size) : 0;
+  struct alsa_elem *elem = snk->elem;
 
-    if (str_len > 0 && snk->display_name) {
-      // custom name - use it as-is
-      return g_strdup(snk->display_name);
-    }
-  }
+  // Mix/DSP always show abbreviated form, others show display_name
+  if (elem->port_category == PC_MIX || elem->port_category == PC_DSP)
+    return get_snk_default_name_formatted(snk, 1);
 
-  return get_snk_default_name_formatted(snk);
+  return g_strdup(snk->display_name);
 }
 
 // Callback when a routing sink's custom name changes

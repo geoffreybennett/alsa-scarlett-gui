@@ -578,7 +578,7 @@ static void add_snk_enables_for_category(
       );
     } else {
       // For other categories, use formatted default name
-      char *label_text = get_snk_default_name_formatted(snk);
+      char *label_text = get_snk_default_name_formatted(snk, 0);
       label = gtk_label_new(label_text);
       g_free(label_text);
     }

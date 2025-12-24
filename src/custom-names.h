@@ -36,8 +36,9 @@ char *get_src_display_name_formatted(struct routing_src *src);
 char *get_src_generic_name(struct routing_src *src);
 
 // Get formatted default name for a routing sink (ignoring custom name)
+// If abbreviated is true, Mix/DSP use short form ("1") for routing window
 // Returns newly allocated string that must be freed
-char *get_snk_default_name_formatted(struct routing_snk *snk);
+char *get_snk_default_name_formatted(struct routing_snk *snk, int abbreviated);
 
 // Get generic hardware name for a routing sink (no device-specific names)
 // Returns e.g. "Analogue 1", "PCM 1", "Mixer 1"
@@ -45,7 +46,7 @@ char *get_snk_default_name_formatted(struct routing_snk *snk);
 char *get_snk_generic_name(struct routing_snk *snk);
 
 // Get formatted display name for a routing sink (for UI display)
-// Returns custom name if set, otherwise returns formatted default (e.g. "Analogue 1")
+// Mix/DSP sinks use abbreviated form ("1"), others use display_name
 // Returns newly allocated string that must be freed
 char *get_snk_display_name_formatted(struct routing_snk *snk);
 
