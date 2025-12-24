@@ -1069,7 +1069,7 @@ static void create_output_controls(
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
 
     } else if (strncmp(elem->name, "Line", 4) == 0 ||
-               strncmp(elem->name, "Master", 4) == 0 ||
+               (strncmp(elem->name, "Master", 6) == 0 && elem->lr_num) ||
                strncmp(elem->name, "Analogue", 8) == 0) {
 
       if (strstr(elem->name, "Playback Volume")) {
