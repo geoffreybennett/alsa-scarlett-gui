@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "gtkhelper.h"
+#include "hw-io-availability.h"
 #include "iface-mixer.h"
 #include "routing-drag-line.h"
 #include "routing-lines.h"
@@ -982,6 +983,29 @@ static GtkWidget *make_talkback_mix_widget(
   return button;
 }
 
+// Helper to set label styling for digital I/O availability
+static void set_digital_io_label(
+  GtkWidget  *label,
+  const char *base_name,
+  int         available
+) {
+  if (!available) {
+    char *markup = g_strdup_printf(
+      "<span color=\"#808080\"><s>%s</s></span>", base_name
+    );
+    gtk_label_set_markup(GTK_LABEL(label), markup);
+    gtk_widget_set_tooltip_text(
+      label,
+      "Unavailable with current Digital I/O mode and sample rate"
+    );
+    g_free(markup);
+  } else {
+    gtk_label_set_text(GTK_LABEL(label), base_name);
+    gtk_label_set_use_markup(GTK_LABEL(label), FALSE);
+    gtk_widget_set_tooltip_text(label, NULL);
+  }
+}
+
 // Update the cached effective source index for a routing sink.
 // Uses cached element pointers for performance.
 void update_snk_effective_source(struct routing_snk *r_snk) {
@@ -1088,10 +1112,18 @@ void update_hw_output_label(struct routing_snk *r_snk) {
     return;
   }
 
-  // Non-analogue outputs just get plain text label
+  // Non-analogue outputs - check S/PDIF and ADAT availability
   if (elem->hw_type != HW_TYPE_ANALOGUE) {
-    gtk_label_set_text(GTK_LABEL(r_snk->label_widget), base_name);
-    gtk_label_set_use_markup(GTK_LABEL(r_snk->label_widget), FALSE);
+    if (is_digital_io_type(elem->hw_type)) {
+      int max_port = elem->hw_type == HW_TYPE_SPDIF
+        ? card->max_spdif_out : card->max_adat_out;
+      int available = max_port < 0 || elem->lr_num <= max_port;
+      set_digital_io_label(r_snk->label_widget, base_name, available);
+    } else {
+      gtk_label_set_text(GTK_LABEL(r_snk->label_widget), base_name);
+      gtk_label_set_use_markup(GTK_LABEL(r_snk->label_widget), FALSE);
+      gtk_widget_set_tooltip_text(r_snk->label_widget, NULL);
+    }
     g_free(base_name);
     return;
   }
@@ -1162,6 +1194,29 @@ void update_hw_output_label(struct routing_snk *r_snk) {
   g_free(base_name);
 }
 
+// Update hardware input label for S/PDIF and ADAT availability
+void update_hw_input_label(struct routing_src *r_src) {
+  if (!r_src->label_widget)
+    return;
+
+  if (r_src->port_category != PC_HW)
+    return;
+
+  if (!is_digital_io_type(r_src->hw_type))
+    return;
+
+  struct alsa_card *card = r_src->card;
+
+  int max_port = r_src->hw_type == HW_TYPE_SPDIF
+    ? card->max_spdif_in : card->max_adat_in;
+  int available = max_port < 0 || r_src->lr_num <= max_port;
+
+  const char *base_name = r_src->display_name
+    ? r_src->display_name : r_src->name;
+
+  set_digital_io_label(r_src->label_widget, base_name, available);
+}
+
 // Update PCM source label based on channel availability
 static void update_pcm_src_label(struct routing_src *r_src) {
   if (!r_src->label_widget || r_src->port_category != PC_PCM)
@@ -1215,6 +1270,35 @@ void update_all_pcm_labels(struct alsa_card *card) {
     );
     if (r_snk->elem->port_category == PC_PCM)
       update_hw_output_label(r_snk);
+  }
+}
+
+// Update all HW I/O labels when availability changes
+void update_all_hw_io_labels(struct alsa_card *card) {
+  if (!card->routing_snks || !card->routing_srcs)
+    return;
+
+  update_hw_io_limits(card);
+
+  // Update HW routing sinks (outputs)
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    struct alsa_elem *elem = r_snk->elem;
+
+    if (elem->port_category == PC_HW)
+      update_hw_output_label(r_snk);
+  }
+
+  // Update HW routing sources (inputs)
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (r_src->port_category == PC_HW)
+      update_hw_input_label(r_src);
   }
 }
 
@@ -1539,6 +1623,10 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
   gtk_overlay_set_child(GTK_OVERLAY(routing_overlay), card->routing_grid);
 
   add_routing_widgets(card, routing_overlay);
+
+  // update HW I/O labels for availability based on Digital I/O mode
+  // and sample rate (must be after widgets are created)
+  update_all_hw_io_labels(card);
 
   add_drop_controller_motion(card, routing_overlay);
 

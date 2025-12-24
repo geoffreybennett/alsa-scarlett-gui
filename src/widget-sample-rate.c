@@ -3,6 +3,7 @@
 
 #include "asound-stream-parser.h"
 #include "gtkhelper.h"
+#include "hw-io-availability.h"
 #include "widget-boolean.h"
 #include "window-routing.h"
 
@@ -347,6 +348,17 @@ static gboolean update_sample_rate(struct sample_rate *data) {
       old_capture != card->pcm_capture_channels) {
     update_all_pcm_labels(card);
   }
+
+  // update HW I/O labels if sample rate category changed
+  int use_sample_rate = sample_rate > 0
+    ? sample_rate : data->last_valid_sample_rate;
+  int old_sample_rate_cat = get_sample_rate_category(card->current_sample_rate);
+  int new_sample_rate_cat = get_sample_rate_category(use_sample_rate);
+
+  card->current_sample_rate = use_sample_rate;
+
+  if (old_sample_rate_cat != new_sample_rate_cat)
+    update_all_hw_io_labels(card);
 
   return G_SOURCE_CONTINUE;
 }

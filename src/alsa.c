@@ -14,6 +14,7 @@
 #include "custom-names.h"
 #include "port-enable.h"
 #include "dsp-state.h"
+#include "hw-io-availability.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -1012,6 +1013,21 @@ void alsa_get_routing_controls(struct alsa_card *card) {
   get_routing_srcs(card);
   get_routing_snks(card);
   get_monitor_group_src_map(card);
+
+  // look up Digital I/O Mode element for HW I/O availability
+  card->digital_io_mode_elem =
+    get_elem_by_prefix(card->elems, "Digital I/O Mode");
+  if (!card->digital_io_mode_elem)
+    card->digital_io_mode_elem =
+      get_elem_by_prefix(card->elems, "S/PDIF Mode");
+
+  // cache the mode value at init time
+  if (card->digital_io_mode_elem)
+    card->digital_io_mode = alsa_get_elem_value(card->digital_io_mode_elem);
+
+  // initialize HW I/O limits (sample rate unknown at this point, so
+  // limits will be set to -1 meaning all available)
+  update_hw_io_limits(card);
 }
 
 void alsa_elem_change(struct alsa_elem *elem) {
