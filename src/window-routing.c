@@ -1110,6 +1110,17 @@ void update_hw_output_label(struct routing_snk *r_snk) {
     return;
   }
 
+  // Mixer/DSP sinks - update availability styling
+  if (elem->port_category == PC_MIX || elem->port_category == PC_DSP) {
+    int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
+    set_availability_label(
+      r_snk->label_widget, base_name, available,
+      "Mixer unavailable at current sample rate"
+    );
+    g_free(base_name);
+    return;
+  }
+
   // Only hardware outputs get monitor group indicators
   if (elem->port_category != PC_HW) {
     g_free(base_name);
@@ -1246,26 +1257,6 @@ static void update_mixer_src_label(struct routing_src *r_src) {
   g_free(base_name);
 }
 
-// Update mixer sink label for availability at high sample rates
-static void update_mixer_snk_label(struct routing_snk *r_snk) {
-  struct alsa_elem *elem = r_snk->elem;
-
-  if (!r_snk->label_widget || elem->port_category != PC_MIX)
-    return;
-
-  struct alsa_card *card = elem->card;
-  int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
-
-  char *base_name = get_snk_display_name_formatted(r_snk);
-
-  set_availability_label(
-    r_snk->label_widget, base_name, available,
-    "Mixer unavailable at current sample rate"
-  );
-
-  g_free(base_name);
-}
-
 // Update mixer heading labels for availability at high sample rates
 static void update_mixer_headings(struct alsa_card *card) {
   int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
@@ -1353,12 +1344,7 @@ void update_all_hw_io_labels(struct alsa_card *card) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
     );
-    struct alsa_elem *elem = r_snk->elem;
-
-    if (elem->port_category == PC_HW)
-      update_hw_output_label(r_snk);
-    else if (elem->port_category == PC_MIX)
-      update_mixer_snk_label(r_snk);
+    update_hw_output_label(r_snk);
   }
 
   // Update routing sources
@@ -1452,10 +1438,9 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
   // the top, in card->routing_mixer_in_grid
   if (elem->port_category == PC_DSP) {
 
-    char name[10];
-
-    snprintf(name, 10, "%d", elem->lr_num);
+    char *name = get_snk_display_name_formatted(r_snk);
     make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
+    g_free(name);
     gtk_grid_attach(
       GTK_GRID(card->routing_dsp_in_grid), r_snk->box_widget,
       elem->port_num + 1, 0, 1, 1
@@ -1468,10 +1453,9 @@ static void make_routing_alsa_elem(struct routing_snk *r_snk) {
     if (card->has_fixed_mixer_inputs)
       return;
 
-    char name[10];
-
-    snprintf(name, 10, "%d", elem->lr_num);
+    char *name = get_snk_display_name_formatted(r_snk);
     make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
+    g_free(name);
     gtk_grid_attach(
       GTK_GRID(card->routing_mixer_in_grid), r_snk->box_widget,
       elem->port_num + 1, 0, 1, 1
