@@ -14,6 +14,7 @@
 #include "window-configuration.h"
 #include "config-autogain.h"
 #include "config-device-name.h"
+#include "config-device-settings.h"
 #include "config-io.h"
 #include "config-monitor-groups.h"
 
@@ -141,6 +142,9 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
 
   // Device Name tab
   add_device_name_tab(top_notebook, card);
+
+  // Device Settings tab
+  add_device_settings_tab(top_notebook, card);
 
   // I/O Configuration tab
   add_io_tab(top_notebook, card);
