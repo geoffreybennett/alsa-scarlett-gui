@@ -107,6 +107,37 @@ gboolean window_hardware_close_request(
   return true;
 }
 
+static gboolean on_key_press(
+  GtkEventControllerKey *controller,
+  guint                  keyval,
+  guint                  keycode,
+  GdkModifierType        state,
+  gpointer               user_data
+) {
+  GtkApplication *app = user_data;
+
+  if (keyval == GDK_KEY_Escape) {
+    g_action_group_activate_action(G_ACTION_GROUP(app), "hardware", NULL);
+    return 1;
+  }
+
+  if (state & GDK_CONTROL_MASK) {
+    const char *action = NULL;
+
+    switch (keyval) {
+      case GDK_KEY_q: action = "quit";     break;
+      case GDK_KEY_h: action = "hardware"; break;
+    }
+
+    if (action) {
+      g_action_group_activate_action(G_ACTION_GROUP(app), action, NULL);
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 GtkWidget *make_notebook_page(struct hw_cat *cat) {
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   for (struct hw_info *info = cat->info; info->name; info++) {
@@ -133,13 +164,24 @@ void create_hardware_window(GtkApplication *app) {
     app
   );
 
+  GtkEventController *key_controller = gtk_event_controller_key_new();
+  gtk_widget_add_controller(window_hardware, key_controller);
+  g_signal_connect(
+    key_controller, "key-pressed", G_CALLBACK(on_key_press), app
+  );
+
   gtk_window_set_title(
     GTK_WINDOW(window_hardware),
     "ALSA Scarlett Supported Hardware"
   );
 
+  GtkWidget *top = gtk_frame_new(NULL);
+  gtk_widget_add_css_class(top, "window-frame");
+  gtk_window_set_child(GTK_WINDOW(window_hardware), top);
+
   GtkWidget *notebook = gtk_notebook_new();
-  gtk_window_set_child(GTK_WINDOW(window_hardware), notebook);
+  gtk_widget_add_css_class(notebook, "window-content");
+  gtk_frame_set_child(GTK_FRAME(top), notebook);
 
   add_notebook_pages(notebook);
 }
