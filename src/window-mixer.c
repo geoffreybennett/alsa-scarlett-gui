@@ -7,6 +7,7 @@
 #include "custom-names.h"
 #include "glow.h"
 #include "gtkhelper.h"
+#include "hw-io-availability.h"
 #include "port-enable.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
@@ -207,7 +208,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   card->mixer_gain_widgets = NULL;
 
   // create overlay to hold the grid and glow layer
-  GtkWidget *mixer_overlay = gtk_overlay_new();
+  GtkWidget *mixer_overlay = card->mixer_overlay = gtk_overlay_new();
   gtk_widget_add_css_class(mixer_overlay, "window-content");
   gtk_widget_add_css_class(mixer_overlay, "top-level-content");
   gtk_widget_add_css_class(mixer_overlay, "window-mixer");
@@ -216,6 +217,17 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   // create grid as base child (determines size)
   GtkWidget *mixer_top = gtk_grid_new();
   gtk_overlay_set_child(GTK_OVERLAY(mixer_overlay), mixer_top);
+
+  // create unavailable overlay label (hidden by default)
+  GtkWidget *unavail = card->mixer_unavailable_label = gtk_label_new(
+    "Mixer unavailable at current sample rate"
+  );
+  gtk_widget_add_css_class(unavail, "mixer-unavailable");
+  gtk_widget_set_halign(unavail, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(unavail, GTK_ALIGN_CENTER);
+  gtk_widget_set_can_target(unavail, FALSE);
+  gtk_widget_set_visible(unavail, FALSE);
+  gtk_overlay_add_overlay(GTK_OVERLAY(mixer_overlay), unavail);
 
   gtk_widget_set_halign(mixer_top, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(mixer_top, GTK_ALIGN_CENTER);
@@ -401,6 +413,10 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
   // rebuild grid layout based on port enable states
   rebuild_mixer_grid(card);
+
+  // set initial availability state
+  int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
+  update_mixer_availability(card, available);
 
   return top;
 }
@@ -598,4 +614,15 @@ void rebuild_mixer_grid(struct alsa_card *card) {
       );
     }
   }
+}
+
+// Update mixer window availability indication
+void update_mixer_availability(struct alsa_card *card, int available) {
+  if (!card->mixer_grid)
+    return;
+
+  gtk_widget_set_opacity(card->mixer_grid, available ? 1.0 : 0.3);
+
+  if (card->mixer_unavailable_label)
+    gtk_widget_set_visible(card->mixer_unavailable_label, !available);
 }
