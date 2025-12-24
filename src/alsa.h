@@ -41,6 +41,11 @@ enum {
   HW_TYPE_COUNT
 };
 
+// check if hardware type is digital I/O (S/PDIF or ADAT)
+static inline int is_digital_io_type(int hw_type) {
+  return hw_type == HW_TYPE_SPDIF || hw_type == HW_TYPE_ADAT;
+}
+
 // driver types
 // NONE is 1st Gen or Scarlett2 before hwdep support was added
 // (no erase config or firmware update support)
@@ -292,6 +297,15 @@ struct alsa_card {
   int                 altset_count;                // number of altsets
   int                 pcm_playback_channels;       // current available (0=all)
   int                 pcm_capture_channels;        // current available (0=all)
+
+  // HW I/O availability based on digital I/O mode and sample rate
+  struct alsa_elem   *digital_io_mode_elem;  // "Digital I/O Mode" or "S/PDIF Mode"
+  int                 digital_io_mode;       // cached mode index at init time
+  int                 current_sample_rate;   // current sample rate (Hz)
+  int                 max_spdif_in;          // max S/PDIF input ports
+  int                 max_spdif_out;         // max S/PDIF output ports
+  int                 max_adat_in;           // max ADAT input ports
+  int                 max_adat_out;          // max ADAT output ports
 };
 
 // flags for pending_ui_updates
