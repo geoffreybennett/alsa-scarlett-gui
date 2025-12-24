@@ -525,22 +525,26 @@ button.toggle {
   outline: 2px solid #ff4040;
 }
 
-/* Filter type dropdown list */
+/* Drop-down lists */
+.drop-down-list,
 .filter-type-list {
   background: transparent;
   color: #d0d0d0;
 }
 
+.drop-down-list > row,
 .filter-type-list > row {
   padding: 4px 8px;
   color: #d0d0d0;
 }
 
+.drop-down-list > row:hover,
 .filter-type-list > row:hover {
   background: #800000;
   color: #ffffff;
 }
 
+.drop-down-list > row:selected,
 .filter-type-list > row:selected {
   background: #600000;
   color: #ffffff;

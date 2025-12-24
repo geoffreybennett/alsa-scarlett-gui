@@ -13,6 +13,9 @@ struct drop_down {
   GtkWidget          *listview;
   GtkSingleSelection *selection;
   int                 fixed_text;
+  int                 current_value;
+  int                 count;
+  GtkWidget         **icons;
 };
 
 static void sanitise_class_name(char *s) {
@@ -35,11 +38,21 @@ static void add_class(GtkWidget *widget, const char *class) {
   g_free(class_name);
 }
 
+static void update_icons(struct drop_down *data) {
+  for (int i = 0; i < data->count; i++) {
+    if (data->icons[i])
+      gtk_widget_set_opacity(data->icons[i], i == data->current_value ? 1.0 : 0.0);
+  }
+}
+
 static void list_item_activated(
   GtkListItem      *list_item,
   guint             index,
   struct drop_down *data
 ) {
+  data->current_value = index;
+  update_icons(data);
+
   alsa_set_elem_value(data->elem, index);
 
   gtk_popover_popdown(GTK_POPOVER(data->popover));
@@ -48,6 +61,12 @@ static void list_item_activated(
 static void toggle_button_clicked(GtkWidget *widget, struct drop_down *data) {
   gtk_popover_popup(GTK_POPOVER(data->popover));
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->button), FALSE);
+
+  // Scroll to and focus the currently selected item
+  guint selected = gtk_single_selection_get_selected(data->selection);
+  gtk_list_view_scroll_to(
+    GTK_LIST_VIEW(data->listview), selected, GTK_LIST_SCROLL_FOCUS, NULL
+  );
 }
 
 static void setup_factory(
@@ -59,27 +78,13 @@ static void setup_factory(
 
   GtkWidget *label = gtk_label_new(NULL);
   gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+  gtk_widget_set_hexpand(label, TRUE);
   gtk_box_append(GTK_BOX(box), label);
 
   GtkWidget *icon = gtk_image_new_from_icon_name("object-select-symbolic");
   gtk_box_append(GTK_BOX(box), icon);
 
   gtk_list_item_set_child(list_item, box);
-}
-
-static void update_list_item(
-  GtkListItem      *list_item,
-  struct drop_down *data
-) {
-  GtkWidget *box = gtk_list_item_get_child(list_item);
-  GtkWidget *icon = gtk_widget_get_last_child(box);
-
-  int index = gtk_single_selection_get_selected(data->selection);
-
-  if (index == gtk_list_item_get_position(list_item))
-    gtk_widget_set_opacity(icon, 1.0);
-  else
-    gtk_widget_set_opacity(icon, 0.0);
 }
 
 static void bind_factory(
@@ -91,12 +96,15 @@ static void bind_factory(
 
   GtkWidget *box = gtk_list_item_get_child(list_item);
   GtkWidget *label = gtk_widget_get_first_child(box);
+  GtkWidget *icon = gtk_widget_get_last_child(box);
 
   int index = gtk_list_item_get_position(list_item);
   const char *text = alsa_get_item_name(data->elem, index);
   gtk_label_set_text(GTK_LABEL(label), text);
 
-  update_list_item(list_item, data);
+  if (index < data->count)
+    data->icons[index] = icon;
+  gtk_widget_set_opacity(icon, index == data->current_value ? 1.0 : 0.0);
 }
 
 static void drop_down_updated(
@@ -109,6 +117,8 @@ static void drop_down_updated(
   gtk_widget_set_sensitive(data->button, is_writable);
 
   int value = alsa_get_elem_value(elem);
+  data->current_value = value;
+  update_icons(data);
   gtk_single_selection_set_selected(data->selection, value);
 
   gtk_widget_remove_css_classes_by_prefix(data->button, "selected-");
@@ -123,15 +133,17 @@ static void drop_down_updated(
   );
 }
 
-static void drop_down_destroy(GtkWidget *widget, GtkWidget *popover) {
-  gtk_widget_unparent(popover);
+static void drop_down_destroy(GtkWidget *widget, struct drop_down *data) {
+  gtk_widget_unparent(data->popover);
+  g_free(data->icons);
+  g_free(data);
 }
 
 GtkWidget *make_drop_down_alsa_elem(
   struct alsa_elem *elem,
   const char       *label_text
 ) {
-  struct drop_down *data = g_malloc(sizeof(struct drop_down));
+  struct drop_down *data = g_malloc0(sizeof(struct drop_down));
   data->elem = elem;
 
   data->button = gtk_toggle_button_new_with_label(label_text);
@@ -146,13 +158,14 @@ GtkWidget *make_drop_down_alsa_elem(
   );
   g_signal_connect(
     gtk_widget_get_first_child(data->button),
-    "destroy", G_CALLBACK(drop_down_destroy), data->popover
+    "destroy", G_CALLBACK(drop_down_destroy), data
   );
 
   GListModel *model = G_LIST_MODEL(gtk_string_list_new(NULL));
 
-  int count = alsa_get_item_count(elem);
-  for (int i = 0; i < count; i++) {
+  data->count = alsa_get_item_count(elem);
+  data->icons = g_malloc0(data->count * sizeof(GtkWidget *));
+  for (int i = 0; i < data->count; i++) {
     const char *text = alsa_get_item_name(elem, i);
 
     gtk_string_list_append(GTK_STRING_LIST(model), text);
@@ -172,6 +185,7 @@ GtkWidget *make_drop_down_alsa_elem(
     factory
   );
   gtk_list_view_set_single_click_activate(GTK_LIST_VIEW(data->listview), TRUE);
+  gtk_widget_add_css_class(data->listview, "drop-down-list");
 
   gtk_popover_set_child(GTK_POPOVER(data->popover), data->listview);
 
