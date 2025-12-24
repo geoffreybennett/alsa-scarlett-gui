@@ -545,3 +545,14 @@ button.toggle {
   background: #600000;
   color: #ffffff;
 }
+
+/* Mixer unavailable overlay */
+.mixer-unavailable {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff4040;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 20px 40px;
+  border-radius: 10px;
+  border: 2px solid #ff0000;
+}

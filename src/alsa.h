@@ -259,7 +259,9 @@ struct alsa_card {
   GtkWidget          *window_main_contents;
   GtkWidget          *routing_grid;
   GtkWidget          *mixer_grid;
+  GtkWidget          *mixer_overlay;
   GtkWidget          *mixer_glow;
+  GtkWidget          *mixer_unavailable_label;
   GtkWidget          *mixer_corner_label;
   GList              *mixer_gain_widgets;
   GList              *input_gain_widgets;
@@ -274,6 +276,8 @@ struct alsa_card {
   GtkWidget          *routing_dsp_out_grid;
   GtkWidget          *routing_mixer_in_grid;
   GtkWidget          *routing_mixer_out_grid;
+  GtkWidget          *routing_mixer_in_heading;
+  GtkWidget          *routing_mixer_out_heading;
   GtkWidget          *routing_src_label;
   GtkWidget          *routing_snk_label;
   int                 has_speaker_switching;

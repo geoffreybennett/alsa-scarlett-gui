@@ -5,6 +5,7 @@
 #include "gtkhelper.h"
 #include "hw-io-availability.h"
 #include "widget-boolean.h"
+#include "window-mixer.h"
 #include "window-routing.h"
 
 struct sample_rate {
@@ -357,8 +358,10 @@ static gboolean update_sample_rate(struct sample_rate *data) {
 
   card->current_sample_rate = use_sample_rate;
 
-  if (old_sample_rate_cat != new_sample_rate_cat)
+  if (old_sample_rate_cat != new_sample_rate_cat) {
     update_all_hw_io_labels(card);
+    update_mixer_availability(card, new_sample_rate_cat != SR_HIGH);
+  }
 
   return G_SOURCE_CONTINUE;
 }

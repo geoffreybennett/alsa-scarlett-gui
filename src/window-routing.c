@@ -164,7 +164,8 @@ static GtkWidget *create_routing_group_grid(
   char             *descr,
   char             *tooltip,
   GtkOrientation    orientation,
-  GtkAlign          align
+  GtkAlign          align,
+  GtkWidget       **heading_label
 ) {
   GtkWidget *grid = gtk_grid_new();
   gtk_widget_set_name(grid, name);
@@ -192,6 +193,9 @@ static GtkWidget *create_routing_group_grid(
   }
   gtk_widget_set_tooltip_text(label, tooltip);
 
+  if (heading_label)
+    *heading_label = label;
+
   return grid;
 }
 
@@ -211,50 +215,52 @@ static void create_routing_grid(struct alsa_card *card) {
   card->routing_hw_in_grid = create_routing_group_grid(
     card, "routing_hw_in_grid", "Hardware Inputs",
     "Hardware Inputs are the physical inputs on the interface",
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END, NULL
   );
   card->routing_pcm_in_grid = create_routing_group_grid(
     card, "routing_pcm_in_grid", "PCM Outputs",
     "PCM Outputs are the digital audio channels sent from the PC to "
     "the interface over USB, used for audio playback",
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END, NULL
   );
   card->routing_pcm_out_grid = create_routing_group_grid(
     card, "routing_pcm_out_grid", "PCM Inputs",
     "PCM Inputs are the digital audio channels sent from the interface "
     "to the PC over USB, use for audio recording",
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START, NULL
   );
   card->routing_hw_out_grid = create_routing_group_grid(
     card, "routing_hw_out_grid", "Hardware Outputs",
     "Hardware Outputs are the physical outputs on the interface",
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START, NULL
   );
   if (has_dsp) {
     card->routing_dsp_in_grid = create_routing_group_grid(
       card, "routing_dsp_in_grid", "DSP\nInputs",
       "DSP Inputs are used to send audio to the DSP, which is used for "
       "features such as the input level meters, Air mode, and Autogain",
-      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER, NULL
     );
     card->routing_dsp_out_grid = create_routing_group_grid(
       card, "routing_dsp_out_grid", "DSP\nOutputs",
       "DSP Outputs are used to send audio from the DSP after it has "
       "done its processing",
-      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER, NULL
     );
   }
   if (!card->has_fixed_mixer_inputs)
     card->routing_mixer_in_grid = create_routing_group_grid(
       card, "routing_mixer_in_grid", "Mixer\nInputs",
       "Mixer Inputs are used to mix multiple audio channels together",
-      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER,
+      &card->routing_mixer_in_heading
     );
   card->routing_mixer_out_grid = create_routing_group_grid(
     card, "routing_mixer_out_grid",
     card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
     "Mixer Outputs are used to send audio from the mixer",
-    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER
+    GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER,
+    &card->routing_mixer_out_heading
   );
 
   int left_col_num = 0;
@@ -983,21 +989,19 @@ static GtkWidget *make_talkback_mix_widget(
   return button;
 }
 
-// Helper to set label styling for digital I/O availability
-static void set_digital_io_label(
+// Helper to set label styling for availability
+static void set_availability_label(
   GtkWidget  *label,
   const char *base_name,
-  int         available
+  int         available,
+  const char *tooltip
 ) {
   if (!available) {
     char *markup = g_strdup_printf(
       "<span color=\"#808080\"><s>%s</s></span>", base_name
     );
     gtk_label_set_markup(GTK_LABEL(label), markup);
-    gtk_widget_set_tooltip_text(
-      label,
-      "Unavailable with current Digital I/O mode and sample rate"
-    );
+    gtk_widget_set_tooltip_text(label, tooltip);
     g_free(markup);
   } else {
     gtk_label_set_text(GTK_LABEL(label), base_name);
@@ -1118,7 +1122,10 @@ void update_hw_output_label(struct routing_snk *r_snk) {
       int max_port = elem->hw_type == HW_TYPE_SPDIF
         ? card->max_spdif_out : card->max_adat_out;
       int available = max_port < 0 || elem->lr_num <= max_port;
-      set_digital_io_label(r_snk->label_widget, base_name, available);
+      set_availability_label(
+        r_snk->label_widget, base_name, available,
+        "Unavailable with current Digital I/O mode and sample rate"
+      );
     } else {
       gtk_label_set_text(GTK_LABEL(r_snk->label_widget), base_name);
       gtk_label_set_use_markup(GTK_LABEL(r_snk->label_widget), FALSE);
@@ -1211,10 +1218,71 @@ void update_hw_input_label(struct routing_src *r_src) {
     ? card->max_spdif_in : card->max_adat_in;
   int available = max_port < 0 || r_src->lr_num <= max_port;
 
-  const char *base_name = r_src->display_name
-    ? r_src->display_name : r_src->name;
+  char *base_name = get_src_display_name_formatted(r_src);
 
-  set_digital_io_label(r_src->label_widget, base_name, available);
+  set_availability_label(
+    r_src->label_widget, base_name, available,
+    "Unavailable with current Digital I/O mode and sample rate"
+  );
+
+  g_free(base_name);
+}
+
+// Update mixer source label for availability at high sample rates
+static void update_mixer_src_label(struct routing_src *r_src) {
+  if (!r_src->label_widget || r_src->port_category != PC_MIX)
+    return;
+
+  struct alsa_card *card = r_src->card;
+  int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
+
+  char *base_name = get_src_display_name_formatted(r_src);
+
+  set_availability_label(
+    r_src->label_widget, base_name, available,
+    "Mixer unavailable at current sample rate"
+  );
+
+  g_free(base_name);
+}
+
+// Update mixer sink label for availability at high sample rates
+static void update_mixer_snk_label(struct routing_snk *r_snk) {
+  struct alsa_elem *elem = r_snk->elem;
+
+  if (!r_snk->label_widget || elem->port_category != PC_MIX)
+    return;
+
+  struct alsa_card *card = elem->card;
+  int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
+
+  char *base_name = get_snk_display_name_formatted(r_snk);
+
+  set_availability_label(
+    r_snk->label_widget, base_name, available,
+    "Mixer unavailable at current sample rate"
+  );
+
+  g_free(base_name);
+}
+
+// Update mixer heading labels for availability at high sample rates
+static void update_mixer_headings(struct alsa_card *card) {
+  int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
+
+  if (card->routing_mixer_in_heading)
+    set_availability_label(
+      card->routing_mixer_in_heading, "Mixer\nInputs", available,
+      "Mixer unavailable at current sample rate"
+    );
+
+  if (card->routing_mixer_out_heading) {
+    const char *name = card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs";
+    set_availability_label(
+      card->routing_mixer_out_heading, name, available,
+      "Mixer unavailable at current sample rate"
+    );
+  }
 }
 
 // Update PCM source label based on channel availability
@@ -1273,14 +1341,14 @@ void update_all_pcm_labels(struct alsa_card *card) {
   }
 }
 
-// Update all HW I/O labels when availability changes
+// Update all HW I/O and mixer labels when availability changes
 void update_all_hw_io_labels(struct alsa_card *card) {
   if (!card->routing_snks || !card->routing_srcs)
     return;
 
   update_hw_io_limits(card);
 
-  // Update HW routing sinks (outputs)
+  // Update routing sinks
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
@@ -1289,9 +1357,11 @@ void update_all_hw_io_labels(struct alsa_card *card) {
 
     if (elem->port_category == PC_HW)
       update_hw_output_label(r_snk);
+    else if (elem->port_category == PC_MIX)
+      update_mixer_snk_label(r_snk);
   }
 
-  // Update HW routing sources (inputs)
+  // Update routing sources
   for (int i = 0; i < card->routing_srcs->len; i++) {
     struct routing_src *r_src = &g_array_index(
       card->routing_srcs, struct routing_src, i
@@ -1299,7 +1369,12 @@ void update_all_hw_io_labels(struct alsa_card *card) {
 
     if (r_src->port_category == PC_HW)
       update_hw_input_label(r_src);
+    else if (r_src->port_category == PC_MIX)
+      update_mixer_src_label(r_src);
   }
+
+  // Update mixer headings
+  update_mixer_headings(card);
 }
 
 // Callback when monitor group related controls change
