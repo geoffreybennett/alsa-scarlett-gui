@@ -247,8 +247,11 @@ static void curve_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     double x = db_to_x(in_db);
     double y = db_to_y(out_db);
 
-    // Draw filled circle
-    cairo_set_source_rgb(cr, 0.2, 0.8, 1.0);
+    // Draw filled circle - red if clipping, cyan otherwise
+    if (curve->input_level_db >= DB_MAX || curve->output_level_db >= DB_MAX)
+      cairo_set_source_rgb(cr, 1.0, 0.3, 0.3);
+    else
+      cairo_set_source_rgb(cr, 0.2, 0.8, 1.0);
     cairo_arc(cr, x, y, 4, 0, 2 * M_PI);
     cairo_fill(cr);
   }
