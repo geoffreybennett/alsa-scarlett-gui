@@ -220,7 +220,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
   // create unavailable overlay label (hidden by default)
   GtkWidget *unavail = card->mixer_unavailable_label = gtk_label_new(
-    "Mixer unavailable at current sample rate"
+    "Mixer unavailable at\ncurrent sample rate"
   );
   gtk_widget_add_css_class(unavail, "mixer-unavailable");
   gtk_widget_set_halign(unavail, GTK_ALIGN_CENTER);
