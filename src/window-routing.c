@@ -1377,6 +1377,11 @@ static void monitor_group_changed(struct alsa_elem *elem, void *data) {
   }
 }
 
+// Callback when digital I/O mode changes
+static void digital_io_mode_changed(struct alsa_elem *elem, void *data) {
+  update_all_hw_io_labels(elem->card);
+}
+
 static void make_snk_routing_widget(
   struct routing_snk *r_snk,
   char               *name,
@@ -1686,6 +1691,12 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
   // update HW I/O labels for availability based on Digital I/O mode
   // and sample rate (must be after widgets are created)
   update_all_hw_io_labels(card);
+
+  // register callback for digital I/O mode changes
+  if (card->digital_io_mode_elem)
+    alsa_elem_add_callback(
+      card->digital_io_mode_elem, digital_io_mode_changed, NULL, NULL
+    );
 
   add_drop_controller_motion(card, routing_overlay);
 

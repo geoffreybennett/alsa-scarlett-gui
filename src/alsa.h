@@ -303,8 +303,9 @@ struct alsa_card {
   int                 pcm_capture_channels;        // current available (0=all)
 
   // HW I/O availability based on digital I/O mode and sample rate
-  struct alsa_elem   *digital_io_mode_elem;  // "Digital I/O Mode" or "S/PDIF Mode"
+  struct alsa_elem   *digital_io_mode_elem;  // "Digital I/O Mode", "S/PDIF Mode", or "S/PDIF Source"
   int                 digital_io_mode;       // cached mode index at init time
+  int                 digital_io_mode_live;  // mode changes take effect immediately
   int                 current_sample_rate;   // current sample rate (Hz)
   int                 max_spdif_in;          // max S/PDIF input ports
   int                 max_spdif_out;         // max S/PDIF output ports
