@@ -580,3 +580,64 @@ struct scarlett4_firmware_container *scarlett4_get_best_firmware(uint32_t pid) {
   // Read the full firmware file (with data)
   return scarlett4_read_firmware_file(found->fn);
 }
+
+// Compare two 4-valued firmware versions
+// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+static int version_cmp(const uint32_t *v1, const uint32_t *v2) {
+  for (int i = 0; i < 4; i++) {
+    if (v1[i] < v2[i]) return -1;
+    if (v1[i] > v2[i]) return 1;
+  }
+  return 0;
+}
+
+// Find a firmware section by type in a container
+static struct scarlett4_firmware *find_section(
+  struct scarlett4_firmware_container *container,
+  enum scarlett4_firmware_type type
+) {
+  for (uint32_t i = 0; i < container->num_sections; i++)
+    if (container->sections[i]->type == type)
+      return container->sections[i];
+  return NULL;
+}
+
+int scarlett4_is_mid_upgrade(struct alsa_card *card) {
+  struct found_firmware *found = g_hash_table_lookup(
+    best_firmware, GINT_TO_POINTER(card->pid)
+  );
+  if (!found)
+    return 0;
+
+  // Read the full container (enumeration only stores metadata)
+  struct scarlett4_firmware_container *container =
+    scarlett4_read_firmware_file(found->fn);
+  if (!container)
+    return 0;
+
+  // Find leapfrog and ESP sections
+  struct scarlett4_firmware *leapfrog_fw =
+    find_section(container, SCARLETT4_FIRMWARE_LEAPFROG);
+  struct scarlett4_firmware *esp_fw =
+    find_section(container, SCARLETT4_FIRMWARE_ESP);
+
+  if (!leapfrog_fw || !esp_fw) {
+    scarlett4_free_firmware_container(container);
+    return 0;
+  }
+
+  // Check if leapfrog is loaded (device firmware == leapfrog version)
+  int leapfrog_loaded =
+    version_cmp(card->firmware_version_4, leapfrog_fw->firmware_version) == 0;
+
+  // Check if ESP needs update
+  int need_esp =
+    version_cmp(card->esp_firmware_version, esp_fw->firmware_version) != 0;
+
+  fprintf(stderr, "is_mid_upgrade: leapfrog_loaded=%d need_esp=%d\n",
+    leapfrog_loaded, need_esp);
+
+  scarlett4_free_firmware_container(container);
+
+  return leapfrog_loaded && need_esp;
+}

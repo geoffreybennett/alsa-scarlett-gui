@@ -11,6 +11,11 @@
 #include "widget-drop-down.h"
 #include "window-startup.h"
 
+// Wrapper for create_update_firmware_window (passes NULL for parent_label)
+static void update_firmware_clicked(GtkWidget *w, struct alsa_card *card) {
+  create_update_firmware_window(w, card, NULL);
+}
+
 static GtkWidget *small_label(const char *text) {
   GtkWidget *w = gtk_label_new(NULL);
 
@@ -365,7 +370,7 @@ static void add_reset_actions(
     "Update Firmware",
     "Update",
     s,
-    G_CALLBACK(create_update_firmware_window)
+    G_CALLBACK(update_firmware_clicked)
   );
 
   g_free(s);

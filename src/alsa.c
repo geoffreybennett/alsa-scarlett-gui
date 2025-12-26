@@ -1163,8 +1163,32 @@ static void complete_card_init(struct alsa_card *card) {
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
 
   // For FCP/scarlett4 devices, get the 4-valued best firmware version
-  if (card->driver_type == DRIVER_TYPE_SOCKET)
+  // and read the current device firmware versions
+  if (card->driver_type == DRIVER_TYPE_SOCKET) {
     card->best_firmware_version_4 = scarlett4_get_best_firmware_version(card->pid);
+
+    // Read current device firmware version
+    struct alsa_elem *fw_elem = get_elem_by_name(card->elems, "Firmware Version");
+    if (fw_elem && fw_elem->count == 4) {
+      long *values = alsa_get_elem_int_values(fw_elem);
+      if (values) {
+        for (int i = 0; i < 4; i++)
+          card->firmware_version_4[i] = values[i];
+        g_free(values);
+      }
+    }
+
+    // Read current device ESP firmware version
+    struct alsa_elem *esp_elem = get_elem_by_name(card->elems, "ESP Firmware Version");
+    if (esp_elem && esp_elem->count == 4) {
+      long *values = alsa_get_elem_int_values(esp_elem);
+      if (values) {
+        for (int i = 0; i < 4; i++)
+          card->esp_firmware_version[i] = values[i];
+        g_free(values);
+      }
+    }
+  }
 
   if (card->serial) {
     // Call the reopen callbacks for this card

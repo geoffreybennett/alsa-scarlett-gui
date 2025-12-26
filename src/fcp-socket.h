@@ -26,6 +26,9 @@ int fcp_socket_wait_for_disconnect(int sock_fd);
 // Returns 0 on success, -1 on error
 int fcp_socket_reboot_device(struct alsa_card *card);
 
+// Reboot a device on an existing socket connection
+int fcp_socket_reboot_device_fd(int sock_fd);
+
 // Reset config using FCP socket, with progress callback
 // Returns 0 on success, -1 on error
 int fcp_socket_reset_config(
@@ -42,12 +45,33 @@ int fcp_socket_erase_app_firmware(
   void *user_data
 );
 
+// Erase app firmware on an existing socket connection
+int fcp_socket_erase_app_firmware_fd(
+  int   sock_fd,
+  void  (*progress_callback)(int percent, void *user_data),
+  void  *user_data
+);
+
 // Upload firmware using FCP socket, with progress callback
 // command should be FCP_SOCKET_REQUEST_APP_FIRMWARE_UPDATE or
 // FCP_SOCKET_REQUEST_ESP_FIRMWARE_UPDATE
 // Returns 0 on success, -1 on error
 int fcp_socket_upload_firmware(
   struct alsa_card *card,
+  uint8_t           command,
+  const uint8_t    *firmware_data,
+  uint32_t          firmware_size,
+  uint16_t          usb_vid,
+  uint16_t          usb_pid,
+  const uint8_t    *sha256,
+  const uint8_t    *md5,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+);
+
+// Upload firmware on an existing socket connection
+int fcp_socket_upload_firmware_fd(
+  int               sock_fd,
   uint8_t           command,
   const uint8_t    *firmware_data,
   uint32_t          firmware_size,
