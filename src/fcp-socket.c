@@ -312,3 +312,84 @@ int fcp_socket_reset_config(
   close(sock_fd);
   return ret;
 }
+
+// Erase app firmware using FCP socket, with progress callback
+int fcp_socket_erase_app_firmware(
+  struct alsa_card *card,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+) {
+  int sock_fd, ret = -1;
+
+  sock_fd = fcp_socket_connect(card);
+  if (sock_fd < 0)
+    return -1;
+
+  if (fcp_socket_send_command(sock_fd, FCP_SOCKET_REQUEST_APP_FIRMWARE_ERASE) == 0)
+    ret = handle_response_with_progress(sock_fd, progress_callback, user_data);
+
+  close(sock_fd);
+  return ret;
+}
+
+// Upload firmware using FCP socket, with progress callback
+int fcp_socket_upload_firmware(
+  struct alsa_card *card,
+  uint8_t           command,
+  const uint8_t    *firmware_data,
+  uint32_t          firmware_size,
+  uint16_t          usb_vid,
+  uint16_t          usb_pid,
+  const uint8_t    *sha256,
+  const uint8_t    *md5,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+) {
+  int sock_fd, ret = -1;
+
+  sock_fd = fcp_socket_connect(card);
+  if (sock_fd < 0)
+    return -1;
+
+  // Build and send header
+  // Payload = firmware_payload header (56 bytes) + firmware data
+  struct fcp_socket_msg_header header = {
+    .magic = FCP_SOCKET_MAGIC_REQUEST,
+    .msg_type = command,
+    .payload_length = sizeof(struct firmware_payload) + firmware_size
+  };
+
+  if (write(sock_fd, &header, sizeof(header)) != sizeof(header)) {
+    fprintf(stderr, "Error sending header: %s", strerror(errno));
+    goto out;
+  }
+
+  // Build and send firmware payload header
+  struct firmware_payload payload = {
+    .size = firmware_size,
+    .usb_vid = usb_vid,
+    .usb_pid = usb_pid
+  };
+  memcpy(payload.sha256, sha256, 32);
+  if (md5)
+    memcpy(payload.md5, md5, 16);
+
+  if (write(sock_fd, &payload, sizeof(payload)) != sizeof(payload)) {
+    fprintf(stderr, "Error sending payload header: %s", strerror(errno));
+    goto out;
+  }
+
+  // Send firmware data
+  ssize_t written = write(sock_fd, firmware_data, firmware_size);
+  if (written != firmware_size) {
+    fprintf(stderr, "Error sending firmware data: %s", strerror(errno));
+    goto out;
+  }
+
+  // Handle server responses
+  ret = handle_response_with_progress(sock_fd, progress_callback, user_data);
+
+out:
+  close(sock_fd);
+  return ret;
+}

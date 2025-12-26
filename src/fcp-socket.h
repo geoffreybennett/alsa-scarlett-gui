@@ -33,3 +33,28 @@ int fcp_socket_reset_config(
   void (*progress_callback)(int percent, void *user_data),
   void *user_data
 );
+
+// Erase app firmware using FCP socket, with progress callback
+// Returns 0 on success, -1 on error
+int fcp_socket_erase_app_firmware(
+  struct alsa_card *card,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+);
+
+// Upload firmware using FCP socket, with progress callback
+// command should be FCP_SOCKET_REQUEST_APP_FIRMWARE_UPDATE or
+// FCP_SOCKET_REQUEST_ESP_FIRMWARE_UPDATE
+// Returns 0 on success, -1 on error
+int fcp_socket_upload_firmware(
+  struct alsa_card *card,
+  uint8_t           command,
+  const uint8_t    *firmware_data,
+  uint32_t          firmware_size,
+  uint16_t          usb_vid,
+  uint16_t          usb_pid,
+  const uint8_t    *sha256,
+  const uint8_t    *md5,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+);
