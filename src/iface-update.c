@@ -21,31 +21,40 @@ GtkWidget *create_iface_update_main(struct alsa_card *card) {
   // explanation
   GtkWidget *w;
 
-  w = gtk_label_new("Firmware Update Required");
+  // Check if we have firmware available for this device
+  int has_firmware = card->best_firmware_version ||
+                     card->best_firmware_version_4;
+
+  w = gtk_label_new(has_firmware ? "Firmware Update Available"
+                                 : "Firmware Update Required");
   gtk_widget_add_css_class(w, "window-title");
   gtk_box_append(GTK_BOX(content), w);
 
-  if (!card->best_firmware_version) {
-    w = gtk_label_new(NULL);
-    gtk_label_set_markup(
-      GTK_LABEL(w),
+  if (!has_firmware) {
+    const char *url = card->driver_type == DRIVER_TYPE_SOCKET
+      ? "https://github.com/geoffreybennett/scarlett4-firmware"
+      : "https://github.com/geoffreybennett/scarlett2-firmware";
+
+    char *markup = g_strdup_printf(
       "A firmware update is required for this device in order to\n"
       "access all of its features. Please obtain the firmware from\n"
-      "<a class=\"linktext\" "
-      "href=\"https://github.com/geoffreybennett/scarlett2-firmware\">"
-      "https://github.com/geoffreybennett/scarlett2-firmware</a>,\n"
-      "and restart this application."
+      "<a class=\"linktext\" href=\"%s\">%s</a>,\n"
+      "and restart this application.",
+      url, url
     );
+
+    w = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(w), markup);
+    g_free(markup);
 
     gtk_box_append(GTK_BOX(content), w);
     return top;
   }
 
   w = gtk_label_new(
-    "A firmware update is required for this device in order to\n"
-    "access all of its features. This process will take about 15\n"
-    "seconds. Please do not disconnect the device during the\n"
-    "update."
+    "A firmware update is available for this device.\n"
+    "This process may take a couple of minutes.\n"
+    "Please do not disconnect the device during the update."
   );
   gtk_box_append(GTK_BOX(content), w);
 

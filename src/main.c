@@ -6,6 +6,7 @@
 #include "main.h"
 #include "menu.h"
 #include "scarlett2-firmware.h"
+#include "scarlett4-firmware.h"
 #include "window-hardware.h"
 #include "window-iface.h"
 
@@ -36,6 +37,7 @@ static void startup(GtkApplication *app, gpointer user_data) {
   load_css();
 
   scarlett2_enum_firmware();
+  scarlett4_enum_firmware();
   alsa_init();
 
   create_no_card_window();

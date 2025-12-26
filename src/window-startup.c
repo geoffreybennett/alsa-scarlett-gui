@@ -309,18 +309,55 @@ static void add_reset_actions(
   if (!firmware_elem)
     return;
 
-  int firmware_version = alsa_get_elem_value(firmware_elem);
+  char *s;
 
-  if (firmware_version >= card->best_firmware_version)
-    return;
+  // FCP/Scarlett4 devices use 4-valued firmware versions
+  if (card->driver_type == DRIVER_TYPE_SOCKET && card->best_firmware_version_4) {
+    long *current = alsa_get_elem_int_values(firmware_elem);
+    if (!current)
+      return;
 
-  char *s = g_strdup_printf(
-    "Updating the firmware will reset the interface to its "
-    "factory default settings and update the firmware from version "
-    "%d to %d.",
-    firmware_version,
-    card->best_firmware_version
-  );
+    // Compare 4-valued versions
+    int needs_update = 0;
+    for (int i = 0; i < 4; i++) {
+      if ((uint32_t)current[i] < card->best_firmware_version_4[i]) {
+        needs_update = 1;
+        break;
+      }
+      if ((uint32_t)current[i] > card->best_firmware_version_4[i])
+        break;
+    }
+
+    if (!needs_update) {
+      g_free(current);
+      return;
+    }
+
+    s = g_strdup_printf(
+      "Updating the firmware will reset the interface to its "
+      "factory default settings and update the firmware from version "
+      "%ld.%ld.%ld.%ld to %u.%u.%u.%u.",
+      current[0], current[1], current[2], current[3],
+      card->best_firmware_version_4[0], card->best_firmware_version_4[1],
+      card->best_firmware_version_4[2], card->best_firmware_version_4[3]
+    );
+    g_free(current);
+  } else {
+    // Scarlett2 devices use single-valued firmware versions
+    int firmware_version = alsa_get_elem_value(firmware_elem);
+
+    if (firmware_version >= card->best_firmware_version)
+      return;
+
+    s = g_strdup_printf(
+      "Updating the firmware will reset the interface to its "
+      "factory default settings and update the firmware from version "
+      "%d to %d.",
+      firmware_version,
+      card->best_firmware_version
+    );
+  }
+
   add_reset_action(
     card,
     grid,

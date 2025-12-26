@@ -239,12 +239,31 @@ void create_card_window(struct alsa_card *card) {
     min_firmware_version = alsa_get_elem_value(min_firmware_elem);
   }
 
+  // Check if FCP/Scarlett4 device needs firmware update (4-valued comparison)
+  int fcp_needs_update = 0;
+  if (card->driver_type == DRIVER_TYPE_SOCKET &&
+      card->best_firmware_version_4 && firmware_elem) {
+    long *current = alsa_get_elem_int_values(firmware_elem);
+    if (current) {
+      for (int i = 0; i < 4; i++) {
+        if ((uint32_t)current[i] < card->best_firmware_version_4[i]) {
+          fcp_needs_update = 1;
+          break;
+        }
+        if ((uint32_t)current[i] > card->best_firmware_version_4[i])
+          break;
+      }
+      g_free(current);
+    }
+  }
+
   // Firmware update required
   // or firmware version available and in MSD mode
   // (updating will disable MSD mode)
+  // or FCP device with newer firmware available
   if (firmware_version < min_firmware_version ||
-      (card->best_firmware_version > firmware_version &&
-         in_msd_mode)) {
+      (card->best_firmware_version > firmware_version && in_msd_mode) ||
+      fcp_needs_update) {
     card->window_main_contents = create_iface_update_main(card);
     has_startup = false;
     has_mixer = false;
