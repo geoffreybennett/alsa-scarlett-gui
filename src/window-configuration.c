@@ -6,6 +6,7 @@
 #include "alsa.h"
 #include "gtkhelper.h"
 #include "optional-controls.h"
+#include "optional-state.h"
 #include "custom-names.h"
 #include "port-enable.h"
 #include "widget-drop-down.h"
@@ -52,6 +53,70 @@ static void on_destroy(
   GtkWidget                   *widget
 ) {
   g_free(data);
+}
+
+// Keys used to store the configuration window tabs in the state file
+#define CONFIG_TAB_KEY "configuration-tab"
+#define CONFIG_IO_TAB_KEY "configuration-io-tab"
+
+// Data for notebook tab persistence
+struct notebook_tab_data {
+  struct alsa_card *card;
+  const char       *key;
+};
+
+// Callback when a notebook tab changes
+static void on_tab_changed(
+  GtkNotebook *notebook,
+  GtkWidget   *page,
+  guint        page_num,
+  gpointer     user_data
+) {
+  // During window destruction, the notebook is detached from the
+  // hierarchy before tabs are removed, triggering this callback.
+  if (!gtk_widget_get_root(GTK_WIDGET(notebook)))
+    return;
+
+  struct notebook_tab_data *data = user_data;
+
+  char value[16];
+  snprintf(value, sizeof(value), "%u", page_num);
+  optional_state_save(data->card, data->key, value);
+}
+
+// Free notebook tab data
+static void free_notebook_tab_data(gpointer data) {
+  g_free(data);
+}
+
+// Restore the saved tab selection and connect signal to save changes
+static void setup_notebook_tab_persistence(
+  GtkNotebook      *notebook,
+  struct alsa_card *card,
+  const char       *key
+) {
+  // Restore saved tab
+  GHashTable *state = optional_state_load(card);
+  if (state) {
+    const char *value = g_hash_table_lookup(state, key);
+    if (value) {
+      int page_num = atoi(value);
+      int n_pages = gtk_notebook_get_n_pages(notebook);
+      if (page_num >= 0 && page_num < n_pages)
+        gtk_notebook_set_current_page(notebook, page_num);
+    }
+    g_hash_table_destroy(state);
+  }
+
+  // Connect signal to save tab changes
+  struct notebook_tab_data *data = g_malloc(sizeof(struct notebook_tab_data));
+  data->card = card;
+  data->key = key;
+
+  g_signal_connect_data(
+    notebook, "switch-page", G_CALLBACK(on_tab_changed), data,
+    (GClosureNotify)free_notebook_tab_data, 0
+  );
 }
 
 // Free column checkbox data
@@ -1756,6 +1821,11 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
     gtk_widget_set_vexpand(notebook, TRUE);
     gtk_box_append(GTK_BOX(io_tab_content), notebook);
 
+    // Restore saved I/O tab and connect signal to save tab changes
+    setup_notebook_tab_persistence(
+      GTK_NOTEBOOK(notebook), card, CONFIG_IO_TAB_KEY
+    );
+
     GtkWidget *io_tab_label = gtk_label_new("I/O Configuration");
     gtk_notebook_append_page(
       GTK_NOTEBOOK(top_notebook), io_tab_content, io_tab_label
@@ -1797,6 +1867,11 @@ GtkWidget *create_configuration_controls(struct alsa_card *card) {
   if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(top_notebook)) > 0) {
     gtk_widget_set_vexpand(top_notebook, TRUE);
     gtk_box_append(GTK_BOX(vbox), top_notebook);
+
+    // Restore saved tab and connect signal to save tab changes
+    setup_notebook_tab_persistence(
+      GTK_NOTEBOOK(top_notebook), card, CONFIG_TAB_KEY
+    );
   }
 
   // cleanup on destroy
