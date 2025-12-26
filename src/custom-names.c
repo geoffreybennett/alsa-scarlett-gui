@@ -15,8 +15,8 @@
 
 // Callback structure to pass data to save callback
 struct custom_name_save_data {
-  char *serial;
-  char *config_key;
+  struct alsa_card *card;
+  char             *config_key;
 };
 
 // Callback when a custom name value changes
@@ -38,13 +38,13 @@ static void custom_name_changed(
     // only save if valid UTF-8
     if (str_len > 0 && g_utf8_validate((const char *)bytes, str_len, NULL)) {
       char *str = g_strndup((const char *)bytes, str_len);
-      optional_state_save(data->serial, data->config_key, str);
+      optional_state_save(data->card, data->config_key, str);
       g_free(str);
     } else {
-      optional_state_save(data->serial, data->config_key, "");
+      optional_state_save(data->card, data->config_key, "");
     }
   } else {
-    optional_state_save(data->serial, data->config_key, "");
+    optional_state_save(data->card, data->config_key, "");
   }
 }
 
@@ -54,7 +54,6 @@ void custom_names_free_callback_data(void *data) {
     return;
 
   struct custom_name_save_data *save_data = data;
-  g_free(save_data->serial);
   g_free(save_data->config_key);
   g_free(save_data);
 }
@@ -444,7 +443,7 @@ static void create_src_custom_name_elem(
   // register callback to save state on changes
   struct custom_name_save_data *callback_data =
     g_malloc0(sizeof(struct custom_name_save_data));
-  callback_data->serial = g_strdup(card->serial);
+  callback_data->card = card;
   callback_data->config_key = config_key;  // transfer ownership
 
   alsa_elem_add_callback(
@@ -516,7 +515,7 @@ static void create_snk_custom_name_elem(
   // register callback to save state on changes
   struct custom_name_save_data *callback_data =
     g_malloc0(sizeof(struct custom_name_save_data));
-  callback_data->serial = g_strdup(card->serial);
+  callback_data->card = card;
   callback_data->config_key = config_key;  // transfer ownership
 
   alsa_elem_add_callback(
@@ -545,7 +544,7 @@ void custom_names_init(struct alsa_card *card) {
   }
 
   // load existing state
-  GHashTable *state = optional_state_load(card->serial);
+  GHashTable *state = optional_state_load(card);
   if (!state) {
     state = g_hash_table_new_full(
       g_str_hash, g_str_equal, g_free, g_free
