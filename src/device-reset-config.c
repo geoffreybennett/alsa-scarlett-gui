@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 #include "device-reset-config.h"
+#include "fcp-socket.h"
 #include "optional-state.h"
 #include "scarlett2.h"
 #include "scarlett2-ioctls.h"
@@ -22,38 +23,47 @@ static gpointer update_progress(
   return NULL;
 }
 
-#define fail(msg) { \
-  if (hwdep) \
-    scarlett2_close(hwdep); \
-  return update_progress(modal_data, msg, -1); \
+// Progress callback for FCP socket
+static void fcp_progress_callback(int percent, void *user_data) {
+  struct modal_data *modal_data = user_data;
+  update_progress(modal_data, NULL, percent);
 }
 
-#define failsndmsg(msg) g_strdup_printf(msg, snd_strerror(err))
-
-gpointer reset_config_thread(gpointer user_data) {
-  struct modal_data *modal_data = user_data;
-
-  update_progress(modal_data, g_strdup("Resetting configuration..."), 0);
-
-  // Remove the application config file for this device
-  optional_state_remove(modal_data->card->serial);
-
-  snd_hwdep_t *hwdep;
+// HWDEP (Scarlett2) reset config implementation
+static gpointer reset_config_hwdep(struct modal_data *modal_data) {
+  snd_hwdep_t *hwdep = NULL;
 
   int err = scarlett2_open_card(modal_data->card->device, &hwdep);
-  if (err < 0)
-    fail(failsndmsg("Unable to open hwdep interface: %s"));
+  if (err < 0) {
+    return update_progress(
+      modal_data,
+      g_strdup_printf("Unable to open hwdep interface: %s", snd_strerror(err)),
+      -1
+    );
+  }
 
   err = scarlett2_erase_config(hwdep);
-  if (err < 0)
-    fail(failsndmsg("Unable to reset configuration: %s"));
+  if (err < 0) {
+    scarlett2_close(hwdep);
+    return update_progress(
+      modal_data,
+      g_strdup_printf("Unable to reset configuration: %s", snd_strerror(err)),
+      -1
+    );
+  }
 
   while (1) {
     g_usleep(50000);
 
     err = scarlett2_get_erase_progress(hwdep);
-    if (err < 0)
-      fail(failsndmsg("Unable to get erase progress: %s"));
+    if (err < 0) {
+      scarlett2_close(hwdep);
+      return update_progress(
+        modal_data,
+        g_strdup_printf("Unable to get erase progress: %s", snd_strerror(err)),
+        -1
+      );
+    }
     if (err == 255)
       break;
 
@@ -65,6 +75,46 @@ gpointer reset_config_thread(gpointer user_data) {
   scarlett2_close(hwdep);
 
   return NULL;
+}
+
+// FCP socket reset config implementation
+static gpointer reset_config_socket(struct modal_data *modal_data) {
+  int err = fcp_socket_reset_config(
+    modal_data->card, fcp_progress_callback, modal_data
+  );
+  if (err < 0) {
+    return update_progress(
+      modal_data,
+      g_strdup("Unable to reset configuration via FCP socket"),
+      -1
+    );
+  }
+
+  g_main_context_invoke(NULL, modal_start_reboot_progress, modal_data);
+  fcp_socket_reboot_device(modal_data->card);
+
+  return NULL;
+}
+
+gpointer reset_config_thread(gpointer user_data) {
+  struct modal_data *modal_data = user_data;
+
+  update_progress(modal_data, g_strdup("Resetting configuration..."), 0);
+
+  // Remove the application config file for this device
+  optional_state_remove(modal_data->card->serial);
+
+  if (modal_data->card->driver_type == DRIVER_TYPE_HWDEP)
+    return reset_config_hwdep(modal_data);
+
+  if (modal_data->card->driver_type == DRIVER_TYPE_SOCKET)
+    return reset_config_socket(modal_data);
+
+  return update_progress(
+    modal_data,
+    g_strdup("Unsupported driver type for reset configuration"),
+    -1
+  );
 }
 
 static void join_thread(gpointer thread) {

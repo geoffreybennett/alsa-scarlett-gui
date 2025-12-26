@@ -25,3 +25,11 @@ int fcp_socket_wait_for_disconnect(int sock_fd);
 // Reboot a device using the FCP socket interface
 // Returns 0 on success, -1 on error
 int fcp_socket_reboot_device(struct alsa_card *card);
+
+// Reset config using FCP socket, with progress callback
+// Returns 0 on success, -1 on error
+int fcp_socket_reset_config(
+  struct alsa_card *card,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+);
