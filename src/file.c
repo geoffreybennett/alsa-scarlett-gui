@@ -124,7 +124,7 @@ static int should_save_elem(struct alsa_elem *elem) {
 }
 
 // Save card configuration to native format
-static int save_native(struct alsa_card *card, const char *path) {
+int save_native(struct alsa_card *card, const char *path) {
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
 
@@ -256,7 +256,7 @@ static void set_elem_from_string(struct alsa_elem *elem, const char *str) {
 }
 
 // Load card configuration from native format
-static int load_native(struct alsa_card *card, const char *path) {
+int load_native(struct alsa_card *card, const char *path) {
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
 
