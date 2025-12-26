@@ -5,6 +5,8 @@
 
 #include <stdint.h>
 
+#include "alsa.h"
+
 // Firmware directory for big Gen 4 devices
 #define SCARLETT4_FIRMWARE_DIR "/usr/lib/firmware/scarlett4"
 
@@ -76,3 +78,7 @@ uint32_t *scarlett4_get_best_firmware_version(uint32_t pid);
 
 /* Get the best firmware container for a device, or NULL if none */
 struct scarlett4_firmware_container *scarlett4_get_best_firmware(uint32_t pid);
+
+/* Check if device is in mid-upgrade state (leapfrog loaded, ESP needs update)
+ * Returns 1 if mid-upgrade, 0 otherwise */
+int scarlett4_is_mid_upgrade(struct alsa_card *card);

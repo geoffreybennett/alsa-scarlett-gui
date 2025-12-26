@@ -6,14 +6,23 @@
 #include "window-iface.h"
 #include "window-modal.h"
 
-static void modal_no_callback(GtkWidget *w, struct modal_data *modal_data) {
-  GtkWidget *dialog = modal_data->dialog;
+// Common cleanup when modal closes (Ok button, X button, or Escape)
+static void modal_cleanup(struct modal_data *modal_data) {
+  // If there was an error and we have a parent label, update it
+  if (modal_data->had_error && modal_data->parent_label)
+    gtk_label_set_text(
+      GTK_LABEL(modal_data->parent_label),
+      "Update failed. Please close the window and retry."
+    );
 
   alsa_unregister_reopen_callback(modal_data->serial);
-
-  gtk_window_destroy(GTK_WINDOW(dialog));
   modal_data->card->window_modal = NULL;
   check_modal_window_closed();
+}
+
+static void modal_no_callback(GtkWidget *w, struct modal_data *modal_data) {
+  modal_cleanup(modal_data);
+  gtk_window_destroy(GTK_WINDOW(modal_data->dialog));
 }
 
 static void modal_yes_callback(GtkWidget *w, struct modal_data *modal_data) {
@@ -35,6 +44,12 @@ static void modal_yes_callback(GtkWidget *w, struct modal_data *modal_data) {
   modal_data->card->window_modal = NULL;
 
   modal_data->callback(modal_data);
+}
+
+// Handle window close (X button, Escape, etc.)
+static gboolean modal_close_request(GtkWindow *window, struct modal_data *modal_data) {
+  modal_cleanup(modal_data);
+  return FALSE;  // Allow the window to close
 }
 
 static void free_modal_data(gpointer user_data) {
@@ -68,6 +83,10 @@ void create_modal_window(
 
   gtk_window_set_title(GTK_WINDOW(dialog), title);
   gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+  if (card->window_main)
+    gtk_window_set_transient_for(
+      GTK_WINDOW(dialog), GTK_WINDOW(card->window_main)
+    );
   gtk_widget_add_css_class(dialog, "window-frame");
 
   GtkWidget *content_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 50);
@@ -108,12 +127,82 @@ void create_modal_window(
   card->window_modal = dialog;
 }
 
+void create_modal_window_autostart(
+  GtkWidget        *w,
+  struct alsa_card *card,
+  const char       *title,
+  const char       *title_active,
+  const char       *message,
+  modal_callback    callback,
+  GtkWidget        *parent_label
+) {
+  if (card->window_modal) {
+    fprintf(stderr, "Error: Modal window already open\n");
+    return;
+  }
+
+  GtkWidget *dialog = gtk_window_new();
+
+  struct modal_data *modal_data = g_new0(struct modal_data, 1);
+  modal_data->card = card;
+  modal_data->serial = g_strdup(card->serial);
+  modal_data->title_active = title_active;
+  modal_data->dialog = dialog;
+  modal_data->callback = callback;
+  modal_data->parent_label = parent_label;
+
+  gtk_window_set_title(GTK_WINDOW(dialog), title_active);
+  gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+  if (card->window_main)
+    gtk_window_set_transient_for(
+      GTK_WINDOW(dialog), GTK_WINDOW(card->window_main)
+    );
+  gtk_widget_add_css_class(dialog, "window-frame");
+
+  GtkWidget *content_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 50);
+  gtk_window_set_child(GTK_WINDOW(dialog), content_box);
+  gtk_widget_add_css_class(content_box, "window-content");
+  gtk_widget_add_css_class(content_box, "top-level-content");
+  gtk_widget_add_css_class(content_box, "big-padding");
+
+  modal_data->label = gtk_label_new(message);
+  gtk_box_append(GTK_BOX(content_box), modal_data->label);
+
+  GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_set_margin(sep, 0);
+  gtk_box_append(GTK_BOX(content_box), sep);
+
+  modal_data->button_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 50);
+  gtk_widget_set_halign(modal_data->button_box, GTK_ALIGN_CENTER);
+  gtk_box_append(GTK_BOX(content_box), modal_data->button_box);
+
+  g_object_set_data_full(
+    G_OBJECT(dialog), "modal_data", modal_data, free_modal_data
+  );
+
+  // Handle window close (X button, Escape, etc.)
+  g_signal_connect(
+    dialog, "close-request", G_CALLBACK(modal_close_request), modal_data
+  );
+
+  // Add progress bar directly (no Yes/No buttons)
+  modal_data->progress_bar = gtk_progress_bar_new();
+  gtk_box_append(GTK_BOX(modal_data->button_box), modal_data->progress_bar);
+
+  gtk_widget_set_visible(dialog, TRUE);
+
+  // Start the callback
+  callback(modal_data);
+}
+
 gboolean modal_update_progress(gpointer user_data) {
   struct progress_data *progress_data = user_data;
   struct modal_data *modal_data = progress_data->modal_data;
 
   // Done? Replace the progress bar with an Ok button.
   if (progress_data->progress < 0) {
+    modal_data->had_error = 1;
+
     GtkWidget *child;
     while ((child = gtk_widget_get_first_child(modal_data->button_box)))
       gtk_box_remove(GTK_BOX(modal_data->button_box), child);

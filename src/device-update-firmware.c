@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <gtk/gtk.h>
+#include <unistd.h>
 #include "device-reset-config.h"
 #include "fcp-shared.h"
 #include "fcp-socket.h"
@@ -164,11 +165,24 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
   return NULL;
 }
 
+// Compare two 4-valued firmware versions
+// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+static int version_cmp(const uint32_t *v1, const uint32_t *v2) {
+  for (int i = 0; i < 4; i++) {
+    if (v1[i] < v2[i]) return -1;
+    if (v1[i] > v2[i]) return 1;
+  }
+  return 0;
+}
+
 // FCP socket (Scarlett4) firmware update implementation
 static gpointer update_firmware_socket(struct modal_data *modal_data) {
   struct alsa_card *card = modal_data->card;
   struct scarlett4_firmware_container *container = NULL;
+  struct scarlett4_firmware *leapfrog_fw = NULL;
+  struct scarlett4_firmware *esp_fw = NULL;
   struct scarlett4_firmware *app_fw = NULL;
+  int sock_fd = -1;
   int err;
 
   update_progress(modal_data, g_strdup("Checking firmware..."), 0);
@@ -187,8 +201,11 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
     );
   }
 
-  // Find App firmware section
+  // Find firmware sections
+  leapfrog_fw = find_firmware_section(container, SCARLETT4_FIRMWARE_LEAPFROG);
+  esp_fw = find_firmware_section(container, SCARLETT4_FIRMWARE_ESP);
   app_fw = find_firmware_section(container, SCARLETT4_FIRMWARE_APP);
+
   if (!app_fw) {
     scarlett4_free_firmware_container(container);
     return update_progress(
@@ -196,52 +213,140 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
     );
   }
 
-  // TODO: Implement full multi-step upgrade process:
-  // 1. Check if ESP needs update
-  // 2. If ESP needs update, check if Leapfrog is already loaded
-  // 3. If Leapfrog needed: upload leapfrog -> reboot -> wait
-  // 4. If ESP needed: upload ESP (no reboot)
-  // 5. Upload App -> reboot
-  //
-  // For now, just erase and upload App firmware directly
+  // Check if ESP needs update
+  int need_esp = 0;
+  if (esp_fw) {
+    if (version_cmp(card->esp_firmware_version, esp_fw->firmware_version) != 0)
+      need_esp = 1;
+  }
 
-  update_progress(modal_data, g_strdup("Erasing firmware..."), 0);
+  // Check if Leapfrog is already loaded (device firmware == leapfrog version)
+  int leapfrog_loaded = 0;
+  if (leapfrog_fw) {
+    if (version_cmp(card->firmware_version_4, leapfrog_fw->firmware_version) == 0)
+      leapfrog_loaded = 1;
+  }
 
-  err = fcp_socket_erase_app_firmware(card, fcp_progress_callback, modal_data);
-  if (err < 0) {
+  // If ESP needs update and Leapfrog is NOT loaded, we need to load it first
+  int need_leapfrog = need_esp && leapfrog_fw && !leapfrog_loaded;
+
+  fprintf(stderr, "FW update: device=%u.%u.%u.%u esp=%u.%u.%u.%u\n",
+    card->firmware_version_4[0], card->firmware_version_4[1],
+    card->firmware_version_4[2], card->firmware_version_4[3],
+    card->esp_firmware_version[0], card->esp_firmware_version[1],
+    card->esp_firmware_version[2], card->esp_firmware_version[3]);
+  if (leapfrog_fw)
+    fprintf(stderr, "FW update: leapfrog=%u.%u.%u.%u\n",
+      leapfrog_fw->firmware_version[0], leapfrog_fw->firmware_version[1],
+      leapfrog_fw->firmware_version[2], leapfrog_fw->firmware_version[3]);
+  if (esp_fw)
+    fprintf(stderr, "FW update: esp_fw=%u.%u.%u.%u\n",
+      esp_fw->firmware_version[0], esp_fw->firmware_version[1],
+      esp_fw->firmware_version[2], esp_fw->firmware_version[3]);
+  if (app_fw)
+    fprintf(stderr, "FW update: app_fw=%u.%u.%u.%u\n",
+      app_fw->firmware_version[0], app_fw->firmware_version[1],
+      app_fw->firmware_version[2], app_fw->firmware_version[3]);
+  fprintf(stderr, "FW update: need_esp=%d leapfrog_loaded=%d need_leapfrog=%d\n",
+    need_esp, leapfrog_loaded, need_leapfrog);
+
+  // Open connection once for all operations
+  sock_fd = fcp_socket_connect(card);
+  if (sock_fd < 0) {
     scarlett4_free_firmware_container(container);
     return update_progress(
-      modal_data, g_strdup("Failed to erase firmware"), -1
+      modal_data, g_strdup("Failed to connect to device"), -1
     );
   }
 
-  update_progress(modal_data, g_strdup("Uploading firmware..."), 0);
+  // Step 1: Upload Leapfrog if needed, then reboot and exit
+  // When device comes back running leapfrog, the upgrade prompt will appear
+  // again and we'll detect leapfrog_loaded and continue with ESP + App
+  if (need_leapfrog) {
+    update_progress(modal_data, g_strdup("Erasing app firmware..."), 0);
+    err = fcp_socket_erase_app_firmware_fd(sock_fd, fcp_progress_callback, modal_data);
+    if (err < 0) {
+      close(sock_fd);
+      scarlett4_free_firmware_container(container);
+      return update_progress(
+        modal_data, g_strdup("Failed to erase app firmware"), -1
+      );
+    }
 
-  fprintf(stderr, "DEBUG: app_fw->firmware_length=%u data=%p\n",
-    app_fw->firmware_length, (void*)app_fw->firmware_data);
+    update_progress(modal_data, g_strdup("Uploading leapfrog firmware..."), 0);
+    err = fcp_socket_upload_firmware_fd(
+      sock_fd, FCP_SOCKET_REQUEST_APP_FIRMWARE_UPDATE,
+      leapfrog_fw->firmware_data, leapfrog_fw->firmware_length,
+      leapfrog_fw->usb_vid, leapfrog_fw->usb_pid,
+      leapfrog_fw->sha256, NULL,
+      fcp_progress_callback, modal_data
+    );
+    if (err < 0) {
+      close(sock_fd);
+      scarlett4_free_firmware_container(container);
+      return update_progress(
+        modal_data, g_strdup("Failed to upload leapfrog firmware"), -1
+      );
+    }
 
-  err = fcp_socket_upload_firmware(
-    card,
-    FCP_SOCKET_REQUEST_APP_FIRMWARE_UPDATE,
-    app_fw->firmware_data,
-    app_fw->firmware_length,
-    app_fw->usb_vid,
-    app_fw->usb_pid,
-    app_fw->sha256,
-    NULL,  // No MD5 for App firmware
-    fcp_progress_callback,
-    modal_data
+    // Reboot - modal will wait for device to come back
+    g_main_context_invoke(NULL, modal_start_reboot_progress, modal_data);
+    fcp_socket_reboot_device_fd(sock_fd);
+    close(sock_fd);
+    scarlett4_free_firmware_container(container);
+    return NULL;
+  }
+
+  // Step 2: Upload ESP if needed (no reboot after)
+  if (need_esp) {
+    update_progress(modal_data, g_strdup("Uploading ESP firmware..."), 0);
+    err = fcp_socket_upload_firmware_fd(
+      sock_fd, FCP_SOCKET_REQUEST_ESP_FIRMWARE_UPDATE,
+      esp_fw->firmware_data, esp_fw->firmware_length,
+      esp_fw->usb_vid, esp_fw->usb_pid,
+      esp_fw->sha256, esp_fw->md5,
+      fcp_progress_callback, modal_data
+    );
+    if (err < 0) {
+      close(sock_fd);
+      scarlett4_free_firmware_container(container);
+      return update_progress(
+        modal_data, g_strdup("Failed to upload ESP firmware"), -1
+      );
+    }
+  }
+
+  // Step 3: Erase and upload App firmware
+  update_progress(modal_data, g_strdup("Erasing app firmware..."), 0);
+  err = fcp_socket_erase_app_firmware_fd(sock_fd, fcp_progress_callback, modal_data);
+  if (err < 0) {
+    close(sock_fd);
+    scarlett4_free_firmware_container(container);
+    return update_progress(
+      modal_data, g_strdup("Failed to erase app firmware"), -1
+    );
+  }
+
+  update_progress(modal_data, g_strdup("Uploading app firmware..."), 0);
+  err = fcp_socket_upload_firmware_fd(
+    sock_fd, FCP_SOCKET_REQUEST_APP_FIRMWARE_UPDATE,
+    app_fw->firmware_data, app_fw->firmware_length,
+    app_fw->usb_vid, app_fw->usb_pid,
+    app_fw->sha256, NULL,
+    fcp_progress_callback, modal_data
   );
-
   if (err < 0) {
+    close(sock_fd);
     scarlett4_free_firmware_container(container);
     return update_progress(
-      modal_data, g_strdup("Failed to upload firmware"), -1
+      modal_data, g_strdup("Failed to upload app firmware"), -1
     );
   }
 
+  // Final reboot
   g_main_context_invoke(NULL, modal_start_reboot_progress, modal_data);
-  fcp_socket_reboot_device(card);
+  fcp_socket_reboot_device_fd(sock_fd);
+  close(sock_fd);
   scarlett4_free_firmware_container(container);
 
   return NULL;
@@ -275,14 +380,17 @@ static void update_firmware_yes_callback(struct modal_data *modal_data) {
   );
 }
 
-void create_update_firmware_window(GtkWidget *w, struct alsa_card *card) {
-  create_modal_window(
+void create_update_firmware_window(
+  GtkWidget        *w,
+  struct alsa_card *card,
+  GtkWidget        *parent_label
+) {
+  create_modal_window_autostart(
     w, card,
-    "Confirm Update Firmware",
     "Updating Firmware",
-    "The firmware update process will take about 15 seconds.\n"
-    "Please do not disconnect the device while updating.\n"
-    "Ready to proceed?",
-    update_firmware_yes_callback
+    "Updating Firmware",
+    "Please do not disconnect the device while updating.",
+    update_firmware_yes_callback,
+    parent_label
   );
 }
