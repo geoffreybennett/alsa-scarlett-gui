@@ -4,6 +4,7 @@
 #include "glow.h"
 #include "gtkhelper.h"
 #include "iface-mixer.h"
+#include "presets.h"
 #include "routing-lines.h"
 #include "stringhelper.h"
 #include "tooltips.h"
@@ -1226,6 +1227,14 @@ static void create_global_controls(
   add_speaker_switching_controls_gen4(card, column[0]);
   add_talkback_controls_enum(card, column[1]);
   add_talkback_controls_switches(card, column[1]);
+
+  // Add Presets button if device has a serial number
+  if (card->serial && *card->serial) {
+    GtkWidget *presets_button = create_presets_button(card);
+    gtk_widget_set_valign(presets_button, GTK_ALIGN_END);
+    gtk_widget_set_vexpand(presets_button, TRUE);
+    gtk_box_append(GTK_BOX(column[2]), presets_button);
+  }
 }
 
 static GtkWidget *create_main_window_controls(struct alsa_card *card) {
