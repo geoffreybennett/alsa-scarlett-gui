@@ -416,7 +416,7 @@ void draw_routing_lines(
         continue;
 
       // get the source and skip if it's "Off"
-      int r_src_idx = alsa_get_elem_value(elem);
+      int r_src_idx = r_snk->effective_source_idx;
       if (!r_src_idx)
         continue;
 
@@ -472,8 +472,8 @@ void draw_routing_lines(
     else
       cairo_set_dash(cr, NULL, 0, 0);
 
-    // get the sink and skip if it's "Off"
-    int r_src_idx = alsa_get_elem_value(elem);
+    // get the source and skip if it's "Off" or muted
+    int r_src_idx = r_snk->effective_source_idx;
     if (!r_src_idx)
       continue;
 
@@ -531,7 +531,7 @@ void draw_routing_lines(
       continue;
 
     // get the source connected to this sink
-    int r_src_idx = alsa_get_elem_value(elem);
+    int r_src_idx = r_snk->effective_source_idx;
     if (!r_src_idx)
       continue;
 

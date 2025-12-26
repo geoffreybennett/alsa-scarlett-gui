@@ -212,6 +212,184 @@ static void add_speaker_switching_controls_switches(
   gtk_box_append(GTK_BOX(global_controls), box);
 }
 
+// Check if any Alt Group Output is enabled (Gen 4)
+static int has_any_alt_group_enabled(struct alsa_card *card) {
+  for (int i = 1; i <= 8; i++) {
+    char name[64];
+    snprintf(name, sizeof(name), "Alt Group Output %d Playback Switch", i);
+    struct alsa_elem *elem = get_elem_by_name(card->elems, name);
+    if (elem && alsa_get_elem_value(elem))
+      return 1;
+  }
+  return 0;
+}
+
+// Callback to update speaker switching button sensitivity
+static void update_speaker_switching_sensitivity(
+  struct alsa_elem *elem,
+  void             *data
+) {
+  GtkWidget *button = data;
+  struct alsa_card *card = elem->card;
+
+  int enabled = has_any_alt_group_enabled(card);
+  gtk_widget_set_sensitive(button, enabled);
+}
+
+// Gen 4: Main/Alt selector only (speaker switching is implicit)
+static void add_speaker_switching_controls_gen4(
+  struct alsa_card *card,
+  GtkWidget        *global_controls
+) {
+  GPtrArray *elems = card->elems;
+
+  // Check if this is Gen 4 (has Main/Alt Group controls)
+  struct alsa_elem *main_group = get_elem_by_prefix(
+    elems, "Main Group Output"
+  );
+  if (!main_group)
+    return;
+
+  struct alsa_elem *alt = get_elem_by_name(
+    elems, "Speaker Switching Alt Playback Switch"
+  );
+  if (!alt)
+    return;
+
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_tooltip_text(
+    box,
+    "Monitor Group lets you swap between Main and Alt monitor groups. "
+    "Configure which outputs belong to each group in the Configuration window."
+  );
+
+  GtkWidget *l = gtk_label_new("Monitor Group");
+  GtkWidget *w = make_boolean_alsa_elem(alt, "Main", "Alt");
+
+  gtk_widget_add_css_class(w, "speaker-switching-alt");
+
+  // Set initial sensitivity based on whether any Alt output is enabled
+  gtk_widget_set_sensitive(w, has_any_alt_group_enabled(card));
+
+  // Register callbacks on Alt Group Output switches to update sensitivity
+  for (int i = 1; i <= 8; i++) {
+    char name[64];
+    snprintf(name, sizeof(name), "Alt Group Output %d Playback Switch", i);
+    struct alsa_elem *alt_out = get_elem_by_name(elems, name);
+    if (alt_out)
+      alsa_elem_add_callback(alt_out, update_speaker_switching_sensitivity, w, NULL);
+  }
+
+  gtk_box_append(GTK_BOX(box), l);
+  gtk_box_append(GTK_BOX(box), w);
+  gtk_box_append(GTK_BOX(global_controls), box);
+}
+
+// Structure to track output volume widget and its monitor group elements
+struct output_volume_group_data {
+  GtkWidget        *widget;
+  struct alsa_elem *main_group_switch;
+  struct alsa_elem *alt_group_switch;
+};
+
+// Check if output is in a monitor group and update widget sensitivity
+static void update_output_volume_sensitivity(
+  struct alsa_elem *elem,
+  void             *data
+) {
+  struct output_volume_group_data *d = data;
+
+  int in_group = 0;
+
+  if (d->main_group_switch && alsa_get_elem_value(d->main_group_switch))
+    in_group = 1;
+  if (d->alt_group_switch && alsa_get_elem_value(d->alt_group_switch))
+    in_group = 1;
+
+  gtk_widget_set_sensitive(d->widget, !in_group);
+}
+
+// Free output volume group data
+static void free_output_volume_group_data(void *data) {
+  g_free(data);
+}
+
+// Get the routing sink for an analogue output by lr_num
+static struct routing_snk *get_analogue_output_snk(
+  struct alsa_card *card,
+  int               lr_num
+) {
+  if (!card->routing_snks)
+    return NULL;
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (snk->elem->port_category == PC_HW &&
+        snk->elem->hw_type == HW_TYPE_ANALOGUE &&
+        snk->elem->lr_num == lr_num) {
+      return snk;
+    }
+  }
+  return NULL;
+}
+
+// Set up monitor group sensitivity tracking for an output volume widget
+static void setup_output_volume_monitor_group(
+  struct alsa_card *card,
+  GtkWidget        *widget,
+  int               lr_num
+) {
+  struct routing_snk *snk = get_analogue_output_snk(card, lr_num);
+  if (!snk)
+    return;
+
+  // Check if this output has monitor group controls
+  if (!snk->main_group_switch && !snk->alt_group_switch)
+    return;
+
+  // Create tracking data
+  struct output_volume_group_data *data =
+    g_malloc(sizeof(struct output_volume_group_data));
+  data->widget = widget;
+  data->main_group_switch = snk->main_group_switch;
+  data->alt_group_switch = snk->alt_group_switch;
+
+  // Register callbacks on the group switches
+  if (snk->main_group_switch) {
+    alsa_elem_add_callback(
+      snk->main_group_switch,
+      update_output_volume_sensitivity,
+      data,
+      NULL
+    );
+  }
+  if (snk->alt_group_switch) {
+    alsa_elem_add_callback(
+      snk->alt_group_switch,
+      update_output_volume_sensitivity,
+      data,
+      NULL
+    );
+  }
+
+  // Attach cleanup to the widget
+  g_object_weak_ref(
+    G_OBJECT(widget),
+    (GWeakNotify)free_output_volume_group_data,
+    data
+  );
+
+  // Set initial sensitivity
+  int in_group = 0;
+  if (snk->main_group_switch && alsa_get_elem_value(snk->main_group_switch))
+    in_group = 1;
+  if (snk->alt_group_switch && alsa_get_elem_value(snk->alt_group_switch))
+    in_group = 1;
+  gtk_widget_set_sensitive(widget, !in_group);
+}
+
 static void add_talkback_controls_enum(
   struct alsa_card *card,
   GtkWidget        *global_controls
@@ -823,6 +1001,7 @@ static void create_output_controls(
 
       if (strstr(elem->name, "Playback Volume")) {
         w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 1);
+        setup_output_volume_monitor_group(card, w, elem->lr_num);
         gtk_grid_attach(
           GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 1, 1, 1
         );
@@ -839,6 +1018,7 @@ static void create_output_controls(
         } else {
           gtk_widget_set_tooltip_text(w, "Mute");
         }
+        setup_output_volume_monitor_group(card, w, elem->lr_num);
         gtk_grid_attach(
           GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 2, 1, 1
         );
@@ -961,6 +1141,7 @@ static void create_global_controls(
   add_sample_rate_control(card, column[2]);
   add_speaker_switching_controls_enum(card, column[0]);
   add_speaker_switching_controls_switches(card, column[0]);
+  add_speaker_switching_controls_gen4(card, column[0]);
   add_talkback_controls_enum(card, column[1]);
   add_talkback_controls_switches(card, column[1]);
 }
