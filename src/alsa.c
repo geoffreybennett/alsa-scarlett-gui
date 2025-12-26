@@ -837,9 +837,72 @@ static void get_routing_snks(struct alsa_card *card) {
     j++;
     r->elem = elem;
     elem->port_num = card->routing_out_count[elem->port_category]++;
+
+    // Cache monitor group element pointers for HW analogue outputs
+    if (elem->port_category == PC_HW && elem->hw_type == HW_TYPE_ANALOGUE) {
+      char ctrl_name[64];
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Main Group Output %d Playback Switch", elem->lr_num);
+      r->main_group_switch = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Alt Group Output %d Playback Switch", elem->lr_num);
+      r->alt_group_switch = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Main Group Output %d Source Playback Enum", elem->lr_num);
+      r->main_group_source = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Alt Group Output %d Source Playback Enum", elem->lr_num);
+      r->alt_group_source = get_elem_by_name(card->elems, ctrl_name);
+
+      // Initialize effective_source_idx to normal routing value
+      r->effective_source_idx = alsa_get_elem_value(elem);
+    } else {
+      // Non-HW-analogue sinks just use normal routing
+      r->effective_source_idx = alsa_get_elem_value(elem);
+    }
   }
 
   assert(j == count);
+}
+
+// Build lookup table mapping monitor group source enum values to routing
+// source indices. The monitor group source enums (Main/Alt Group Output X
+// Source Playback Enum) have different indices than the main routing
+// sources, so we need this mapping.
+static void get_monitor_group_src_map(struct alsa_card *card) {
+  // Find any monitor group source enum to get the item names
+  struct alsa_elem *vg_elem = get_elem_by_name(
+    card->elems, "Main Group Output 1 Source Playback Enum"
+  );
+  if (!vg_elem) {
+    card->monitor_group_src_map = NULL;
+    card->monitor_group_src_map_count = 0;
+    return;
+  }
+
+  int count = alsa_get_item_count(vg_elem);
+  card->monitor_group_src_map = g_malloc(count * sizeof(int));
+  card->monitor_group_src_map_count = count;
+
+  // For each monitor group enum item, find matching routing source by name
+  for (int i = 0; i < count; i++) {
+    char *vg_name = alsa_get_item_name(vg_elem, i);
+    card->monitor_group_src_map[i] = 0;  // Default to "Off"
+
+    for (int j = 0; j < card->routing_srcs->len; j++) {
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, j
+      );
+      if (strcmp(vg_name, r_src->name) == 0) {
+        card->monitor_group_src_map[i] = j;
+        break;
+      }
+    }
+  }
 }
 
 void alsa_get_routing_controls(struct alsa_card *card) {
@@ -866,6 +929,7 @@ void alsa_get_routing_controls(struct alsa_card *card) {
 
   get_routing_srcs(card);
   get_routing_snks(card);
+  get_monitor_group_src_map(card);
 }
 
 void alsa_elem_change(struct alsa_elem *elem) {
@@ -946,6 +1010,7 @@ static void card_destroy_callback(void *data) {
     }
     g_array_free(card->routing_snks, TRUE);
   }
+  g_free(card->monitor_group_src_map);
 
   // close ALSA handle
   if (card->handle)

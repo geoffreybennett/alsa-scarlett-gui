@@ -9,6 +9,7 @@
 #include "alsa.h"
 #include "widget-boolean.h"
 #include "window-mixer.h"
+#include "window-routing.h"
 
 // Maximum length for custom names
 #define MAX_CUSTOM_NAME_LEN 32
@@ -370,20 +371,8 @@ static void snk_custom_name_display_changed(
   struct routing_snk *snk = private;
   update_snk_display_name(snk);
 
-  // update routing window labels if box widget exists
-  if (snk->box_widget) {
-    // find the label child in the box widget and update it
-    for (GtkWidget *child = gtk_widget_get_first_child(snk->box_widget);
-         child != NULL;
-         child = gtk_widget_get_next_sibling(child)) {
-      if (GTK_IS_LABEL(child)) {
-        char *formatted_name = get_snk_display_name_formatted(snk);
-        gtk_label_set_text(GTK_LABEL(child), formatted_name);
-        g_free(formatted_name);
-        break;
-      }
-    }
-  }
+  // update routing window label - this handles monitor group indicators too
+  update_hw_output_label(snk);
 }
 
 // Create simulated element for a routing source
