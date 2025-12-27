@@ -413,6 +413,125 @@ static void setup_output_volume_monitor_group(
   gtk_widget_set_sensitive(widget, !in_group);
 }
 
+// Structure to track monitor group label widget
+struct monitor_group_label_data {
+  GtkWidget        *label;
+  struct alsa_elem *main_group_switch;
+  struct alsa_elem *alt_group_switch;
+  struct alsa_elem *speaker_switch_alt;
+};
+
+// Update monitor group label based on current state
+static void update_monitor_group_label(
+  struct alsa_elem *elem,
+  void             *data
+) {
+  struct monitor_group_label_data *d = data;
+
+  int in_main = d->main_group_switch &&
+                alsa_get_elem_value(d->main_group_switch);
+  int in_alt = d->alt_group_switch &&
+               alsa_get_elem_value(d->alt_group_switch);
+
+  // If not in any group, hide the label
+  if (!in_main && !in_alt) {
+    gtk_label_set_text(GTK_LABEL(d->label), "");
+    return;
+  }
+
+  // Check which group is active (0 = Main, 1 = Alt)
+  int alt_active = d->speaker_switch_alt &&
+                   alsa_get_elem_value(d->speaker_switch_alt);
+
+  if (in_main && !alt_active) {
+    // Active in Main group - green
+    gtk_label_set_markup(
+      GTK_LABEL(d->label),
+      "<span color=\"#4a4\" size=\"small\">Main</span>"
+    );
+  } else if (in_alt && alt_active) {
+    // Active in Alt group - red
+    gtk_label_set_markup(
+      GTK_LABEL(d->label),
+      "<span color=\"#f66\" size=\"small\">Alt</span>"
+    );
+  } else if (in_main && alt_active) {
+    // In Main but Alt is active - dimmed
+    gtk_label_set_markup(
+      GTK_LABEL(d->label),
+      "<span color=\"#666\" size=\"small\">Main</span>"
+    );
+  } else if (in_alt && !alt_active) {
+    // In Alt but Main is active - dimmed
+    gtk_label_set_markup(
+      GTK_LABEL(d->label),
+      "<span color=\"#666\" size=\"small\">Alt</span>"
+    );
+  }
+}
+
+// Free monitor group label data
+static void free_monitor_group_label_data(void *data) {
+  g_free(data);
+}
+
+// Create monitor group indicator label for an output
+static GtkWidget *create_monitor_group_label(
+  struct alsa_card *card,
+  int               lr_num
+) {
+  struct routing_snk *snk = get_analogue_output_snk(card, lr_num);
+  if (!snk)
+    return NULL;
+
+  // Check if this output has monitor group controls
+  if (!snk->main_group_switch && !snk->alt_group_switch)
+    return NULL;
+
+  // Get the speaker switching alt control
+  struct alsa_elem *speaker_switch_alt = get_elem_by_name(
+    card->elems, "Speaker Switching Alt Playback Switch"
+  );
+
+  // Create label widget
+  GtkWidget *label = gtk_label_new("");
+  gtk_widget_set_halign(label, GTK_ALIGN_CENTER);
+
+  // Create tracking data
+  struct monitor_group_label_data *data =
+    g_malloc(sizeof(struct monitor_group_label_data));
+  data->label = label;
+  data->main_group_switch = snk->main_group_switch;
+  data->alt_group_switch = snk->alt_group_switch;
+  data->speaker_switch_alt = speaker_switch_alt;
+
+  // Register callbacks on all relevant controls
+  if (snk->main_group_switch)
+    alsa_elem_add_callback(
+      snk->main_group_switch, update_monitor_group_label, data, NULL
+    );
+  if (snk->alt_group_switch)
+    alsa_elem_add_callback(
+      snk->alt_group_switch, update_monitor_group_label, data, NULL
+    );
+  if (speaker_switch_alt)
+    alsa_elem_add_callback(
+      speaker_switch_alt, update_monitor_group_label, data, NULL
+    );
+
+  // Attach cleanup to the widget
+  g_object_weak_ref(
+    G_OBJECT(label),
+    (GWeakNotify)free_monitor_group_label_data,
+    data
+  );
+
+  // Set initial state
+  update_monitor_group_label(NULL, data);
+
+  return label;
+}
+
 static void add_talkback_controls_enum(
   struct alsa_card *card,
   GtkWidget        *global_controls
@@ -1067,7 +1186,7 @@ static void create_output_controls(
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
       w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0, FALSE);
       gtk_widget_set_tooltip_text(w, "Master Volume Control");
-      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 2, 1, 1);
 
     } else if (strncmp(elem->name, "Line", 4) == 0 ||
                (strncmp(elem->name, "Master", 6) == 0 && elem->lr_num) ||
@@ -1077,7 +1196,7 @@ static void create_output_controls(
         w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 1, TRUE);
         setup_output_volume_monitor_group(card, w, elem->lr_num);
         gtk_grid_attach(
-          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 1, 1, 1
+          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 2, 1, 1
         );
 
         // store widget in card's list for level updates
@@ -1102,7 +1221,7 @@ static void create_output_controls(
           gtk_widget_set_tooltip_text(w, "Mute");
         }
         gtk_grid_attach(
-          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 2, 1, 1
+          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 3, 1, 1
         );
       } else if (strstr(elem->name, "Volume Control Playback Enum")) {
         w = make_boolean_alsa_elem(elem, "SW", "HW");
@@ -1113,7 +1232,7 @@ static void create_output_controls(
           "volume for this analogue output."
         );
         gtk_grid_attach(
-          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 3, 1, 1
+          GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 4, 1, 1
         );
       }
 
@@ -1138,7 +1257,7 @@ static void create_output_controls(
             "(hardware) volume knob, which controls the volume of "
             "the analogue outputs which have been set to “HW”."
       );
-      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 2, 1, 1);
     } else if (strcmp(elem->name, "Headphone Playback Volume") == 0) {
       GtkWidget *l = gtk_label_new("Headphones");
       gtk_widget_set_tooltip_text(
@@ -1147,14 +1266,14 @@ static void create_output_controls(
       );
       gtk_grid_attach(GTK_GRID(output_grid), l, 1, 0, 1, 1);
       w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0, FALSE);
-      gtk_grid_attach(GTK_GRID(output_grid), w, 1, 1, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 1, 2, 1, 1);
     } else if (strcmp(elem->name, "Mute Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
         elem, "*audio-volume-high", "*audio-volume-muted"
       );
       gtk_widget_add_css_class(w, "mute");
       gtk_widget_set_tooltip_text(w, "Mute HW controlled outputs");
-      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 2, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 3, 1, 1);
     } else if (strcmp(elem->name, "Dim Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
         elem, "*audio-volume-medium", "*audio-volume-low"
@@ -1163,14 +1282,14 @@ static void create_output_controls(
       gtk_widget_set_tooltip_text(
         w, "Dim (lower volume) of HW controlled outputs"
       );
-      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 3, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 4, 1, 1);
     } else if (strcmp(elem->name, "Speaker Mute Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
         elem, "*audio-volume-high", "*audio-volume-muted"
       );
       gtk_widget_add_css_class(w, "mute");
       gtk_widget_set_tooltip_text(w, "Mute speaker output");
-      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 4, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, 0, 5, 1, 1);
     } else if (strstr(elem->name, "Headphones") &&
                strstr(elem->name, "Mute Playback Switch")) {
       int headphones_num = get_num_from_string(elem->name);
@@ -1189,7 +1308,17 @@ static void create_output_controls(
         gtk_widget_set_tooltip_text(w, "Mute headphones output");
       }
 
-      gtk_grid_attach(GTK_GRID(output_grid), w, column, 4, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, column, 5, 1, 1);
+    }
+  }
+
+  // Add monitor group indicator labels for each output
+  for (int i = 0; i < output_count; i++) {
+    GtkWidget *label = create_monitor_group_label(card, i + 1);
+    if (label) {
+      gtk_grid_attach(
+        GTK_GRID(output_grid), label, i + line_1_col, 1, 1, 1
+      );
     }
   }
 
