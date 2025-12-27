@@ -121,6 +121,9 @@ struct routing_src {
 
   // routing window talkback button widget (for mixer outputs with talkback)
   GtkWidget *talkback_widget;
+
+  // cached level meter index (-1 if none)
+  int level_index;
 };
 
 // entry in alsa_card routing_snks (routing sinks) array for alsa
@@ -166,6 +169,9 @@ struct routing_snk {
   struct alsa_elem *alt_group_switch;
   struct alsa_elem *main_group_source;
   struct alsa_elem *alt_group_source;
+
+  // cached level meter index (-1 if none)
+  int level_index;
 };
 
 // hold one callback & its data

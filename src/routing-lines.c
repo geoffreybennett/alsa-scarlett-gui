@@ -763,6 +763,9 @@ void routing_levels_init(struct alsa_card *card) {
   // initialise all levels to minimum
   for (int i = 0; i < card->routing_levels_count; i++)
     card->routing_levels[i] = -80.0;
+
+  // cache level meter indices in routing src/snk structs
+  init_routing_level_indices(card);
 }
 
 // clean up level indication resources

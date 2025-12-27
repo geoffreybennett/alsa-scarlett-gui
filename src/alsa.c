@@ -773,6 +773,7 @@ static void get_routing_srcs(struct alsa_card *card) {
     );
     r->card = card;
     r->id = i;
+    r->level_index = -1;
 
     if (strcmp(name, "Off") == 0)
       r->port_category = PC_OFF;
@@ -916,6 +917,7 @@ static void get_routing_snks(struct alsa_card *card) {
       card->routing_snks, struct routing_snk, j
     );
     r->idx = j;
+    r->level_index = -1;
     j++;
     r->elem = elem;
     elem->port_num = card->routing_out_count[elem->port_category]++;

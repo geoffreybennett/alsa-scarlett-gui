@@ -151,19 +151,15 @@ static int update_levels_controls(void *user_data) {
     for (GList *l = card->output_gain_widgets; l; l = l->next) {
       struct output_gain_widget *og = l->data;
 
-      // get the routing source connected to this output
-      if (!og->r_snk || !og->r_snk->elem)
+      if (!og->r_snk)
         continue;
 
-      int r_src_idx = alsa_get_elem_value(og->r_snk->elem);
-      if (!r_src_idx)
+      // use the sink level directly
+      int index = get_routing_snk_level_index(og->r_snk);
+      if (index < 0)
         continue;
 
-      struct routing_src *r_src = &g_array_index(
-        card->routing_srcs, struct routing_src, r_src_idx
-      );
-
-      double level_db = get_routing_src_level_db(card, r_src);
+      double level_db = card->routing_levels[index];
 
       GtkWidget *dial = get_gain_dial(og->widget);
       if (dial)
@@ -183,7 +179,7 @@ static int update_levels_controls(void *user_data) {
 
       // Get input level from DSP Input sink
       if (dcw->input_snk) {
-        int idx = get_routing_snk_level_index(card, dcw->input_snk);
+        int idx = get_routing_snk_level_index(dcw->input_snk);
         if (idx >= 0 && idx < card->routing_levels_count)
           input_db = card->routing_levels[idx];
       }

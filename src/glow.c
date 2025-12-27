@@ -70,9 +70,8 @@ void level_to_colour(double db, double *r, double *g, double *b) {
   }
 }
 
-// get the level meter index for a routing sink
-// returns -1 if the sink has no corresponding level meter
-int get_routing_snk_level_index(
+// compute the level meter index for a routing sink
+static int compute_snk_level_index(
   struct alsa_card   *card,
   struct routing_snk *r_snk
 ) {
@@ -83,7 +82,31 @@ int get_routing_snk_level_index(
   if (cat == PC_OFF)
     return -1;
 
-  // level meters are ordered: HW Outputs, Mixer Inputs, DSP Inputs, PCM Inputs
+  // if meter labels are available, search for matching "Sink" label
+  if (card->level_meter_elem && card->level_meter_elem->meter_labels) {
+    for (int i = 0; i < card->routing_levels_count; i++) {
+      const char *label = card->level_meter_elem->meter_labels[i];
+      if (!label)
+        continue;
+
+      if (strncmp(label, "Sink ", 5) != 0)
+        continue;
+
+      // label+5 is like "Analogue 1"; elem->name is like
+      // "Analogue 1 Playback Enum"; match the label as a
+      // complete word prefix (followed by space)
+      const char *sink_name = label + 5;
+      int sink_name_len = strlen(sink_name);
+      if (strncmp(r_snk->elem->name, sink_name, sink_name_len) == 0 &&
+          r_snk->elem->name[sink_name_len] == ' ')
+        return i;
+    }
+
+    return -1;
+  }
+
+  // without labels, level meters are ordered:
+  // HW Outputs, Mixer Inputs, DSP Inputs, PCM Inputs
   int index = 0;
   for (int c = PC_HW; c < cat; c++)
     index += card->routing_out_count[c];
@@ -95,9 +118,8 @@ int get_routing_snk_level_index(
   return index;
 }
 
-// get the level meter index for a routing source
-// returns -1 if the source has no corresponding level meter
-static int get_routing_src_level_index(
+// compute the level meter index for a routing source
+static int compute_src_level_index(
   struct alsa_card   *card,
   struct routing_src *r_src
 ) {
@@ -112,12 +134,9 @@ static int get_routing_src_level_index(
       if (!label)
         continue;
 
-      // label format is "Source <type> <num>" or "Sink <type> <num>"
-      // we want Source labels that match r_src->name
       if (strncmp(label, "Source ", 7) != 0)
         continue;
 
-      // compare the rest with r_src->name
       if (strcmp(label + 7, r_src->name) == 0)
         return i;
     }
@@ -125,25 +144,45 @@ static int get_routing_src_level_index(
     return -1;
   }
 
-  // without labels, level meters are at sinks only (HW Outputs, Mixer
-  // Inputs, DSP Inputs, PCM Inputs); find a sink connected to this
-  // source and return its level index
+  // without labels, level meters are at sinks only; find a sink
+  // connected to this source and return its level index
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
     );
 
-    // check if this sink is connected to our source
     if (r_snk->effective_source_idx != r_src->id)
       continue;
 
-    int index = get_routing_snk_level_index(card, r_snk);
-    if (index >= 0)
-      return index;
+    if (r_snk->level_index >= 0)
+      return r_snk->level_index;
   }
 
-  // source is not connected to any sink
   return -1;
+}
+
+// compute and cache level meter indices for all routing srcs/snks
+void init_routing_level_indices(struct alsa_card *card) {
+
+  // sinks first (sources may depend on them in the no-labels path)
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    r_snk->level_index = compute_snk_level_index(card, r_snk);
+  }
+
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    r_src->level_index = compute_src_level_index(card, r_src);
+  }
+}
+
+// get the cached level meter index for a routing sink
+int get_routing_snk_level_index(struct routing_snk *r_snk) {
+  return r_snk->level_index;
 }
 
 // get level in dB for a routing source (-80 if no level data)
@@ -151,9 +190,8 @@ double get_routing_src_level_db(
   struct alsa_card   *card,
   struct routing_src *r_src
 ) {
-  int index = get_routing_src_level_index(card, r_src);
-  if (index < 0)
+  if (r_src->level_index < 0)
     return -80.0;
 
-  return card->routing_levels[index];
+  return card->routing_levels[r_src->level_index];
 }

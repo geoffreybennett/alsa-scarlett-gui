@@ -26,11 +26,11 @@ void get_glow_layer_params(
 // convert dB level to RGB colour (green → yellow → red)
 void level_to_colour(double db, double *r, double *g, double *b);
 
-// get the level meter index for a routing sink
-int get_routing_snk_level_index(
-  struct alsa_card   *card,
-  struct routing_snk *r_snk
-);
+// compute and cache level meter indices for all routing srcs/snks
+void init_routing_level_indices(struct alsa_card *card);
+
+// get the cached level meter index for a routing sink
+int get_routing_snk_level_index(struct routing_snk *r_snk);
 
 // get level in dB for a routing source (-80 if no level data)
 double get_routing_src_level_db(
