@@ -1101,7 +1101,6 @@ static void create_output_controls(
         } else {
           gtk_widget_set_tooltip_text(w, "Mute");
         }
-        setup_output_volume_monitor_group(card, w, elem->lr_num);
         gtk_grid_attach(
           GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 2, 1, 1
         );
