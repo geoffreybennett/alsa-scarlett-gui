@@ -14,6 +14,7 @@
 #include "window-dsp.h"
 #include "window-levels.h"
 #include "window-mixer.h"
+#include "window-routing.h"
 
 static const int level_breakpoints_out[] = { -80, -18, -12, -6, -3, -1 };
 
@@ -160,6 +161,10 @@ static int update_levels_controls(void *user_data) {
         continue;
 
       double level_db = card->routing_levels[index];
+
+      // show -inf if muted by inactive monitor group
+      if (is_snk_monitor_muted(og->r_snk))
+        level_db = -INFINITY;
 
       GtkWidget *dial = get_gain_dial(og->widget);
       if (dial)

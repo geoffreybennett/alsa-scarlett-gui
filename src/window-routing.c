@@ -489,7 +489,7 @@ static int get_speaker_switching_state(struct alsa_card *card) {
 }
 
 // Check if a sink is currently muted (in inactive monitor group)
-static int is_snk_muted(struct routing_snk *r_snk) {
+int is_snk_monitor_muted(struct routing_snk *r_snk) {
   struct alsa_elem *elem = r_snk->elem;
 
   // Only HW analogue outputs can be muted by speaker switching
@@ -751,7 +751,7 @@ static gboolean src_drop_accept(
     return FALSE;
 
   // Reject if the sink being dragged is muted
-  if (card->snk_drag && is_snk_muted(card->snk_drag))
+  if (card->snk_drag && is_snk_monitor_muted(card->snk_drag))
     return FALSE;
 
   return TRUE;
@@ -770,7 +770,7 @@ static gboolean snk_drop_accept(
     return FALSE;
 
   // Reject drops on muted sinks
-  if (is_snk_muted(r_snk))
+  if (is_snk_monitor_muted(r_snk))
     return FALSE;
 
   return TRUE;

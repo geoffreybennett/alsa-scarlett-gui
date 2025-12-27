@@ -23,3 +23,6 @@ void update_all_pcm_labels(struct alsa_card *card);
 
 // Update all HW I/O labels when availability changes
 void update_all_hw_io_labels(struct alsa_card *card);
+
+// Check if a sink is currently muted (in inactive monitor group)
+int is_snk_monitor_muted(struct routing_snk *r_snk);
