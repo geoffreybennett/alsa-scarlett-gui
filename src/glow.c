@@ -83,7 +83,31 @@ int get_routing_snk_level_index(
   if (cat == PC_OFF)
     return -1;
 
-  // level meters are ordered: HW Outputs, Mixer Inputs, DSP Inputs, PCM Inputs
+  // if meter labels are available, search for matching "Sink" label
+  if (card->level_meter_elem && card->level_meter_elem->meter_labels) {
+    for (int i = 0; i < card->routing_levels_count; i++) {
+      const char *label = card->level_meter_elem->meter_labels[i];
+      if (!label)
+        continue;
+
+      // label format is "Source <type> <num>" or "Sink <type> <num>"
+      // we want Sink labels that match r_snk->elem->name prefix
+      if (strncmp(label, "Sink ", 5) != 0)
+        continue;
+
+      // compare the rest with r_snk->elem's port name (e.g., "Analogue 1")
+      // r_snk->elem->name is like "Analogue 1 Playback Enum"
+      // label+5 is like "Analogue 1"
+      const char *sink_name = label + 5;
+      if (strncmp(r_snk->elem->name, sink_name, strlen(sink_name)) == 0)
+        return i;
+    }
+
+    return -1;
+  }
+
+  // without labels, level meters are ordered:
+  // HW Outputs, Mixer Inputs, DSP Inputs, PCM Inputs
   int index = 0;
   for (int c = PC_HW; c < cat; c++)
     index += card->routing_out_count[c];
