@@ -320,6 +320,8 @@ void create_card_window(struct alsa_card *card) {
   if (card->device)
     add_load_save_action_map(card);
 
+  restore_window_visibility(card);
+
   gtk_window_set_child(
     GTK_WINDOW(card->window_main),
     card->window_main_contents

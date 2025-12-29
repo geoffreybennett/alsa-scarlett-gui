@@ -13,3 +13,4 @@ void add_load_save_action_map(struct alsa_card *card);
 void add_startup_action_map(struct alsa_card *card);
 void add_mixer_action_map(struct alsa_card *card);
 void add_dsp_action_map(struct alsa_card *card);
+void restore_window_visibility(struct alsa_card *card);
