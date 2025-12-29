@@ -4,19 +4,87 @@
 #include "about.h"
 #include "file.h"
 #include "menu.h"
+#include "optional-state.h"
 #include "window-hardware.h"
 #include "window-configuration.h"
 
-// helper for common code of activate_*() functions
-static void update_visibility(
+// mapping of action names to window offsets within struct alsa_card
+struct window_action {
+  const char *action_name;
+  size_t      window_offset;
+};
+
+static const struct window_action window_actions[] = {
+  { "routing",       offsetof(struct alsa_card, window_routing)       },
+  { "mixer",         offsetof(struct alsa_card, window_mixer)         },
+  { "levels",        offsetof(struct alsa_card, window_levels)        },
+  { "configuration", offsetof(struct alsa_card, window_configuration) },
+  { "startup",       offsetof(struct alsa_card, window_startup)       },
+  { "dsp",           offsetof(struct alsa_card, window_dsp)           },
+  { NULL, 0 }
+};
+
+static GtkWidget *get_card_window(struct alsa_card *card, size_t offset) {
+  return *(GtkWidget **)((char *)card + offset);
+}
+
+static const struct window_action *find_window_action(const char *action_name) {
+  for (const struct window_action *entry = window_actions;
+       entry->action_name;
+       entry++)
+    if (strcmp(entry->action_name, action_name) == 0)
+      return entry;
+  return NULL;
+}
+
+static char *make_window_key(const char *action_name) {
+  return g_strdup_printf("window-%s", action_name);
+}
+
+// set action state and window visibility (no persistence)
+static void set_window_visible(
   GSimpleAction *action,
-  GtkWidget     *widget
+  GtkWidget     *window,
+  gboolean       visible
 ) {
+  g_action_change_state(G_ACTION(action), g_variant_new_boolean(visible));
+  gtk_widget_set_visible(window, visible);
+}
+
+// toggle visibility; returns new state for callers that need to persist it
+static gboolean toggle_visibility(GSimpleAction *action, GtkWidget *widget) {
   GVariant *state = g_action_get_state(G_ACTION(action));
   gboolean new_state = !g_variant_get_boolean(state);
+  set_window_visible(action, widget, new_state);
+  return new_state;
+}
 
-  g_action_change_state(G_ACTION(action), g_variant_new_boolean(new_state));
-  gtk_widget_set_visible(widget, new_state);
+static void save_window_state(
+  struct alsa_card *card,
+  const char       *action_name,
+  gboolean          visible
+) {
+  char *key = make_window_key(action_name);
+  optional_state_save(card, CONFIG_SECTION_UI, key, visible ? "true" : "false");
+  g_free(key);
+}
+
+// toggle visibility and save state (for card windows)
+static void activate_window(
+  GSimpleAction *action,
+  GVariant      *parameter,
+  gpointer       data
+) {
+  struct alsa_card *card = data;
+  const char *action_name = g_action_get_name(G_ACTION(action));
+
+  const struct window_action *entry = find_window_action(action_name);
+  if (!entry)
+    return;
+
+  GtkWidget *window = get_card_window(card, entry->window_offset);
+  gboolean new_state = toggle_visibility(action, window);
+  save_window_state(card, action_name, new_state);
 }
 
 static void activate_hardware(
@@ -24,8 +92,7 @@ static void activate_hardware(
   GVariant      *parameter,
   gpointer       data
 ) {
-  (void) data;
-  update_visibility(action, window_hardware);
+  toggle_visibility(action, window_hardware);
 }
 
 static void activate_quit(
@@ -34,66 +101,6 @@ static void activate_quit(
   gpointer       data
 ) {
   g_application_quit(G_APPLICATION(data));
-}
-
-static void activate_routing(
-  GSimpleAction *action,
-  GVariant      *parameter,
-  gpointer       data
-) {
-  struct alsa_card *card = data;
-
-  update_visibility(action, card->window_routing);
-}
-
-static void activate_mixer(
-  GSimpleAction *action,
-  GVariant      *parameter,
-  gpointer       data
-) {
-  struct alsa_card *card = data;
-
-  update_visibility(action, card->window_mixer);
-}
-
-static void activate_levels(
-  GSimpleAction *action,
-  GVariant      *parameter,
-  gpointer       data
-) {
-  struct alsa_card *card = data;
-
-  update_visibility(action, card->window_levels);
-}
-
-static void activate_configuration(
-  GSimpleAction *action,
-  GVariant      *parameter,
-  gpointer       data
-) {
-  struct alsa_card *card = data;
-
-  update_visibility(action, card->window_configuration);
-}
-
-static void activate_startup(
-  GSimpleAction *action,
-  GVariant      *parameter,
-  gpointer       data
-) {
-  struct alsa_card *card = data;
-
-  update_visibility(action, card->window_startup);
-}
-
-static void activate_dsp(
-  GSimpleAction *action,
-  GVariant      *parameter,
-  gpointer       data
-) {
-  struct alsa_card *card = data;
-
-  update_visibility(action, card->window_dsp);
 }
 
 static const GActionEntry app_entries[] = {
@@ -204,7 +211,7 @@ void add_load_save_action_map(struct alsa_card *card) {
 }
 
 static const GActionEntry startup_entry[] = {
-  {"startup", activate_startup, NULL, "false"}
+  {"startup", activate_window, NULL, "false"}
 };
 
 void add_startup_action_map(struct alsa_card *card) {
@@ -217,16 +224,16 @@ void add_startup_action_map(struct alsa_card *card) {
 }
 
 static const GActionEntry mixer_entries[] = {
-  {"routing", activate_routing, NULL, "false"},
-  {"mixer",   activate_mixer,   NULL, "false"}
+  {"routing", activate_window, NULL, "false"},
+  {"mixer",   activate_window, NULL, "false"}
 };
 
 static const GActionEntry levels_entries[] = {
-  {"levels",  activate_levels,  NULL, "false"}
+  {"levels", activate_window, NULL, "false"}
 };
 
 static const GActionEntry configuration_entries[] = {
-  {"configuration", activate_configuration, NULL, "false"}
+  {"configuration", activate_window, NULL, "false"}
 };
 
 void add_mixer_action_map(struct alsa_card *card) {
@@ -259,7 +266,7 @@ void add_mixer_action_map(struct alsa_card *card) {
 }
 
 static const GActionEntry dsp_entries[] = {
-  {"dsp", activate_dsp, NULL, "false"}
+  {"dsp", activate_window, NULL, "false"}
 };
 
 void add_dsp_action_map(struct alsa_card *card) {
@@ -269,4 +276,43 @@ void add_dsp_action_map(struct alsa_card *card) {
     G_N_ELEMENTS(dsp_entries),
     card
   );
+}
+
+static gboolean should_restore_window(
+  GHashTable *state,
+  const char *action_name
+) {
+  char *key = make_window_key(action_name);
+  const char *value = g_hash_table_lookup(state, key);
+  g_free(key);
+  return value && strcmp(value, "true") == 0;
+}
+
+static void restore_single_window(
+  struct alsa_card              *card,
+  const struct window_action    *entry,
+  GHashTable                    *state
+) {
+  if (!should_restore_window(state, entry->action_name))
+    return;
+
+  GtkWidget *window = get_card_window(card, entry->window_offset);
+  GAction *action = g_action_map_lookup_action(
+    G_ACTION_MAP(card->window_main), entry->action_name
+  );
+  if (action)
+    set_window_visible(G_SIMPLE_ACTION(action), window, TRUE);
+}
+
+void restore_window_visibility(struct alsa_card *card) {
+  GHashTable *state = optional_state_load(card, CONFIG_SECTION_UI);
+  if (!state)
+    return;
+
+  for (const struct window_action *entry = window_actions;
+       entry->action_name;
+       entry++)
+    restore_single_window(card, entry, state);
+
+  g_hash_table_destroy(state);
 }
