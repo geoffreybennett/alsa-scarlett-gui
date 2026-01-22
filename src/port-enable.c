@@ -5,8 +5,11 @@
 #include <string.h>
 
 #include "port-enable.h"
+#include "config-io.h"
+#include "config-monitor-groups.h"
 #include "optional-state.h"
 #include "alsa.h"
+#include "stereo-link.h"
 #include "window-mixer.h"
 
 // Callback structure to pass data to save callback
@@ -38,8 +41,11 @@ static gboolean flush_pending_ui_updates(gpointer user_data) {
 
   card->pending_ui_update_idle = FALSE;
 
-  if (card->pending_ui_updates & PENDING_UI_UPDATE_MIXER_GRID)
+  if (card->pending_ui_updates & PENDING_UI_UPDATE_MIXER_GRID) {
+    update_mixer_labels(card);
+    update_config_io_mixer_labels(card);
     rebuild_mixer_grid(card);
+  }
 
   card->pending_ui_updates = 0;
 
@@ -201,8 +207,11 @@ static void src_visibility_changed(
   if (!src->widget)
     return;
 
+  // A source is visible if enabled AND should be displayed
+  // (should_display_src returns 0 for right channel of linked pair)
   int enabled = alsa_get_elem_value(elem);
-  gtk_widget_set_visible(src->widget, enabled != 0);
+  int visible = enabled && should_display_src(src);
+  gtk_widget_set_visible(src->widget, visible);
 
   // update section visibility
   update_routing_section_visibility(src->card);
@@ -227,8 +236,11 @@ static void snk_visibility_changed(
   // update routing widget visibility if it exists
   // (fixed mixer inputs don't have routing widgets)
   if (snk->box_widget) {
+    // A sink is visible if enabled AND should be displayed
+    // (should_display_snk returns 0 for right channel of linked pair)
     int enabled = alsa_get_elem_value(elem);
-    gtk_widget_set_visible(snk->box_widget, enabled != 0);
+    int visible = enabled && should_display_snk(snk);
+    gtk_widget_set_visible(snk->box_widget, visible);
 
     // update section visibility
     if (card)

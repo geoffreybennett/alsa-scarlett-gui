@@ -93,15 +93,31 @@ static int update_levels_controls(void *user_data) {
       if (!mg->r_snk || !mg->r_snk->elem)
         continue;
 
-      int r_src_idx = alsa_get_elem_value(mg->r_snk->elem);
-      if (!r_src_idx)
+      // For stereo widgets, use max level across all routing sinks
+      double level_db = -INFINITY;
+      int snk_count = mg->r_snk_count > 0 ? mg->r_snk_count : 1;
+
+      for (int snk_i = 0; snk_i < snk_count; snk_i++) {
+        struct routing_snk *r_snk = snk_i < mg->r_snk_count ?
+                                    mg->r_snks[snk_i] : mg->r_snk;
+        if (!r_snk || !r_snk->elem)
+          continue;
+
+        int r_src_idx = alsa_get_elem_value(r_snk->elem);
+        if (!r_src_idx)
+          continue;
+
+        struct routing_src *r_src = &g_array_index(
+          card->routing_srcs, struct routing_src, r_src_idx
+        );
+
+        double src_level = get_routing_src_level_db(card, r_src);
+        if (src_level > level_db)
+          level_db = src_level;
+      }
+
+      if (level_db == -INFINITY)
         continue;
-
-      struct routing_src *r_src = &g_array_index(
-        card->routing_srcs, struct routing_src, r_src_idx
-      );
-
-      double level_db = get_routing_src_level_db(card, r_src);
 
       // apply gain value to get post-gain level (in dB, so we add)
       if (mg->elem) {

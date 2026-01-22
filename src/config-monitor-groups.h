@@ -8,3 +8,6 @@
 #include "alsa.h"
 
 void add_monitor_groups_tab(GtkWidget *notebook, struct alsa_card *card);
+
+// Rebuild the monitor groups grid (e.g., when stereo link state changes)
+void rebuild_monitor_groups_grid(struct alsa_card *card);
