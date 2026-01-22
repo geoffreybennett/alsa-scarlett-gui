@@ -12,8 +12,8 @@ GtkWidget *create_routing_controls(struct alsa_card *card);
 // Update hardware output label to show monitor group status (Main/Alt indicators)
 void update_hw_output_label(struct routing_snk *r_snk);
 
-// Update hardware input label for S/PDIF and ADAT availability
-void update_hw_input_label(struct routing_src *r_src);
+// Update routing source label (stereo-aware name with availability)
+void update_routing_src_label(struct routing_src *r_src);
 
 // Update cached effective source index for a routing sink
 void update_snk_effective_source(struct routing_snk *r_snk);

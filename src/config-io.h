@@ -8,3 +8,4 @@
 #include "alsa.h"
 
 void add_io_tab(GtkWidget *top_notebook, struct alsa_card *card);
+void update_config_io_mixer_labels(struct alsa_card *card);

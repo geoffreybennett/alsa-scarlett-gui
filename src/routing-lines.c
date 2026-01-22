@@ -5,6 +5,7 @@
 #include "glow.h"
 #include "routing-lines.h"
 #include "port-enable.h"
+#include "stereo-link.h"
 
 // dotted dash when a sink is going to be removed by a drag
 static const double dash_dotted[] = { 1, 10 };
@@ -386,13 +387,50 @@ static void get_widget_center(
   gtk_widget_translate_coordinates(w, parent, src_x, src_y, x, y);
 }
 
+// Apply stereo offset to socket center coordinates
+// For stereo pairs, offset L/R within the stereo icon:
+// - Mixer/DSP: horizontal layout, offset X by ±25% of width
+// - HW/PCM: vertical layout, offset Y by ±25% of height
+static void apply_stereo_offset(
+  GtkWidget *socket,
+  int        port_category,
+  int        is_left,
+  double    *x,
+  double    *y
+) {
+  double w = gtk_widget_get_allocated_width(socket);
+  double h = gtk_widget_get_allocated_height(socket);
+
+  if (IS_MIXER(port_category))
+    *x += is_left ? -w * 0.25 : w * 0.25;
+  else
+    *y += is_left ? -h * 0.25 : h * 0.25;
+}
+
 static void get_src_center(
   struct routing_src *r_src,
   GtkWidget          *parent,
   double             *x,
   double             *y
 ) {
-  get_widget_center(r_src->widget2, parent, x, y);
+  GtkWidget *socket = r_src->widget2;
+
+  // If linked, use the L channel's widget
+  if (is_src_linked(r_src)) {
+    struct routing_src *src_l = is_src_left_channel(r_src)
+      ? r_src : get_src_partner(r_src);
+
+    if (src_l && src_l->widget2)
+      socket = src_l->widget2;
+
+    get_widget_center(socket, parent, x, y);
+    apply_stereo_offset(
+      socket, r_src->port_category, is_src_left_channel(r_src), x, y
+    );
+  } else {
+    get_widget_center(socket, parent, x, y);
+  }
+
   if (IS_MIXER(r_src->port_category))
     (*y)++;
 }
@@ -403,7 +441,24 @@ static void get_snk_center(
   double             *x,
   double             *y
 ) {
-  get_widget_center(r_snk->socket_widget, parent, x, y);
+  GtkWidget *socket = r_snk->socket_widget;
+
+  // If linked, use the L channel's widget
+  if (is_snk_linked(r_snk)) {
+    struct routing_snk *snk_l = is_snk_left_channel(r_snk)
+      ? r_snk : get_snk_partner(r_snk);
+
+    if (snk_l && snk_l->socket_widget)
+      socket = snk_l->socket_widget;
+
+    get_widget_center(socket, parent, x, y);
+    apply_stereo_offset(
+      socket, r_snk->elem->port_category, is_snk_left_channel(r_snk), x, y
+    );
+  } else {
+    get_widget_center(socket, parent, x, y);
+  }
+
   if (IS_MIXER(r_snk->elem->port_category))
     (*y)++;
 }
@@ -439,8 +494,11 @@ void draw_routing_lines(
       if (!is_routing_snk_enabled(r_snk))
         continue;
 
-      // skip if being dragged
-      if (dragging && card->snk_drag == r_snk)
+      // skip if being dragged (include partner for stereo pairs)
+      if (dragging && card->snk_drag &&
+          (card->snk_drag == r_snk ||
+           (is_snk_linked(card->snk_drag) &&
+            get_snk_partner(card->snk_drag) == r_snk)))
         continue;
 
       // get the source and skip if it's "Off"
@@ -550,8 +608,11 @@ void draw_routing_lines(
       continue;
 
     // if dragging and a routing sink is being reconnected then draw
-    // it with dots
-    int dragging_this = dragging && card->snk_drag == r_snk;
+    // it with dots (include partner for stereo pairs)
+    int dragging_this = dragging && card->snk_drag &&
+      (card->snk_drag == r_snk ||
+       (is_snk_linked(card->snk_drag) &&
+        get_snk_partner(card->snk_drag) == r_snk));
     if (dragging_this)
       cairo_set_dash(cr, dash_dotted, 2, 0);
     else
@@ -671,6 +732,82 @@ void draw_routing_lines(
   g_free(src_has_disabled_snk);
 }
 
+// Get stereo source L and R positions
+// Returns 1 if stereo (positions in x_l/y_l and x_r/y_r), 0 if mono
+static int get_src_stereo_positions(
+  struct routing_src *r_src,
+  GtkWidget          *parent,
+  double             *x_l, double *y_l,
+  double             *x_r, double *y_r
+) {
+  if (!is_src_linked(r_src))
+    return 0;
+
+  struct routing_src *src_l = is_src_left_channel(r_src)
+    ? r_src : get_src_partner(r_src);
+  struct routing_src *src_r = is_src_left_channel(r_src)
+    ? get_src_partner(r_src) : r_src;
+
+  if (!src_l || !src_r)
+    return 0;
+
+  GtkWidget *socket = src_l->widget2;
+  if (!socket)
+    return 0;
+
+  get_widget_center(socket, parent, x_l, y_l);
+  *x_r = *x_l;
+  *y_r = *y_l;
+
+  apply_stereo_offset(socket, r_src->port_category, 1, x_l, y_l);
+  apply_stereo_offset(socket, r_src->port_category, 0, x_r, y_r);
+
+  if (IS_MIXER(r_src->port_category)) {
+    (*y_l)++;
+    (*y_r)++;
+  }
+
+  return 1;
+}
+
+// Get stereo sink L and R positions
+// Returns 1 if stereo (positions in x_l/y_l and x_r/y_r), 0 if mono
+static int get_snk_stereo_positions(
+  struct routing_snk *r_snk,
+  GtkWidget          *parent,
+  double             *x_l, double *y_l,
+  double             *x_r, double *y_r
+) {
+  if (!is_snk_linked(r_snk))
+    return 0;
+
+  struct routing_snk *snk_l = is_snk_left_channel(r_snk)
+    ? r_snk : get_snk_partner(r_snk);
+  struct routing_snk *snk_r = is_snk_left_channel(r_snk)
+    ? get_snk_partner(r_snk) : r_snk;
+
+  if (!snk_l || !snk_r)
+    return 0;
+
+  GtkWidget *socket = snk_l->socket_widget;
+  if (!socket)
+    return 0;
+
+  get_widget_center(socket, parent, x_l, y_l);
+  *x_r = *x_l;
+  *y_r = *y_l;
+
+  apply_stereo_offset(socket, r_snk->elem->port_category, 1, x_l, y_l);
+  apply_stereo_offset(socket, r_snk->elem->port_category, 0, x_r, y_r);
+
+  if (IS_MIXER(r_snk->elem->port_category)) {
+    (*y_l)++;
+    (*y_r)++;
+  }
+
+  return 1;
+}
+
 // draw the overlay dragging line
 void draw_drag_line(
   GtkDrawingArea *drawing_area,
@@ -701,45 +838,90 @@ void draw_drag_line(
       &drag_x, &drag_y
     );
 
-  // get the line start position; either a routing source socket
-  // widget or the drag mouse position
-  double x1, y1;
-  if (card->src_drag) {
+  // Check for stereo sources/sinks
+  double src_x_l = 0, src_y_l = 0, src_x_r = 0, src_y_r = 0;
+  double snk_x_l = 0, snk_y_l = 0, snk_x_r = 0, snk_y_r = 0;
+
+  int src_stereo = card->src_drag &&
+    get_src_stereo_positions(card->src_drag, parent,
+                             &src_x_l, &src_y_l, &src_x_r, &src_y_r);
+  int snk_stereo = card->snk_drag &&
+    get_snk_stereo_positions(card->snk_drag, parent,
+                             &snk_x_l, &snk_y_l, &snk_x_r, &snk_y_r);
+
+  // Mono source position (or mouse)
+  double x1 = 0, y1 = 0;
+  if (card->src_drag && !src_stereo) {
     get_src_center(card->src_drag, parent, &x1, &y1);
-  } else {
+  } else if (!card->src_drag) {
     x1 = drag_x;
     y1 = drag_y;
   }
 
-  // get the line end position; either a routing sink socket widget or
-  // the drag mouse position
-  double x2, y2;
-  if (card->snk_drag) {
+  // Mono sink position (or mouse)
+  double x2 = 0, y2 = 0;
+  if (card->snk_drag && !snk_stereo) {
     get_snk_center(card->snk_drag, parent, &x2, &y2);
-  } else {
+  } else if (!card->snk_drag) {
     x2 = drag_x;
     y2 = drag_y;
   }
 
-  // if routing src & snk both specified then draw a curved line as if
-  // it was connected (except black)
-  if (card->src_drag && card->snk_drag) {
-    draw_connection(
-      cr,
-      x1, y1, card->src_drag->port_category,
-      x2, y2, card->snk_drag->elem->port_category,
-      1, 1, 1, 2
-    );
+  // Determine line endpoints based on stereo state
+  int draw_two_lines = src_stereo || snk_stereo;
 
-  // otherwise draw a straight line
+  if (draw_two_lines) {
+    // L line endpoints
+    double l_x1 = src_stereo ? src_x_l : x1;
+    double l_y1 = src_stereo ? src_y_l : y1;
+    double l_x2 = snk_stereo ? snk_x_l : x2;
+    double l_y2 = snk_stereo ? snk_y_l : y2;
+
+    // R line endpoints
+    double r_x1 = src_stereo ? src_x_r : x1;
+    double r_y1 = src_stereo ? src_y_r : y1;
+    double r_x2 = snk_stereo ? snk_x_r : x2;
+    double r_y2 = snk_stereo ? snk_y_r : y2;
+
+    int src_cat = card->src_drag ? card->src_drag->port_category : PC_OFF;
+    int snk_cat = card->snk_drag ? card->snk_drag->elem->port_category : PC_OFF;
+
+    if (card->src_drag && card->snk_drag) {
+      // Both specified - draw curved lines
+      draw_connection(cr, l_x1, l_y1, src_cat, l_x2, l_y2, snk_cat, 1, 1, 1, 2);
+      draw_connection(cr, r_x1, r_y1, src_cat, r_x2, r_y2, snk_cat, 1, 1, 1, 2);
+    } else {
+      // One is mouse - draw straight dashed lines
+      cairo_set_dash(cr, dash, 1, 0);
+      cairo_set_source_rgb(cr, 1, 1, 1);
+      cairo_set_line_width(cr, 2);
+
+      cairo_move_to(cr, l_x1, l_y1);
+      cairo_line_to(cr, l_x2, l_y2);
+      cairo_stroke(cr);
+
+      cairo_move_to(cr, r_x1, r_y1);
+      cairo_line_to(cr, r_x2, r_y2);
+      cairo_stroke(cr);
+    }
+
   } else {
-    cairo_set_dash(cr, dash, 1, 0);
-
-    cairo_set_source_rgb(cr, 1, 1, 1);
-    cairo_set_line_width(cr, 2);
-    cairo_move_to(cr, x1, y1);
-    cairo_line_to(cr, x2, y2);
-    cairo_stroke(cr);
+    // Single line (original mono behavior)
+    if (card->src_drag && card->snk_drag) {
+      draw_connection(
+        cr,
+        x1, y1, card->src_drag->port_category,
+        x2, y2, card->snk_drag->elem->port_category,
+        1, 1, 1, 2
+      );
+    } else {
+      cairo_set_dash(cr, dash, 1, 0);
+      cairo_set_source_rgb(cr, 1, 1, 1);
+      cairo_set_line_width(cr, 2);
+      cairo_move_to(cr, x1, y1);
+      cairo_line_to(cr, x2, y2);
+      cairo_stroke(cr);
+    }
   }
 }
 

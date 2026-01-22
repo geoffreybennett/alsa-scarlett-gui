@@ -279,6 +279,7 @@ static void drop_down_updated(struct alsa_elem *elem, void *private) {
 
 // Cleanup when widget is destroyed
 static void drop_down_destroy(GtkWidget *widget, struct drop_down_two_level *data) {
+  alsa_elem_remove_callbacks_by_data(data->elem, data);
   gtk_widget_unparent(data->popover);
   free_groups(data->groups);
   g_free(data);

@@ -6,6 +6,7 @@
 #include "iface-mixer.h"
 #include "routing-drag-line.h"
 #include "routing-lines.h"
+#include "stereo-link.h"
 #include "stringhelper.h"
 #include "widget-boolean.h"
 #include "window-mixer.h"
@@ -326,6 +327,99 @@ static GtkWidget *make_socket_widget(void) {
   return w;
 }
 
+// Update socket widget to show mono or stereo based on link state
+// orientation: GTK_ORIENTATION_HORIZONTAL for side-by-side sockets
+//              GTK_ORIENTATION_VERTICAL for stacked sockets
+static void update_socket_widget(
+  GtkWidget      *socket,
+  int             is_linked,
+  GtkOrientation  orientation
+) {
+  const char *resource;
+
+  if (is_linked) {
+    resource = orientation == GTK_ORIENTATION_HORIZONTAL
+      ? "/vu/b4/alsa-scarlett-gui/icons/socket-stereo-h.svg"
+      : "/vu/b4/alsa-scarlett-gui/icons/socket-stereo-v.svg";
+  } else {
+    resource = "/vu/b4/alsa-scarlett-gui/icons/socket.svg";
+  }
+
+  gtk_picture_set_resource(GTK_PICTURE(socket), resource);
+}
+
+// Get the appropriate socket orientation for a port category
+// This refers to how L/R are arranged in the stereo socket icon
+static GtkOrientation get_socket_orientation(int port_category) {
+  // Mixer and DSP ports are arranged horizontally, L/R side-by-side
+  // HW and PCM ports are arranged vertically, L/R stacked
+  return (port_category == PC_MIX || port_category == PC_DSP)
+    ? GTK_ORIENTATION_HORIZONTAL
+    : GTK_ORIENTATION_VERTICAL;
+}
+
+// Get stereo-aware base name for a source
+// Returns newly allocated string that must be freed
+static char *get_src_stereo_aware_name(struct routing_src *src) {
+  if (is_src_linked(src) && is_src_left_channel(src)) {
+    if (src->port_category == PC_MIX)
+      return g_strdup_printf(
+        "%c\xe2\x80\x93%c", src->port_num + 'A', src->port_num + 'B'
+      );
+    if (src->port_category == PC_DSP)
+      return g_strdup_printf(
+        "%d\xe2\x80\x93%d", src->lr_num, src->lr_num + 1
+      );
+    return get_src_pair_display_name(src);
+  }
+  return get_src_display_name_formatted(src);
+}
+
+// Get stereo-aware base name for a sink
+// Returns newly allocated string that must be freed
+static char *get_snk_stereo_aware_name(struct routing_snk *snk) {
+  if (is_snk_linked(snk) && is_snk_left_channel(snk)) {
+    // Mixer/DSP use simple abbreviated stereo labels in routing window
+    int port_cat = snk->elem->port_category;
+    if (port_cat == PC_MIX || port_cat == PC_DSP) {
+      int lr = snk->elem->lr_num;
+      return g_strdup_printf("%d–%d", lr, lr + 1);
+    } else {
+      return get_snk_pair_display_name(snk);
+    }
+  }
+  return get_snk_display_name_formatted(snk);
+}
+
+// Callback to update source socket and label when link state changes
+static void src_socket_link_changed(struct alsa_elem *elem, void *private) {
+  struct routing_src *src = private;
+
+  if (!src->widget2)
+    return;
+
+  int linked = is_src_linked(src);
+  GtkOrientation orient = get_socket_orientation(src->port_category);
+  update_socket_widget(src->widget2, linked, orient);
+
+  update_routing_src_label(src);
+}
+
+// Callback to update sink socket and label when link state changes
+static void snk_socket_link_changed(struct alsa_elem *elem, void *private) {
+  struct routing_snk *snk = private;
+
+  if (!snk->socket_widget)
+    return;
+
+  int linked = is_snk_linked(snk);
+  GtkOrientation orient = get_socket_orientation(snk->elem->port_category);
+  update_socket_widget(snk->socket_widget, linked, orient);
+
+  // Update label - use comprehensive label updater which is now stereo-aware
+  update_hw_output_label(snk);
+}
+
 static void routing_label_enter(
   GtkEventControllerMotion *controller,
   double x, double y,
@@ -438,6 +532,18 @@ static int has_any_alt_group_enabled(struct alsa_card *card) {
   return 0;
 }
 
+static int has_any_main_group_enabled(struct alsa_card *card) {
+  for (int i = 1; i <= 8; i++) {
+    char name[64];
+    snprintf(name, sizeof(name),
+             "Main Group Output %d Playback Switch", i);
+    struct alsa_elem *elem = get_elem_by_name(card->elems, name);
+    if (elem && alsa_get_elem_value(elem))
+      return 1;
+  }
+  return 0;
+}
+
 // Get speaker switching state: 0=off, 1=main, 2=alt
 static int get_speaker_switching_state(struct alsa_card *card) {
   // Try enum version first (Gen 2/3 larger models)
@@ -457,17 +563,21 @@ static int get_speaker_switching_state(struct alsa_card *card) {
     card->elems, "Main Group Output"
   );
   if (main_group) {
-    // Gen 4: speaker switching is implicitly enabled if any Alt output is enabled
-    if (!has_any_alt_group_enabled(card))
-      return SPEAKER_SWITCH_OFF;
+    if (has_any_alt_group_enabled(card)) {
+      // Alt outputs configured: check which group is active
+      struct alsa_elem *alt = get_elem_by_name(
+        card->elems, "Speaker Switching Alt Playback Switch"
+      );
+      if (alt && alsa_get_elem_value(alt))
+        return SPEAKER_SWITCH_ALT;
+      return SPEAKER_SWITCH_MAIN;
+    }
 
-    // Speaker Switching Alt switch selects Main (0) or Alt (1)
-    struct alsa_elem *alt = get_elem_by_name(
-      card->elems, "Speaker Switching Alt Playback Switch"
-    );
-    if (alt && alsa_get_elem_value(alt))
-      return SPEAKER_SWITCH_ALT;
-    return SPEAKER_SWITCH_MAIN;
+    // No alt outputs: show Main indicator if main outputs exist
+    if (has_any_main_group_enabled(card))
+      return SPEAKER_SWITCH_MAIN;
+
+    return SPEAKER_SWITCH_OFF;
   }
 
   // Try switch version (Gen 2/3 smaller models)
@@ -571,6 +681,22 @@ static int routing_src_to_vg_src(struct alsa_card *card, int routing_src_id) {
   return 0;
 }
 
+// Route a source to a sink, handling VG source conversion
+static void route_src_to_snk(
+  struct alsa_card   *card,
+  struct routing_snk *snk,
+  int                 src_id
+) {
+  struct alsa_elem *target = get_snk_routing_elem(snk);
+  if (!target)
+    return;
+
+  if (target != snk->elem)
+    src_id = routing_src_to_vg_src(card, src_id);
+
+  alsa_set_elem_value(target, src_id);
+}
+
 // something was dropped on a routing source
 static gboolean dropped_on_src(
   GtkDropTarget *dest,
@@ -579,7 +705,8 @@ static gboolean dropped_on_src(
   double         y,
   gpointer       data
 ) {
-  struct routing_src *src = data;
+  struct routing_src *r_src = data;
+  struct alsa_card *card = r_src->card;
   int snk_id = g_value_get_int(value);
 
   // don't accept src -> src drops
@@ -590,7 +717,7 @@ static gboolean dropped_on_src(
   int r_snk_idx = snk_id & ~0x8000;
 
   // check the index is in bounds
-  GArray *r_snks = src->card->routing_snks;
+  GArray *r_snks = card->routing_snks;
   if (r_snk_idx < 0 || r_snk_idx >= r_snks->len)
     return FALSE;
 
@@ -603,10 +730,43 @@ static gboolean dropped_on_src(
   if (!target_elem)
     return FALSE;  // Sink is muted
 
-  // If using group source, convert routing source ID to VG source ID
-  int src_id = src->id;
+  // Handle stereo routing
+  if (is_snk_linked(r_snk)) {
+    struct routing_snk *snk_partner = get_snk_partner(r_snk);
+    if (!snk_partner)
+      return FALSE;
+
+    // Determine left/right sinks
+    struct routing_snk *snk_left =
+      is_snk_left_channel(r_snk) ? r_snk : snk_partner;
+    struct routing_snk *snk_right =
+      is_snk_left_channel(r_snk) ? snk_partner : r_snk;
+
+    if (is_src_linked(r_src)) {
+      // Stereo → Stereo: route L→L, R→R
+      struct routing_src *src_partner = get_src_partner(r_src);
+      if (!src_partner)
+        return FALSE;
+
+      struct routing_src *src_left =
+        is_src_left_channel(r_src) ? r_src : src_partner;
+      struct routing_src *src_right =
+        is_src_left_channel(r_src) ? src_partner : r_src;
+
+      route_src_to_snk(card, snk_left, src_left->id);
+      route_src_to_snk(card, snk_right, src_right->id);
+    } else {
+      // Mono → Stereo: route same source to both
+      route_src_to_snk(card, snk_left, r_src->id);
+      route_src_to_snk(card, snk_right, r_src->id);
+    }
+    return TRUE;
+  }
+
+  // Mono sink routing
+  int src_id = r_src->id;
   if (target_elem != r_snk->elem)
-    src_id = routing_src_to_vg_src(src->card, src_id);
+    src_id = routing_src_to_vg_src(card, src_id);
 
   alsa_set_elem_value(target_elem, src_id);
 
@@ -622,6 +782,7 @@ static gboolean dropped_on_snk(
   gpointer       data
 ) {
   struct routing_snk *r_snk = data;
+  struct alsa_card *card = r_snk->elem->card;
   int src_id = g_value_get_int(value);
 
   // don't accept snk -> snk drops
@@ -633,12 +794,63 @@ static gboolean dropped_on_snk(
   if (!target_elem)
     return FALSE;  // Sink is muted
 
-  // If using group source, convert routing source ID to VG source ID
+  // Handle stereo routing
+  if (is_snk_linked(r_snk)) {
+    struct routing_snk *snk_partner = get_snk_partner(r_snk);
+    if (!snk_partner)
+      return FALSE;
+
+    // Determine left/right sinks
+    struct routing_snk *snk_left =
+      is_snk_left_channel(r_snk) ? r_snk : snk_partner;
+    struct routing_snk *snk_right =
+      is_snk_left_channel(r_snk) ? snk_partner : r_snk;
+
+    // Get dragged source for stereo check
+    struct routing_src *r_src = card->src_drag;
+
+    if (r_src && is_src_linked(r_src)) {
+      // Stereo → Stereo: route L→L, R→R
+      struct routing_src *src_partner = get_src_partner(r_src);
+      if (!src_partner)
+        return FALSE;
+
+      struct routing_src *src_left =
+        is_src_left_channel(r_src) ? r_src : src_partner;
+      struct routing_src *src_right =
+        is_src_left_channel(r_src) ? src_partner : r_src;
+
+      route_src_to_snk(card, snk_left, src_left->id);
+      route_src_to_snk(card, snk_right, src_right->id);
+    } else {
+      // Mono → Stereo: route same source to both
+      route_src_to_snk(card, snk_left, src_id);
+      route_src_to_snk(card, snk_right, src_id);
+    }
+    return TRUE;
+  }
+
+  // Mono sink routing
   if (target_elem != r_snk->elem)
-    src_id = routing_src_to_vg_src(r_snk->elem->card, src_id);
+    src_id = routing_src_to_vg_src(card, src_id);
 
   alsa_set_elem_value(target_elem, src_id);
   return TRUE;
+}
+
+// Check if a source ID should be cleared for the given clicked source
+static int should_clear_for_src(struct routing_src *r_src, int src_id) {
+  if (src_id == r_src->id)
+    return 1;
+
+  // If source is linked, also clear connections to partner
+  if (is_src_linked(r_src)) {
+    struct routing_src *partner = get_src_partner(r_src);
+    if (partner && src_id == partner->id)
+      return 1;
+  }
+
+  return 0;
 }
 
 static void src_routing_clicked(
@@ -657,7 +869,7 @@ static void src_routing_clicked(
     );
 
     // Check effective source (accounts for speaker switching)
-    if (r_snk->effective_source_idx != r_src->id)
+    if (!should_clear_for_src(r_src, r_snk->effective_source_idx))
       continue;
 
     // Get appropriate element to clear - skip Main/Alt outputs
@@ -680,6 +892,18 @@ static void snk_routing_clicked(
   // Do nothing if muted or using group source (Main/Alt outputs)
   if (!target_elem || target_elem != r_snk->elem)
     return;
+
+  struct alsa_card *card = r_snk->elem->card;
+
+  // Clear both channels if linked
+  if (is_snk_linked(r_snk)) {
+    struct routing_snk *partner = get_snk_partner(r_snk);
+    if (partner) {
+      route_src_to_snk(card, r_snk, 0);
+      route_src_to_snk(card, partner, 0);
+      return;
+    }
+  }
 
   alsa_set_elem_value(target_elem, 0);
 }
@@ -754,6 +978,10 @@ static gboolean src_drop_accept(
   if (card->snk_drag && is_snk_monitor_muted(card->snk_drag))
     return FALSE;
 
+  // Reject stereo source → mono sink
+  if (card->snk_drag && is_src_linked(r_src) && !is_snk_linked(card->snk_drag))
+    return FALSE;
+
   return TRUE;
 }
 
@@ -771,6 +999,10 @@ static gboolean snk_drop_accept(
 
   // Reject drops on muted sinks
   if (is_snk_monitor_muted(r_snk))
+    return FALSE;
+
+  // Reject stereo source → mono sink
+  if (card->src_drag && is_src_linked(card->src_drag) && !is_snk_linked(r_snk))
     return FALSE;
 
   return TRUE;
@@ -962,6 +1194,24 @@ static void make_src_routing_widget(
 
   // handle dragging to or from the box
   setup_src_drag(r_src);
+
+  // set up stereo socket handling
+  struct alsa_elem *link_elem = get_src_link_elem(r_src);
+  if (link_elem) {
+    // register callback to update socket and label when link state changes
+    alsa_elem_add_callback(link_elem, src_socket_link_changed, r_src, NULL);
+
+    // set initial socket state (label updated later in create_routing_controls)
+    if (is_src_linked(r_src)) {
+      GtkOrientation orient = get_socket_orientation(r_src->port_category);
+      update_socket_widget(socket, 1, orient);
+    }
+  }
+
+  // register callback to update label when pair name changes
+  struct alsa_elem *pair_name_elem = get_src_pair_name_elem(r_src);
+  if (pair_name_elem)
+    alsa_elem_add_callback(pair_name_elem, src_socket_link_changed, r_src, NULL);
 }
 
 static GtkWidget *make_talkback_mix_widget(
@@ -1081,8 +1331,8 @@ void update_hw_output_label(struct routing_snk *r_snk) {
   if (!r_snk->label_widget)
     return;
 
-  // Get the display name (handles custom names)
-  char *base_name = get_snk_display_name_formatted(r_snk);
+  // Get the display name (stereo-aware, handles custom names)
+  char *base_name = get_snk_stereo_aware_name(r_snk);
 
   // PCM outputs - check availability based on sample rate
   if (elem->port_category == PC_PCM) {
@@ -1212,49 +1462,48 @@ void update_hw_output_label(struct routing_snk *r_snk) {
   g_free(base_name);
 }
 
-// Update hardware input label for S/PDIF and ADAT availability
-void update_hw_input_label(struct routing_src *r_src) {
+// Update routing source label (stereo-aware name with availability)
+void update_routing_src_label(struct routing_src *r_src) {
   if (!r_src->label_widget)
     return;
 
-  if (r_src->port_category != PC_HW)
-    return;
-
-  if (!is_digital_io_type(r_src->hw_type))
-    return;
-
+  char *name = get_src_stereo_aware_name(r_src);
+  int available = 1;
+  const char *tooltip = NULL;
   struct alsa_card *card = r_src->card;
 
-  int max_port = r_src->hw_type == HW_TYPE_SPDIF
-    ? card->max_spdif_in : card->max_adat_in;
-  int available = max_port < 0 || r_src->lr_num <= max_port;
+  switch (r_src->port_category) {
+    case PC_MIX:
+      available =
+        get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
+      tooltip = "Mixer unavailable at current sample rate";
+      break;
+    case PC_HW:
+      if (is_digital_io_type(r_src->hw_type)) {
+        int max_port = r_src->hw_type == HW_TYPE_SPDIF
+          ? card->max_spdif_in : card->max_adat_in;
+        available = max_port < 0 || r_src->lr_num <= max_port;
+        tooltip =
+          "Unavailable with current Digital I/O mode and sample rate";
+      }
+      break;
+    case PC_PCM:
+      available = card->pcm_playback_channels == 0 ||
+                  r_src->port_num < card->pcm_playback_channels;
+      tooltip = "Unavailable at current sample rate";
+      break;
+  }
 
-  char *base_name = get_src_display_name_formatted(r_src);
+  set_availability_label(r_src->label_widget, name, available, tooltip);
 
-  set_availability_label(
-    r_src->label_widget, base_name, available,
-    "Unavailable with current Digital I/O mode and sample rate"
-  );
+  // Preserve tooltip for ellipsised labels (vertical orientation)
+  if (available &&
+      gtk_label_get_ellipsize(
+        GTK_LABEL(r_src->label_widget)
+      ) != PANGO_ELLIPSIZE_NONE)
+    gtk_widget_set_tooltip_text(r_src->label_widget, name);
 
-  g_free(base_name);
-}
-
-// Update mixer source label for availability at high sample rates
-static void update_mixer_src_label(struct routing_src *r_src) {
-  if (!r_src->label_widget || r_src->port_category != PC_MIX)
-    return;
-
-  struct alsa_card *card = r_src->card;
-  int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
-
-  char *base_name = get_src_display_name_formatted(r_src);
-
-  set_availability_label(
-    r_src->label_widget, base_name, available,
-    "Mixer unavailable at current sample rate"
-  );
-
-  g_free(base_name);
+  g_free(name);
 }
 
 // Update mixer heading labels for availability at high sample rates
@@ -1276,38 +1525,6 @@ static void update_mixer_headings(struct alsa_card *card) {
   }
 }
 
-// Update PCM source label based on channel availability
-static void update_pcm_src_label(struct routing_src *r_src) {
-  if (!r_src->label_widget || r_src->port_category != PC_PCM)
-    return;
-
-  struct alsa_card *card = r_src->card;
-  char *base_name = get_src_display_name_formatted(r_src);
-
-  // PCM sources are "PCM Outputs" in routing = playback from PC
-  // port_num is 0-based, playback_channels is count
-  int available = card->pcm_playback_channels == 0 ||
-                  r_src->port_num < card->pcm_playback_channels;
-
-  if (!available) {
-    char *markup = g_strdup_printf(
-      "<span color=\"#808080\"><s>%s</s></span>", base_name
-    );
-    gtk_label_set_markup(GTK_LABEL(r_src->label_widget), markup);
-    gtk_widget_set_tooltip_text(
-      r_src->label_widget,
-      "Unavailable at current sample rate"
-    );
-    g_free(markup);
-  } else {
-    gtk_label_set_text(GTK_LABEL(r_src->label_widget), base_name);
-    gtk_label_set_use_markup(GTK_LABEL(r_src->label_widget), FALSE);
-    gtk_widget_set_tooltip_text(r_src->label_widget, NULL);
-  }
-
-  g_free(base_name);
-}
-
 // Update all PCM labels when channel availability changes
 void update_all_pcm_labels(struct alsa_card *card) {
   if (!card->window_routing)
@@ -1319,7 +1536,7 @@ void update_all_pcm_labels(struct alsa_card *card) {
       card->routing_srcs, struct routing_src, i
     );
     if (r_src->port_category == PC_PCM)
-      update_pcm_src_label(r_src);
+      update_routing_src_label(r_src);
   }
 
   // Update PCM sinks
@@ -1347,16 +1564,14 @@ void update_all_hw_io_labels(struct alsa_card *card) {
     update_hw_output_label(r_snk);
   }
 
-  // Update routing sources
+  // Update routing sources (only categories with availability logic)
   for (int i = 0; i < card->routing_srcs->len; i++) {
     struct routing_src *r_src = &g_array_index(
       card->routing_srcs, struct routing_src, i
     );
-
-    if (r_src->port_category == PC_HW)
-      update_hw_input_label(r_src);
-    else if (r_src->port_category == PC_MIX)
-      update_mixer_src_label(r_src);
+    if (r_src->port_category == PC_HW ||
+        r_src->port_category == PC_MIX)
+      update_routing_src_label(r_src);
   }
 
   // Update mixer headings
@@ -1422,6 +1637,24 @@ static void make_snk_routing_widget(
 
   // handle dragging to or from the box
   setup_snk_drag(r_snk);
+
+  // set up stereo socket handling
+  struct alsa_elem *link_elem = get_snk_link_elem(r_snk);
+  if (link_elem) {
+    // register callback to update socket and label when link state changes
+    alsa_elem_add_callback(link_elem, snk_socket_link_changed, r_snk, NULL);
+
+    // set initial socket state (label updated later in create_routing_controls)
+    if (is_snk_linked(r_snk)) {
+      GtkOrientation orient = get_socket_orientation(r_snk->elem->port_category);
+      update_socket_widget(socket, 1, orient);
+    }
+  }
+
+  // register callback to update label when pair name changes
+  struct alsa_elem *pair_name_elem = get_snk_pair_name_elem(r_snk);
+  if (pair_name_elem)
+    alsa_elem_add_callback(pair_name_elem, snk_socket_link_changed, r_snk, NULL);
 }
 
 static void routing_updated(struct alsa_elem *elem, void *data) {
@@ -1507,10 +1740,11 @@ static void add_routing_widgets(
 
     make_routing_alsa_elem(r_snk);
 
-    // set initial visibility based on enable state
+    // set initial visibility based on enable AND link state
     if (r_snk->box_widget) {
       int enabled = is_routing_snk_enabled(r_snk);
-      gtk_widget_set_visible(r_snk->box_widget, enabled);
+      int visible = enabled && should_display_snk(r_snk);
+      gtk_widget_set_visible(r_snk->box_widget, visible);
     }
   }
 
@@ -1578,10 +1812,11 @@ static void add_routing_widgets(
 
     g_free(name);
 
-    // set initial visibility based on enable state
+    // set initial visibility based on enable AND link state
     if (r_src->widget) {
       int enabled = is_routing_src_enabled(r_src);
-      gtk_widget_set_visible(r_src->widget, enabled);
+      int visible = enabled && should_display_src(r_src);
+      gtk_widget_set_visible(r_src->widget, visible);
     }
   }
 
@@ -1691,6 +1926,29 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
   // update HW I/O labels for availability based on Digital I/O mode
   // and sample rate (must be after widgets are created)
   update_all_hw_io_labels(card);
+
+  // Trigger link state callbacks for linked pairs to update socket icons
+  // and labels (must be after all other label updates)
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (!is_src_left_channel(src))
+      continue;
+    struct alsa_elem *link_elem = get_src_link_elem(src);
+    if (link_elem && alsa_get_elem_value(link_elem))
+      alsa_elem_change(link_elem);
+  }
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (!is_snk_left_channel(snk))
+      continue;
+    struct alsa_elem *link_elem = get_snk_link_elem(snk);
+    if (link_elem && alsa_get_elem_value(link_elem))
+      alsa_elem_change(link_elem);
+  }
 
   // register callback for digital I/O mode changes
   if (card->digital_io_mode_elem)

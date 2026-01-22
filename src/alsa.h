@@ -111,6 +111,15 @@ struct routing_src {
   // optional/simulated element for enable/disable
   struct alsa_elem *enable_elem;
 
+  // optional/simulated element for stereo link state (stored on left channel)
+  struct alsa_elem *link_elem;
+
+  // optional/simulated element for stereo pair name (stored on left channel)
+  struct alsa_elem *pair_name_elem;
+
+  // cached pointer to stereo partner (adjacent L/R channel)
+  struct routing_src *partner;
+
   // cached display name (either custom or default)
   // updated by callback when custom name changes
   char *display_name;
@@ -147,11 +156,23 @@ struct routing_snk {
   GtkWidget *mixer_label_top;
   GtkWidget *mixer_label_bottom;
 
+  // config-io pair label (stored on left channel only)
+  GtkWidget *config_io_pair_label;
+
   // optional/simulated element for custom name
   struct alsa_elem *custom_name_elem;
 
   // optional/simulated element for enable/disable
   struct alsa_elem *enable_elem;
+
+  // optional/simulated element for stereo link state (stored on left channel)
+  struct alsa_elem *link_elem;
+
+  // optional/simulated element for stereo pair name (stored on left channel)
+  struct alsa_elem *pair_name_elem;
+
+  // cached pointer to stereo partner (adjacent L/R channel)
+  struct routing_snk *partner;
 
   // cached display name (either custom or default)
   // updated by callback when custom name changes
@@ -166,6 +187,8 @@ struct routing_snk {
   struct alsa_elem *alt_group_switch;
   struct alsa_elem *main_group_source;
   struct alsa_elem *alt_group_source;
+  struct alsa_elem *main_group_trim;
+  struct alsa_elem *alt_group_trim;
 };
 
 // hold one callback & its data
@@ -264,6 +287,9 @@ struct alsa_card {
   GtkWidget          *window_main_contents;
   GtkWidget          *routing_grid;
   GtkWidget          *mixer_grid;
+  GtkWidget          *monitor_groups_grid;
+  GList              *monitor_group_cbs;
+  GList              *monitor_group_gains;
   GtkWidget          *mixer_overlay;
   GtkWidget          *mixer_glow;
   GtkWidget          *mixer_unavailable_label;
@@ -316,6 +342,8 @@ struct alsa_card {
   int                 max_spdif_out;         // max S/PDIF output ports
   int                 max_adat_in;           // max ADAT input ports
   int                 max_adat_out;          // max ADAT output ports
+
+  struct alsa_elem   *mixer_gains[MAX_MIX_OUT][MAX_MUX_IN];
 };
 
 // flags for pending_ui_updates
@@ -341,6 +369,9 @@ void alsa_elem_add_callback(
   void             *data,
   GDestroyNotify    destroy  // cleanup function, NULL if no cleanup needed
 );
+
+// remove all callbacks with matching data pointer from an element
+void alsa_elem_remove_callbacks_by_data(struct alsa_elem *elem, void *data);
 
 // trigger callbacks for an element (notify of value change)
 void alsa_elem_change(struct alsa_elem *elem);
@@ -384,6 +415,7 @@ struct alsa_card *card_create(int card_num);
 // parse elements (used by alsa-sim.c)
 void alsa_set_lr_nums(struct alsa_card *card);
 void alsa_get_routing_controls(struct alsa_card *card);
+void alsa_init_mixer_gains_cache(struct alsa_card *card);
 
 // init
 void alsa_init(void);

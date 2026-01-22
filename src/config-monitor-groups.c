@@ -5,9 +5,51 @@
 
 #include "alsa.h"
 #include "custom-names.h"
+#include "stereo-link.h"
 #include "widget-drop-down-two-level.h"
 #include "widget-gain.h"
 #include "window-configuration.h"
+
+// Entry for tracking registered callbacks so they can be removed on rebuild
+struct monitor_group_cb_entry {
+  struct alsa_elem *elem;
+  void             *data;
+};
+
+// Register a callback and track it for later cleanup
+static void register_mg_callback(
+  struct alsa_card   *card,
+  struct alsa_elem   *elem,
+  AlsaElemCallback   *callback,
+  void               *data,
+  GDestroyNotify      destroy
+) {
+  alsa_elem_add_callback(elem, callback, data, destroy);
+
+  struct monitor_group_cb_entry *entry =
+    g_malloc(sizeof(struct monitor_group_cb_entry));
+  entry->elem = elem;
+  entry->data = data;
+  card->monitor_group_cbs = g_list_prepend(
+    card->monitor_group_cbs, entry
+  );
+}
+
+// Remove all tracked callbacks and gain widgets (before grid rebuild)
+static void cleanup_monitor_group_grid(struct alsa_card *card) {
+  for (GList *l = card->monitor_group_cbs; l; l = l->next) {
+    struct monitor_group_cb_entry *entry = l->data;
+    alsa_elem_remove_callbacks_by_data(entry->elem, entry->data);
+    g_free(entry);
+  }
+  g_list_free(card->monitor_group_cbs);
+  card->monitor_group_cbs = NULL;
+
+  for (GList *l = card->monitor_group_gains; l; l = l->next)
+    cleanup_gain_widget(l->data);
+  g_list_free(card->monitor_group_gains);
+  card->monitor_group_gains = NULL;
+}
 
 // Structure to track Main/Alt Group controls for one output
 struct group_output_data {
@@ -111,7 +153,9 @@ static void free_group_enable_data(void *data) {
 // Callback to update group output label when custom name changes
 static void group_output_label_updated(struct alsa_elem *elem, void *private) {
   struct group_output_label_data *data = private;
-  char *text = get_snk_display_name_formatted(data->snk);
+  char *text = is_snk_linked(data->snk)
+    ? get_snk_pair_display_name(data->snk)
+    : get_snk_display_name_formatted(data->snk);
   gtk_label_set_text(data->label, text);
   g_free(text);
 }
@@ -213,54 +257,104 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
     if (!data.main_elem && !data.alt_elem)
       break;
 
-    // Row label - use formatted display name (custom name or default)
+    // Check stereo link state — skip right channel of linked pair
     struct routing_snk *snk = get_analogue_output_snk(card, i);
-    char *label_text = snk ? get_snk_display_name_formatted(snk) : g_strdup("");
+    if (snk && !should_display_snk(snk))
+      continue;
+
+    int linked = snk && is_snk_linked(snk);
+
+    // Row label — use pair name when linked, otherwise single name
+    char *label_text;
+    if (linked)
+      label_text = get_snk_pair_display_name(snk);
+    else
+      label_text = snk ? get_snk_display_name_formatted(snk) : g_strdup("");
+
     GtkWidget *label = gtk_label_new(label_text);
     g_free(label_text);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_widget_set_valign(label, GTK_ALIGN_CENTER);
     gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
 
-    // Register callback to update label when custom name changes
-    if (snk && snk->custom_name_elem) {
-      struct group_output_label_data *label_data =
-        g_malloc(sizeof(struct group_output_label_data));
-      label_data->label = GTK_LABEL(label);
-      label_data->snk = snk;
+    // Register callbacks to update label when name changes
+    if (snk) {
+      if (snk->custom_name_elem) {
+        struct group_output_label_data *label_data =
+          g_malloc(sizeof(struct group_output_label_data));
+        label_data->label = GTK_LABEL(label);
+        label_data->snk = snk;
 
-      alsa_elem_add_callback(
-        snk->custom_name_elem,
-        group_output_label_updated,
-        label_data,
-        free_group_output_label_data
-      );
+        register_mg_callback(
+          card, snk->custom_name_elem,
+          group_output_label_updated,
+          label_data, free_group_output_label_data
+        );
+      }
+
+      // Also update label when pair name changes (for linked pairs)
+      struct alsa_elem *pair_elem = get_snk_pair_name_elem(snk);
+      if (pair_elem) {
+        struct group_output_label_data *pair_label_data =
+          g_malloc(sizeof(struct group_output_label_data));
+        pair_label_data->label = GTK_LABEL(label);
+        pair_label_data->snk = snk;
+
+        register_mg_callback(
+          card, pair_elem,
+          group_output_label_updated,
+          pair_label_data, free_group_output_label_data
+        );
+      }
+    }
+
+    // When linked, get the right channel data for stereo trim
+    struct group_output_data data_r = {0};
+    if (linked) {
+      struct routing_snk *snk_r = get_snk_partner(snk);
+      if (snk_r)
+        get_group_output_elems(card, snk_r->elem->lr_num, &data_r);
     }
 
     // Main Source dropdown (create before checkbox so we can track it)
     GtkWidget *main_source = NULL;
     if (data.main_source_elem && main_source_col >= 0) {
-      main_source = make_drop_down_two_level_alsa_elem(data.main_source_elem);
+      main_source = make_drop_down_two_level_alsa_elem(
+        data.main_source_elem
+      );
       gtk_widget_set_size_request(main_source, 120, -1);
       gtk_widget_set_hexpand(main_source, FALSE);
       gtk_widget_set_valign(main_source, GTK_ALIGN_CENTER);
-      gtk_grid_attach(GTK_GRID(grid), main_source, main_source_col, row, 1, 1);
+      gtk_grid_attach(
+        GTK_GRID(grid), main_source, main_source_col, row, 1, 1
+      );
     }
 
     // Main Trim (create before checkbox so we can track it)
     GtkWidget *main_trim = NULL;
     if (data.main_trim_elem && main_trim_col >= 0) {
-      main_trim = make_gain_alsa_elem(
-        data.main_trim_elem,
-        0,                       // zero_is_off
-        WIDGET_GAIN_TAPER_LINEAR,
-        1,                       // can_control
-        FALSE                    // show_level
-      );
+      if (linked && data_r.main_trim_elem) {
+        struct alsa_elem *elems[] = {
+          data.main_trim_elem, data_r.main_trim_elem
+        };
+        main_trim = make_stereo_gain_alsa_elem(
+          elems, 2, 0, WIDGET_GAIN_TAPER_LINEAR, 1, FALSE
+        );
+      } else {
+        main_trim = make_gain_alsa_elem(
+          data.main_trim_elem,
+          0, WIDGET_GAIN_TAPER_LINEAR, 1, FALSE
+        );
+      }
       gtk_widget_set_size_request(main_trim, 40, 80);
       gtk_widget_set_hexpand(main_trim, FALSE);
       gtk_widget_set_valign(main_trim, GTK_ALIGN_CENTER);
-      gtk_grid_attach(GTK_GRID(grid), main_trim, main_trim_col, row, 1, 1);
+      gtk_grid_attach(
+        GTK_GRID(grid), main_trim, main_trim_col, row, 1, 1
+      );
+      card->monitor_group_gains = g_list_prepend(
+        card->monitor_group_gains, main_trim
+      );
     }
 
     // Main checkbox
@@ -276,34 +370,33 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
         data.main_elem
       );
 
-      alsa_elem_add_callback(
-        data.main_elem,
-        enable_checkbox_updated,
-        main_check,
-        NULL
+      register_mg_callback(
+        card, data.main_elem,
+        enable_checkbox_updated, main_check, NULL
       );
 
       int value = alsa_get_elem_value(data.main_elem);
-      gtk_check_button_set_active(GTK_CHECK_BUTTON(main_check), value != 0);
+      gtk_check_button_set_active(
+        GTK_CHECK_BUTTON(main_check), value != 0
+      );
 
-      gtk_grid_attach(GTK_GRID(grid), main_check, main_col, row, 1, 1);
+      gtk_grid_attach(
+        GTK_GRID(grid), main_check, main_col, row, 1, 1
+      );
 
-      // Register callback to enable/disable source and trim when main is
-      // toggled
+      // Register callback to enable/disable source and trim
       if (main_source || main_trim) {
         struct group_enable_data *enable_data =
           g_malloc(sizeof(struct group_enable_data));
         enable_data->source_widget = main_source;
         enable_data->trim_widget = main_trim;
 
-        alsa_elem_add_callback(
-          data.main_elem,
+        register_mg_callback(
+          card, data.main_elem,
           group_enable_updated,
-          enable_data,
-          free_group_enable_data
+          enable_data, free_group_enable_data
         );
 
-        // Set initial sensitivity based on current state
         if (main_source)
           gtk_widget_set_sensitive(main_source, value != 0);
         if (main_trim)
@@ -314,27 +407,42 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
     // Alt Source dropdown (create before checkbox so we can track it)
     GtkWidget *alt_source = NULL;
     if (data.alt_source_elem && alt_source_col >= 0) {
-      alt_source = make_drop_down_two_level_alsa_elem(data.alt_source_elem);
+      alt_source = make_drop_down_two_level_alsa_elem(
+        data.alt_source_elem
+      );
       gtk_widget_set_size_request(alt_source, 120, -1);
       gtk_widget_set_hexpand(alt_source, FALSE);
       gtk_widget_set_valign(alt_source, GTK_ALIGN_CENTER);
-      gtk_grid_attach(GTK_GRID(grid), alt_source, alt_source_col, row, 1, 1);
+      gtk_grid_attach(
+        GTK_GRID(grid), alt_source, alt_source_col, row, 1, 1
+      );
     }
 
     // Alt Trim (create before checkbox so we can track it)
     GtkWidget *alt_trim = NULL;
     if (data.alt_trim_elem && alt_trim_col >= 0) {
-      alt_trim = make_gain_alsa_elem(
-        data.alt_trim_elem,
-        0,                       // zero_is_off
-        WIDGET_GAIN_TAPER_LINEAR,
-        1,                       // can_control
-        FALSE                    // show_level
-      );
+      if (linked && data_r.alt_trim_elem) {
+        struct alsa_elem *elems[] = {
+          data.alt_trim_elem, data_r.alt_trim_elem
+        };
+        alt_trim = make_stereo_gain_alsa_elem(
+          elems, 2, 0, WIDGET_GAIN_TAPER_LINEAR, 1, FALSE
+        );
+      } else {
+        alt_trim = make_gain_alsa_elem(
+          data.alt_trim_elem,
+          0, WIDGET_GAIN_TAPER_LINEAR, 1, FALSE
+        );
+      }
       gtk_widget_set_size_request(alt_trim, 40, 80);
       gtk_widget_set_hexpand(alt_trim, FALSE);
       gtk_widget_set_valign(alt_trim, GTK_ALIGN_CENTER);
-      gtk_grid_attach(GTK_GRID(grid), alt_trim, alt_trim_col, row, 1, 1);
+      gtk_grid_attach(
+        GTK_GRID(grid), alt_trim, alt_trim_col, row, 1, 1
+      );
+      card->monitor_group_gains = g_list_prepend(
+        card->monitor_group_gains, alt_trim
+      );
     }
 
     // Alt checkbox
@@ -350,33 +458,33 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
         data.alt_elem
       );
 
-      alsa_elem_add_callback(
-        data.alt_elem,
-        enable_checkbox_updated,
-        alt_check,
-        NULL
+      register_mg_callback(
+        card, data.alt_elem,
+        enable_checkbox_updated, alt_check, NULL
       );
 
       int value = alsa_get_elem_value(data.alt_elem);
-      gtk_check_button_set_active(GTK_CHECK_BUTTON(alt_check), value != 0);
+      gtk_check_button_set_active(
+        GTK_CHECK_BUTTON(alt_check), value != 0
+      );
 
-      gtk_grid_attach(GTK_GRID(grid), alt_check, alt_col, row, 1, 1);
+      gtk_grid_attach(
+        GTK_GRID(grid), alt_check, alt_col, row, 1, 1
+      );
 
-      // Register callback to enable/disable source and trim when alt is toggled
+      // Register callback to enable/disable source and trim
       if (alt_source || alt_trim) {
         struct group_enable_data *enable_data =
           g_malloc(sizeof(struct group_enable_data));
         enable_data->source_widget = alt_source;
         enable_data->trim_widget = alt_trim;
 
-        alsa_elem_add_callback(
-          data.alt_elem,
+        register_mg_callback(
+          card, data.alt_elem,
           group_enable_updated,
-          enable_data,
-          free_group_enable_data
+          enable_data, free_group_enable_data
         );
 
-        // Set initial sensitivity based on current state
         if (alt_source)
           gtk_widget_set_sensitive(alt_source, value != 0);
         if (alt_trim)
@@ -414,16 +522,19 @@ void add_monitor_groups_tab(GtkWidget *notebook, struct alsa_card *card) {
   gtk_widget_set_margin_bottom(content, 20);
 
   GtkWidget *help = gtk_label_new(
-    "Monitor groups let you organise your outputs into Main and Alt sets.\n"
-    "Switch between them using the Alt button on your interface or the "
-    "toggle in the main window.\n"
-    "The main volume knob controls the enabled group; use Trim for per-output "
-    "level calibration.\n\n"
+    "Monitor groups let you organise your outputs into Main and "
+    "Alt sets.\n"
+    "Switch between them using the Alt button on your interface "
+    "or the toggle in the main window.\n"
+    "The main volume knob controls the enabled group; use Trim "
+    "for per-output level calibration.\n\n"
     "Examples:\n"
-    "  • Connect two sets of speakers for A/B reference mixing\n"
-    "  • Create a surround setup with all speakers in one group\n"
-    "  • Quick DAW/Direct monitoring switch by assigning same output to both "
-    "groups with different sources"
+    "  \xe2\x80\xa2 Connect two sets of speakers for A/B reference "
+    "mixing\n"
+    "  \xe2\x80\xa2 Create a surround setup with all speakers in one "
+    "group\n"
+    "  \xe2\x80\xa2 Quick DAW/Direct monitoring switch by assigning "
+    "same output to both groups with different sources"
   );
   gtk_widget_set_halign(help, GTK_ALIGN_START);
   gtk_widget_add_css_class(help, "dim-label");
@@ -431,10 +542,34 @@ void add_monitor_groups_tab(GtkWidget *notebook, struct alsa_card *card) {
 
   GtkWidget *grid = create_main_alt_group_grid(card);
   gtk_box_append(GTK_BOX(content), grid);
+  card->monitor_groups_grid = grid;
 
   GtkWidget *scrolled = wrap_tab_content_scrolled(content);
-  g_object_set_data(G_OBJECT(scrolled), PAGE_ID_KEY, (gpointer)"monitor-groups");
-  gtk_notebook_append_page(
-    GTK_NOTEBOOK(notebook), scrolled, gtk_label_new("Monitor Groups")
+  g_object_set_data(
+    G_OBJECT(scrolled), PAGE_ID_KEY, (gpointer)"monitor-groups"
   );
+  gtk_notebook_append_page(
+    GTK_NOTEBOOK(notebook), scrolled,
+    gtk_label_new("Monitor Groups")
+  );
+}
+
+void rebuild_monitor_groups_grid(struct alsa_card *card) {
+  if (!card || !card->monitor_groups_grid)
+    return;
+
+  GtkWidget *parent = gtk_widget_get_parent(card->monitor_groups_grid);
+  if (!parent)
+    return;
+
+  // Clean up callbacks and gain widgets from old grid
+  cleanup_monitor_group_grid(card);
+
+  // Remove old grid from parent
+  gtk_box_remove(GTK_BOX(parent), card->monitor_groups_grid);
+
+  // Create new grid with current stereo state
+  GtkWidget *grid = create_main_alt_group_grid(card);
+  gtk_box_append(GTK_BOX(parent), grid);
+  card->monitor_groups_grid = grid;
 }

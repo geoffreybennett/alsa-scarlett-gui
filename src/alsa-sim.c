@@ -8,6 +8,7 @@
 #include "optional-controls.h"
 #include "custom-names.h"
 #include "port-enable.h"
+#include "stereo-link.h"
 
 // check that *config is a compound node, retrieve the first node
 // within, check that that node is a compound node, optionally check
@@ -515,9 +516,11 @@ void create_sim_from_file(GtkWindow *w, char *fn) {
 
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
+  alsa_init_mixer_gains_cache(card);
   optional_controls_init(card);
   custom_names_init(card);
   port_enable_init(card);
+  stereo_link_init(card);
 
   create_card_window(card);
 }

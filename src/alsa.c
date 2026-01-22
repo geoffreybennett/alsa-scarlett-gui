@@ -14,6 +14,7 @@
 #include "optional-controls.h"
 #include "custom-names.h"
 #include "port-enable.h"
+#include "stereo-link.h"
 #include "dsp-state.h"
 #include "hw-io-availability.h"
 
@@ -164,6 +165,26 @@ void alsa_elem_add_callback(
   cb->destroy = destroy;
 
   elem->callbacks = g_list_append(elem->callbacks, cb);
+}
+
+void alsa_elem_remove_callbacks_by_data(struct alsa_elem *elem, void *data) {
+  if (!elem || !elem->callbacks)
+    return;
+
+  GList *l = elem->callbacks;
+  while (l) {
+    GList *next = l->next;
+    struct alsa_elem_callback *cb = l->data;
+
+    if (cb && cb->data == data) {
+      if (cb->destroy)
+        cb->destroy(cb->data);
+      free(cb);
+      elem->callbacks = g_list_delete_link(elem->callbacks, l);
+    }
+
+    l = next;
+  }
 }
 
 //
@@ -940,6 +961,14 @@ static void get_routing_snks(struct alsa_card *card) {
                "Alt Group Output %d Source Playback Enum", elem->lr_num);
       r->alt_group_source = get_elem_by_name(card->elems, ctrl_name);
 
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Main Group Output %d Trim Playback Volume", elem->lr_num);
+      r->main_group_trim = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Alt Group Output %d Trim Playback Volume", elem->lr_num);
+      r->alt_group_trim = get_elem_by_name(card->elems, ctrl_name);
+
       // Initialize effective_source_idx to normal routing value
       r->effective_source_idx = alsa_get_elem_value(elem);
     } else {
@@ -1147,6 +1176,39 @@ static void card_destroy_callback(void *data) {
   }
 }
 
+void alsa_init_mixer_gains_cache(struct alsa_card *card) {
+  GPtrArray *elems = card->elems;
+
+  for (int i = 0; i < elems->len; i++) {
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
+
+    if (!elem->card)
+      continue;
+
+    if (!strstr(elem->name, "Playback Volume"))
+      continue;
+
+    // Gen 2+: "Mix X Input Y", Gen 1: "Matrix Y Mix X"
+    if (strncmp(elem->name, "Mix ", 4) &&
+        strncmp(elem->name, "Matrix ", 7))
+      continue;
+
+    char *mix_str = strstr(elem->name, "Mix ");
+    if (!mix_str || !mix_str[4])
+      continue;
+
+    int mix_num = mix_str[4] - 'A';
+    int input_num = get_num_from_string(elem->name) - 1;
+
+    if (mix_num < 0 || mix_num >= MAX_MIX_OUT)
+      continue;
+    if (input_num < 0 || input_num >= MAX_MUX_IN)
+      continue;
+
+    card->mixer_gains[mix_num][input_num] = elem;
+  }
+}
+
 // Complete card initialisation after the driver is ready
 static void complete_card_init(struct alsa_card *card) {
 
@@ -1154,9 +1216,11 @@ static void complete_card_init(struct alsa_card *card) {
   alsa_get_elem_list(card);
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
+  alsa_init_mixer_gains_cache(card);
   optional_controls_init(card);
   custom_names_init(card);
   port_enable_init(card);
+  stereo_link_init(card);
   dsp_state_init(card);
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
 

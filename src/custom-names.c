@@ -233,21 +233,7 @@ static void src_custom_name_display_changed(
     g_free(formatted_name);
   }
 
-  // update routing window labels if widget exists
-  if (src->widget) {
-    // find the label child in the box widget and update it
-    for (GtkWidget *child = gtk_widget_get_first_child(src->widget);
-         child != NULL;
-         child = gtk_widget_get_next_sibling(child)) {
-      if (GTK_IS_LABEL(child)) {
-        char *label = get_src_display_name_formatted(src);
-        gtk_label_set_text(GTK_LABEL(child), label);
-        gtk_widget_set_tooltip_text(child, label);
-        g_free(label);
-        break;
-      }
-    }
-  }
+  update_routing_src_label(src);
 }
 
 // Get generic hardware name for a routing source (no device-specific names)

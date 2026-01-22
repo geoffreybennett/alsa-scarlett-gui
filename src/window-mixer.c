@@ -9,20 +9,19 @@
 #include "gtkhelper.h"
 #include "hw-io-availability.h"
 #include "port-enable.h"
+#include "stereo-link.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
 #include "window-mixer.h"
 
-// draw a horizontal glow bar behind a label
-static void draw_label_glow(
-  cairo_t   *cr,
-  GtkWidget *label,
-  GtkWidget *parent,
-  double     level_db
+// draw a horizontal glow bar at a specific position
+static void draw_glow_at(
+  cairo_t *cr,
+  double   cx,
+  double   cy,
+  double   max_half_width,
+  double   level_db
 ) {
-  if (!label || !gtk_widget_get_visible(label))
-    return;
-
   double intensity = get_glow_intensity(level_db);
   if (intensity <= 0)
     return;
@@ -30,17 +29,7 @@ static void draw_label_glow(
   double r, g, b;
   level_to_colour(level_db, &r, &g, &b);
 
-  // get label position and size
-  double lw = gtk_widget_get_allocated_width(label);
-  double lh = gtk_widget_get_allocated_height(label);
-  double x, y;
-  gtk_widget_translate_coordinates(label, parent, lw / 2.0, lh / 2.0, &x, &y);
-
-  // scale glow length and height based on intensity
-  double max_half_width = 25.0;
   double half_width = max_half_width * intensity;
-
-  // minimum visible size
   if (half_width < 5.0)
     half_width = 5.0;
 
@@ -50,15 +39,101 @@ static void draw_label_glow(
     double width, alpha;
     get_glow_layer_params(layer, intensity, &width, &alpha);
 
-    // scale the height too
     width *= (0.5 + 0.75 * intensity);
 
     cairo_set_source_rgba(cr, r, g, b, alpha);
     cairo_set_line_width(cr, width);
-    cairo_move_to(cr, x - half_width, y);
-    cairo_line_to(cr, x + half_width, y);
+    cairo_move_to(cr, cx - half_width, cy);
+    cairo_line_to(cr, cx + half_width, cy);
     cairo_stroke(cr);
   }
+}
+
+// get label centre coordinates relative to parent
+static gboolean get_label_centre(
+  GtkWidget *label,
+  GtkWidget *parent,
+  double    *cx,
+  double    *cy
+) {
+  if (!label || !gtk_widget_get_visible(label))
+    return FALSE;
+
+  double lw = gtk_widget_get_allocated_width(label);
+  double lh = gtk_widget_get_allocated_height(label);
+  return gtk_widget_translate_coordinates(
+    label, parent, lw / 2.0, lh / 2.0, cx, cy
+  );
+}
+
+// draw a single mono glow bar centred on a label
+static void draw_label_glow(
+  cairo_t   *cr,
+  GtkWidget *label,
+  GtkWidget *parent,
+  double     level_db
+) {
+  double cx, cy;
+  if (!get_label_centre(label, parent, &cx, &cy))
+    return;
+
+  draw_glow_at(cr, cx, cy, 25.0, level_db);
+}
+
+// draw one side of a stereo glow bar growing outward from centre
+static void draw_glow_bar_outward(
+  cairo_t *cr,
+  double   inner_x,
+  double   cy,
+  double   max_extent,
+  double   level_db,
+  int      direction  // -1 = left, +1 = right
+) {
+  double intensity = get_glow_intensity(level_db);
+  if (intensity <= 0)
+    return;
+
+  double r, g, b;
+  level_to_colour(level_db, &r, &g, &b);
+
+  double extent = max_extent * intensity;
+  if (extent < 5.0)
+    extent = 5.0;
+
+  double outer_x = inner_x + direction * extent;
+
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+
+  for (int layer = GLOW_LAYERS - 1; layer >= 0; layer--) {
+    double width, alpha;
+    get_glow_layer_params(layer, intensity, &width, &alpha);
+
+    width *= (0.5 + 0.75 * intensity);
+
+    cairo_set_source_rgba(cr, r, g, b, alpha);
+    cairo_set_line_width(cr, width);
+    cairo_move_to(cr, inner_x, cy);
+    cairo_line_to(cr, outer_x, cy);
+    cairo_stroke(cr);
+  }
+}
+
+// draw split L/R glow bars growing outward from label centre
+static void draw_stereo_label_glow(
+  cairo_t   *cr,
+  GtkWidget *label,
+  GtkWidget *parent,
+  double     level_db_l,
+  double     level_db_r
+) {
+  double cx, cy;
+  if (!get_label_centre(label, parent, &cx, &cy))
+    return;
+
+  double gap = 3.0;
+  double max_extent = 25.0;
+  draw_glow_bar_outward(cr, cx - gap, cy, max_extent, level_db_l, -1);
+  draw_glow_bar_outward(cr, cx + gap, cy, max_extent, level_db_r, +1);
 }
 
 // draw function for mixer label glow overlay
@@ -84,14 +159,30 @@ static void draw_mixer_glow(
     if (r_src->port_category != PC_MIX)
       continue;
 
-    // skip disabled ports
-    if (!is_routing_src_enabled(r_src))
+    if (!is_routing_src_enabled(r_src) || !should_display_src(r_src))
       continue;
 
-    double level_db = get_routing_src_level_db(card, r_src);
+    double level_l = get_routing_src_level_db(card, r_src);
 
-    draw_label_glow(cr, r_src->mixer_label_left, parent, level_db);
-    draw_label_glow(cr, r_src->mixer_label_right, parent, level_db);
+    if (is_src_linked(r_src)) {
+      struct routing_src *r_src_r = get_src_partner(r_src);
+      double level_r = r_src_r ?
+        get_routing_src_level_db(card, r_src_r) : level_l;
+
+      draw_stereo_label_glow(
+        cr, r_src->mixer_label_left, parent, level_l, level_r
+      );
+      draw_stereo_label_glow(
+        cr, r_src->mixer_label_right, parent, level_l, level_r
+      );
+    } else {
+      draw_label_glow(
+        cr, r_src->mixer_label_left, parent, level_l
+      );
+      draw_label_glow(
+        cr, r_src->mixer_label_right, parent, level_l
+      );
+    }
   }
 
   // draw glow behind mixer input labels (top/bottom)
@@ -103,8 +194,7 @@ static void draw_mixer_glow(
     if (!r_snk->elem || r_snk->elem->port_category != PC_MIX)
       continue;
 
-    // skip disabled ports
-    if (!is_routing_snk_enabled(r_snk))
+    if (!is_routing_snk_enabled(r_snk) || !should_display_snk(r_snk))
       continue;
 
     // get the source connected to this mixer input
@@ -116,10 +206,36 @@ static void draw_mixer_glow(
       card->routing_srcs, struct routing_src, r_src_idx
     );
 
-    double level_db = get_routing_src_level_db(card, r_src);
+    double level_l = get_routing_src_level_db(card, r_src);
 
-    draw_label_glow(cr, r_snk->mixer_label_top, parent, level_db);
-    draw_label_glow(cr, r_snk->mixer_label_bottom, parent, level_db);
+    if (is_snk_linked(r_snk)) {
+      struct routing_snk *r_snk_r = get_snk_partner(r_snk);
+      double level_r = level_l;
+
+      if (r_snk_r && r_snk_r->elem) {
+        int r_src_idx_r = alsa_get_elem_value(r_snk_r->elem);
+        if (r_src_idx_r) {
+          struct routing_src *r_src_r = &g_array_index(
+            card->routing_srcs, struct routing_src, r_src_idx_r
+          );
+          level_r = get_routing_src_level_db(card, r_src_r);
+        }
+      }
+
+      draw_stereo_label_glow(
+        cr, r_snk->mixer_label_top, parent, level_l, level_r
+      );
+      draw_stereo_label_glow(
+        cr, r_snk->mixer_label_bottom, parent, level_l, level_r
+      );
+    } else {
+      draw_label_glow(
+        cr, r_snk->mixer_label_top, parent, level_l
+      );
+      draw_label_glow(
+        cr, r_snk->mixer_label_bottom, parent, level_l
+      );
+    }
   }
 }
 
@@ -193,6 +309,143 @@ static struct routing_snk *get_mixer_r_snk(
   return NULL;
 }
 
+// Get mixer routing source by mix number (0-based: A=0, B=1, etc.)
+static struct routing_src *get_mixer_r_src(
+  struct alsa_card *card,
+  int               mix_num
+) {
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (r_src->port_category == PC_MIX && r_src->port_num == mix_num)
+      return r_src;
+  }
+  return NULL;
+}
+
+static void populate_mixer_gain_widgets(struct alsa_card *card) {
+  int num_mixes = card->routing_in_count[PC_MIX];
+  int num_inputs = card->routing_out_count[PC_MIX];
+
+  for (int mix_num = 0; mix_num < num_mixes; mix_num++) {
+    struct routing_src *mix_src = get_mixer_r_src(card, mix_num);
+    if (!mix_src)
+      continue;
+
+    if (!should_display_src(mix_src))
+      continue;
+
+    int output_linked = is_src_linked(mix_src);
+    struct routing_src *mix_src_r =
+      output_linked ? get_src_partner(mix_src) : NULL;
+    int mix_num_r = mix_src_r ? mix_src_r->port_num : -1;
+
+    for (int input_num = 0; input_num < num_inputs; input_num++) {
+      struct routing_snk *r_snk = get_mixer_r_snk(card, input_num + 1);
+      if (!r_snk)
+        continue;
+
+      if (!should_display_snk(r_snk))
+        continue;
+
+      int input_linked = is_snk_linked(r_snk);
+      struct routing_snk *r_snk_r =
+        input_linked ? get_snk_partner(r_snk) : NULL;
+      int input_num_r = r_snk_r && r_snk_r->elem ?
+                        r_snk_r->elem->lr_num - 1 : -1;
+
+      struct alsa_elem *elem_arr[4];
+      int elem_count = 0;
+
+      if (!input_linked && !output_linked) {
+        struct alsa_elem *e = card->mixer_gains[mix_num][input_num];
+        if (e)
+          elem_arr[elem_count++] = e;
+      } else if (input_linked && !output_linked) {
+        struct alsa_elem *e1 = card->mixer_gains[mix_num][input_num];
+        struct alsa_elem *e2 = card->mixer_gains[mix_num][input_num_r];
+        if (e1) elem_arr[elem_count++] = e1;
+        if (e2) elem_arr[elem_count++] = e2;
+      } else if (!input_linked && output_linked) {
+        struct alsa_elem *e1 = card->mixer_gains[mix_num][input_num];
+        struct alsa_elem *e2 = card->mixer_gains[mix_num_r][input_num];
+        if (e1) elem_arr[elem_count++] = e1;
+        if (e2) elem_arr[elem_count++] = e2;
+      } else {
+        struct alsa_elem *e1 = card->mixer_gains[mix_num][input_num];
+        struct alsa_elem *e2 = card->mixer_gains[mix_num_r][input_num_r];
+        if (e1) elem_arr[elem_count++] = e1;
+        if (e2) elem_arr[elem_count++] = e2;
+      }
+
+      if (elem_count == 0)
+        continue;
+
+      // Create the gain widget
+      GtkWidget *w;
+      if (elem_count == 1) {
+        w = make_gain_alsa_elem(
+          elem_arr[0], 1, WIDGET_GAIN_TAPER_LOG, 0, TRUE
+        );
+      } else {
+        w = make_stereo_gain_alsa_elem(
+          elem_arr, elem_count, 1,
+          WIDGET_GAIN_TAPER_LOG, 0, TRUE
+        );
+      }
+
+      if (!w)
+        continue;
+
+      // keep alive when removed from grid
+      g_object_ref(w);
+
+      struct mixer_gain_widget *mg =
+        g_malloc0(sizeof(struct mixer_gain_widget));
+      mg->widget = w;
+      mg->mix_num = mix_num;
+      mg->input_num = input_num;
+      mg->r_snk = r_snk;
+      mg->elem = elem_arr[0];
+
+      mg->elem_count = elem_count;
+      for (int i = 0; i < elem_count; i++)
+        mg->elems[i] = elem_arr[i];
+
+      mg->r_snks[0] = r_snk;
+      mg->r_snk_count = 1;
+      if (input_linked && r_snk_r) {
+        mg->r_snks[1] = r_snk_r;
+        mg->r_snk_count = 2;
+      }
+
+      card->mixer_gain_widgets =
+        g_list_append(card->mixer_gain_widgets, mg);
+
+      // Store label references for hover effect
+      g_object_set_data(
+        G_OBJECT(w), "mix_label_left",
+        mix_src->mixer_label_left
+      );
+      g_object_set_data(
+        G_OBJECT(w), "mix_label_right",
+        mix_src->mixer_label_right
+      );
+      g_object_set_data(
+        G_OBJECT(w), "source_label_top",
+        r_snk->mixer_label_top
+      );
+      g_object_set_data(
+        G_OBJECT(w), "source_label_bottom",
+        r_snk->mixer_label_bottom
+      );
+
+      add_mixer_hover_controller(w);
+    }
+  }
+}
+
 GtkWidget *create_mixer_controls(struct alsa_card *card) {
   GtkWidget *top = gtk_frame_new(NULL);
   gtk_widget_add_css_class(top, "window-frame");
@@ -251,44 +504,28 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   // lower the glow below the grid by reordering
   gtk_widget_insert_before(card->mixer_glow, mixer_overlay, mixer_top);
 
-  GPtrArray *elems = card->elems;
-
-  GtkWidget *mix_labels_left[MAX_MIX_OUT];
-  GtkWidget *mix_labels_right[MAX_MIX_OUT];
-
   // create the Mix X labels on the left and right of the grid
   for (int i = 0; i < card->routing_in_count[PC_MIX]; i++) {
-    // find the corresponding routing source for this mixer output
-    struct routing_src *r_src = NULL;
-    for (int j = 0; j < card->routing_srcs->len; j++) {
-      struct routing_src *src = &g_array_index(
-        card->routing_srcs, struct routing_src, j
-      );
-      if (src->port_category == PC_MIX && src->port_num == i) {
-        r_src = src;
-        break;
-      }
-    }
+    struct routing_src *r_src = get_mixer_r_src(card, i);
 
     char *name = r_src ?
       get_mixer_output_label_for_mixer_window(r_src) :
       g_strdup_printf("Mix %c", i + 'A');
 
-    GtkWidget *l_left = mix_labels_left[i] = gtk_label_new(name);
+    GtkWidget *l_left = gtk_label_new(name);
     gtk_label_set_ellipsize(GTK_LABEL(l_left), PANGO_ELLIPSIZE_END);
     gtk_label_set_max_width_chars(GTK_LABEL(l_left), 12);
     gtk_widget_set_tooltip_text(l_left, name);
-    g_object_ref(l_left);  // keep alive when removed from grid
+    g_object_ref(l_left);
     gtk_grid_attach(
-      GTK_GRID(mixer_top), l_left,
-      0, i + 2, 1, 1
+      GTK_GRID(mixer_top), l_left, 0, i + 2, 1, 1
     );
 
-    GtkWidget *l_right = mix_labels_right[i] = gtk_label_new(name);
+    GtkWidget *l_right = gtk_label_new(name);
     gtk_label_set_ellipsize(GTK_LABEL(l_right), PANGO_ELLIPSIZE_END);
     gtk_label_set_max_width_chars(GTK_LABEL(l_right), 12);
     gtk_widget_set_tooltip_text(l_right, name);
-    g_object_ref(l_right);  // keep alive when removed from grid
+    g_object_ref(l_right);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_right,
       card->routing_out_count[PC_MIX] + 1, i + 2, 1, 1
@@ -296,7 +533,6 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
     g_free(name);
 
-    // store pointers to these labels in the routing source
     if (r_src) {
       r_src->mixer_label_left = l_left;
       r_src->mixer_label_right = l_right;
@@ -344,70 +580,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     }
   }
 
-  // go through each element and create the mixer
-  for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = g_ptr_array_index(elems, i);
-
-    // if no card entry, it's an empty slot
-    if (!elem->card)
-      continue;
-
-    // looking for "Mix X Input Y Playback Volume"
-    // or "Matrix Y Mix X Playback Volume" elements (Gen 1)
-    if (!strstr(elem->name, "Playback Volume"))
-      continue;
-    if (strncmp(elem->name, "Mix ", 4) &&
-        strncmp(elem->name, "Matrix ", 7))
-      continue;
-
-    char *mix_str = strstr(elem->name, "Mix ");
-    if (!mix_str)
-      continue;
-
-    // extract the mix number and input number from the element name
-    int mix_num = mix_str[4] - 'A';
-    int input_num = get_num_from_string(elem->name) - 1;
-
-    if (mix_num >= MAX_MIX_OUT) {
-      printf("mix_num %d >= MAX_MIX_OUT %d\n", mix_num, MAX_MIX_OUT);
-      continue;
-    }
-
-    // look up the r_snk entry for the mixer input number
-    struct routing_snk *r_snk = get_mixer_r_snk(card, input_num + 1);
-    if (!r_snk) {
-      printf("missing mixer input %d\n", input_num);
-      continue;
-    }
-
-    // create the gain control with level display enabled
-    GtkWidget *w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0, TRUE);
-
-    // store widget reference so it stays alive when removed from grid
-    g_object_ref(w);
-
-    // store widget in card's list with coordinates and routing info
-    struct mixer_gain_widget *mg = g_malloc(sizeof(struct mixer_gain_widget));
-    mg->widget = w;
-    mg->mix_num = mix_num;
-    mg->input_num = input_num;
-    mg->r_snk = r_snk;
-    mg->elem = elem;
-    card->mixer_gain_widgets = g_list_append(card->mixer_gain_widgets, mg);
-
-    // attach to the grid initially (will be rebuilt later)
-    gtk_grid_attach(GTK_GRID(mixer_top), w, input_num + 1, mix_num + 2, 1, 1);
-
-    // Store label references in the gain widget for hover effect
-    g_object_set_data(G_OBJECT(w), "mix_label_left", mix_labels_left[mix_num]);
-    g_object_set_data(G_OBJECT(w), "mix_label_right", mix_labels_right[mix_num]);
-    g_object_set_data(G_OBJECT(w), "source_label_top", r_snk->mixer_label_top);
-    g_object_set_data(G_OBJECT(w), "source_label_bottom", r_snk->mixer_label_bottom);
-
-    // add hover controller to the gain widget
-    add_mixer_hover_controller(w);
-
-  }
+  populate_mixer_gain_widgets(card);
 
   update_mixer_labels(card);
 
@@ -422,6 +595,39 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 }
 
 void update_mixer_labels(struct alsa_card *card) {
+  // Update mixer output labels (Mix A, Mix B, etc.) for stereo linking
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (r_src->port_category != PC_MIX)
+      continue;
+
+    // Skip R channel of linked pair
+    if (!should_display_src(r_src))
+      continue;
+
+    char *name;
+    if (is_src_linked(r_src)) {
+      name = get_src_pair_display_name(r_src);
+    } else {
+      name = get_mixer_output_label_for_mixer_window(r_src);
+    }
+
+    if (r_src->mixer_label_left) {
+      gtk_label_set_text(GTK_LABEL(r_src->mixer_label_left), name);
+      gtk_widget_set_tooltip_text(r_src->mixer_label_left, name);
+    }
+    if (r_src->mixer_label_right) {
+      gtk_label_set_text(GTK_LABEL(r_src->mixer_label_right), name);
+      gtk_widget_set_tooltip_text(r_src->mixer_label_right, name);
+    }
+
+    g_free(name);
+  }
+
+  // Update mixer input labels (source names)
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
@@ -431,6 +637,10 @@ void update_mixer_labels(struct alsa_card *card) {
     if (elem->port_category != PC_MIX)
       continue;
 
+    // Skip R channel of linked pair (label handled by L channel)
+    if (!should_display_snk(r_snk))
+      continue;
+
     int routing_src_idx = alsa_get_elem_value(elem);
 
     struct routing_src *r_src = &g_array_index(
@@ -438,9 +648,19 @@ void update_mixer_labels(struct alsa_card *card) {
     );
 
     if (r_snk->mixer_label_top) {
-      const char *display_name = get_routing_src_display_name(r_src);
+      char *display_name;
+
+      // If this mixer input is linked and the connected source is also linked,
+      // show the stereo pair name
+      if (is_snk_linked(r_snk) && is_src_linked(r_src)) {
+        display_name = get_src_pair_display_name(r_src);
+      } else {
+        display_name = g_strdup(get_routing_src_display_name(r_src));
+      }
+
       gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_top), display_name);
       gtk_label_set_text(GTK_LABEL(r_snk->mixer_label_bottom), display_name);
+      g_free(display_name);
     }
   }
 }
@@ -480,7 +700,8 @@ void rebuild_mixer_grid(struct alsa_card *card) {
     if (src->port_num < 0 || src->port_num >= MAX_MIX_OUT)
       continue;
 
-    if (is_routing_src_enabled(src)) {
+    // Visible if enabled AND should be displayed (not R of linked pair)
+    if (is_routing_src_enabled(src) && should_display_src(src)) {
       mix_num_to_row[src->port_num] = visible_mix_count;
       visible_mix_count++;
     } else {
@@ -511,8 +732,8 @@ void rebuild_mixer_grid(struct alsa_card *card) {
     if (input_num < 0 || input_num >= max_mixer_inputs)
       continue;
 
-    // Check the mixer input enable state
-    int visible = is_routing_snk_enabled(snk);
+    // Visible if enabled AND should be displayed (not R of linked pair)
+    int visible = is_routing_snk_enabled(snk) && should_display_snk(snk);
 
     if (visible) {
       input_num_to_col[input_num] = visible_input_count;
@@ -625,4 +846,32 @@ void update_mixer_availability(struct alsa_card *card, int available) {
 
   if (card->mixer_unavailable_label)
     gtk_widget_set_visible(card->mixer_unavailable_label, !available);
+}
+
+// Recreate mixer widgets when stereo state changes
+// This destroys existing widgets and creates new ones based on current stereo
+void recreate_mixer_widgets(struct alsa_card *card) {
+  if (!card || !card->mixer_grid)
+    return;
+
+  GtkGrid *grid = GTK_GRID(card->mixer_grid);
+
+  // Clear existing mixer gain widgets
+  for (GList *l = card->mixer_gain_widgets; l != NULL; l = l->next) {
+    struct mixer_gain_widget *mg = l->data;
+    if (mg->widget) {
+      if (gtk_widget_get_parent(mg->widget) == GTK_WIDGET(grid))
+        gtk_grid_remove(grid, mg->widget);
+      cleanup_gain_widget(mg->widget);
+      g_object_unref(mg->widget);
+    }
+    g_free(mg);
+  }
+  g_list_free(card->mixer_gain_widgets);
+  card->mixer_gain_widgets = NULL;
+
+  populate_mixer_gain_widgets(card);
+
+  update_mixer_labels(card);
+  rebuild_mixer_grid(card);
 }
