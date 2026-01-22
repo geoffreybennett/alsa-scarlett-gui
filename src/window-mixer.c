@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 
+#include "alsa.h"
 #include "gtkhelper.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
@@ -60,6 +61,10 @@ static struct routing_snk *get_mixer_r_snk(
   struct alsa_card *card,
   int               input_num
 ) {
+  // For devices without routing controls (like Forte), return NULL
+  if (!card->routing_snks || card->routing_snks->len == 0)
+    return NULL;
+
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
@@ -94,8 +99,35 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   GtkWidget *mix_labels_left[MAX_MIX_OUT];
   GtkWidget *mix_labels_right[MAX_MIX_OUT];
 
+  // For devices without routing controls (like Forte), count mixes from elements
+  int mix_count = card->routing_in_count[PC_MIX];
+  int mix_inputs = 0;
+  if (mix_count == 0) {
+    // Count from Matrix elements: "Matrix XX Mix Y Playback Volume"
+    for (int i = 0; i < elems->len; i++) {
+      struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+      if (!elem->card)
+        continue;
+      if (strncmp(elem->name, "Matrix ", 7) == 0 &&
+          strstr(elem->name, "Mix A Playback Volume")) {
+        mix_inputs++;
+        // Check how many mixes (A, B, C, D...)
+        if (mix_count == 0) {
+          for (char c = 'A'; c <= 'H'; c++) {
+            char pattern[40];
+            snprintf(pattern, sizeof(pattern), "Matrix 01 Mix %c Playback Volume", c);
+            if (get_elem_by_name(elems, pattern))
+              mix_count++;
+            else
+              break;
+          }
+        }
+      }
+    }
+  }
+
   // create the Mix X labels on the left and right of the grid
-  for (int i = 0; i < card->routing_in_count[PC_MIX]; i++) {
+  for (int i = 0; i < mix_count; i++) {
     char name[10];
     snprintf(name, 10, "Mix %c", i + 'A');
 
@@ -108,7 +140,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
     GtkWidget *l_right = mix_labels_right[i] = gtk_label_new(name);
     gtk_grid_attach(
       GTK_GRID(mixer_top), l_right,
-      card->routing_out_count[PC_MIX] + 1, i + 2, 1, 1
+      (mix_inputs > 0 ? mix_inputs : card->routing_out_count[PC_MIX]) + 1, i + 2, 1, 1
     );
   }
 
@@ -147,36 +179,56 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
     // look up the r_snk entry for the mixer input number
     struct routing_snk *r_snk = get_mixer_r_snk(card, input_num + 1);
-    if (!r_snk) {
-      printf("missing mixer input %d\n", input_num);
-      continue;
-    }
+    GtkWidget *l_top = NULL;
+    GtkWidget *l_bottom = NULL;
 
-    // lookup the top label for the mixer input
-    GtkWidget *l_top = r_snk->mixer_label_top;
+    if (r_snk) {
+      // lookup the top label for the mixer input
+      l_top = r_snk->mixer_label_top;
 
-    // if the top label doesn't already exist the bottom doesn't
-    // either; create them both and attach to the grid
-    if (!l_top) {
-      l_top = r_snk->mixer_label_top = gtk_label_new("");
-      GtkWidget *l_bottom = r_snk->mixer_label_bottom = gtk_label_new("");
+      // if the top label doesn't already exist the bottom doesn't
+      // either; create them both and attach to the grid
+      if (!l_top) {
+        l_top = r_snk->mixer_label_top = gtk_label_new("");
+        l_bottom = r_snk->mixer_label_bottom = gtk_label_new("");
+        gtk_widget_add_css_class(l_top, "mixer-label");
+        gtk_widget_add_css_class(l_bottom, "mixer-label");
+
+        gtk_grid_attach(
+          GTK_GRID(mixer_top), l_top,
+          input_num, (input_num + 1) % 2, 3, 1
+        );
+        gtk_grid_attach(
+          GTK_GRID(mixer_top), l_bottom,
+          input_num, card->routing_in_count[PC_MIX] + input_num % 2 + 2, 3, 1
+        );
+      } else {
+        l_bottom = r_snk->mixer_label_bottom;
+      }
+    } else {
+      // For devices without routing (like Forte), create static labels
+      // based on the Matrix input number
+      char label_text[20];
+      snprintf(label_text, sizeof(label_text), "Matrix %02d", input_num + 1);
+      l_top = gtk_label_new(label_text);
+      l_bottom = gtk_label_new(label_text);
       gtk_widget_add_css_class(l_top, "mixer-label");
       gtk_widget_add_css_class(l_bottom, "mixer-label");
 
       gtk_grid_attach(
         GTK_GRID(mixer_top), l_top,
-        input_num, (input_num + 1) % 2, 3, 1
+        input_num + 1, 0, 1, 1
       );
       gtk_grid_attach(
         GTK_GRID(mixer_top), l_bottom,
-        input_num, card->routing_in_count[PC_MIX] + input_num % 2 + 2, 3, 1
+        input_num + 1, mix_count + 2, 1, 1
       );
     }
 
     g_object_set_data(G_OBJECT(w), "mix_label_left", mix_labels_left[mix_num]);
     g_object_set_data(G_OBJECT(w), "mix_label_right", mix_labels_right[mix_num]);
-    g_object_set_data(G_OBJECT(w), "source_label_top", r_snk->mixer_label_top);
-    g_object_set_data(G_OBJECT(w), "source_label_bottom", r_snk->mixer_label_bottom);
+    g_object_set_data(G_OBJECT(w), "source_label_top", l_top);
+    g_object_set_data(G_OBJECT(w), "source_label_bottom", l_bottom);
 
     // add hover controller to the gain widget
     add_mixer_hover_controller(w);
@@ -189,6 +241,10 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 }
 
 void update_mixer_labels(struct alsa_card *card) {
+  // For devices without routing (like Forte), labels are static
+  if (!card->routing_snks || card->routing_snks->len == 0)
+    return;
+
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
