@@ -250,6 +250,16 @@ static void alsa_parse_comment_node(
   }
 }
 
+// Allocate a copy of elem and add it to the card's element list
+static struct alsa_elem *add_sim_elem(
+  struct alsa_card *card, const struct alsa_elem *elem
+) {
+  struct alsa_elem *new_elem = malloc(sizeof(struct alsa_elem));
+  *new_elem = *elem;
+  g_ptr_array_add(card->elems, new_elem);
+  return new_elem;
+}
+
 static int alsa_config_to_new_elem(
   struct alsa_card *card,
   snd_config_t     *config
@@ -262,6 +272,7 @@ static int alsa_config_to_new_elem(
   char *string_value = NULL;
   long int_value;
   long *int_values = NULL;
+  int value_array_count = 0;
   int err;
 
   struct alsa_elem elem = {};
@@ -322,16 +333,15 @@ static int alsa_config_to_new_elem(
           fatal_alsa_error("snd_config_get_string error", err);
         string_value = strdup(s);
       } else if (type == SND_CONFIG_TYPE_COMPOUND) {
-        elem.count = snd_config_is_array(node);
-
+        value_array_count = snd_config_is_array(node);
         if (strcmp(name, "Level Meter") == 0) {
+          elem.count = value_array_count;
           seen_value = 1;
           value_type = SND_CONFIG_TYPE_INTEGER;
           int_value = 0;
-        } else if (elem.count == 2 && strncmp(name, "Master", 6) == 0) {
-          alsa_parse_int_array(node, &int_values);
         } else {
-          goto fail;
+          seen_value = 1;
+          alsa_parse_int_array(node, &int_values);
         }
       } else {
         printf(
@@ -407,22 +417,25 @@ static int alsa_config_to_new_elem(
   elem.numid = id;
   elem.name = name;
 
-  // duplicate the element for each channel except for the Level Meter
-  int count = elem.count;
-
-  if (strcmp(elem.name, "Level Meter") == 0)
-    count = 1;
-
-  // for each channel, create a new element and add it to the card
-  // incrementing the index each time
-  for (int i = 0; i < count; i++, elem.index++) {
-    if (count > 1)
+  if (int_values && strncmp(elem.name, "Master", 6) == 0) {
+    // Gen 1 multi-channel control: split into per-channel elements
+    int n = value_array_count < elem.count
+      ? value_array_count : elem.count;
+    elem.count = 1;
+    for (int i = 0; i < n; i++, elem.index++) {
       elem.value = int_values[i];
-
-    // allocate new element and copy data
-    struct alsa_elem *new_elem = malloc(sizeof(struct alsa_elem));
-    *new_elem = elem;
-    g_ptr_array_add(card->elems, new_elem);
+      if (i > 0)
+        elem.name = strdup(name);
+      add_sim_elem(card, &elem);
+    }
+  } else if (int_values) {
+    // Multi-value element (e.g., biquad coefficients)
+    struct alsa_elem *new_elem = add_sim_elem(card, &elem);
+    new_elem->values = malloc(elem.count * sizeof(long));
+    memcpy(new_elem->values, int_values, elem.count * sizeof(long));
+  } else {
+    // Single-value element (or Level Meter: one element, keeps count)
+    add_sim_elem(card, &elem);
   }
 
   free(iface);
