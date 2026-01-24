@@ -294,11 +294,14 @@ static double parse_q_entry(const char *text) {
   return -1.0;
 }
 
-// Parse gain from entry text (accepts "+3.5 dB", "-6 dB", or bare number)
-static double parse_gain_entry(const char *text) {
+// Parse gain from entry text (accepts "+3.5 dB", "-6 dB",
+// or bare number)
+static double parse_gain_entry(
+  const char *text, double db_range
+) {
   double value;
   if (sscanf(text, "%lf", &value) == 1)
-    return CLAMP(value, -18.0, 18.0);
+    return CLAMP(value, -db_range, db_range);
   return -1000.0;
 }
 
@@ -385,9 +388,13 @@ static void filter_q_focus_leave(
   g_signal_handlers_unblock_by_func(stage->q_entry, filter_q_changed, stage);
 }
 
-static void filter_gain_changed(GtkEditable *editable, struct filter_stage *stage) {
+static void filter_gain_changed(
+  GtkEditable *editable, struct filter_stage *stage
+) {
   const char *text = gtk_editable_get_text(editable);
-  double gain = parse_gain_entry(text);
+  double db_range =
+    gtk_filter_response_get_db_range(stage->response);
+  double gain = parse_gain_entry(text, db_range);
 
   if (gain > -999.0 && gain != stage->params.gain_db) {
     stage->params.gain_db = gain;
@@ -495,9 +502,10 @@ static void state_q_updated(struct alsa_elem *elem, void *private) {
 static void state_gain_updated(struct alsa_elem *elem, void *private) {
   struct filter_stage *stage = private;
 
-  stage->params.gain_db = alsa_get_elem_value(elem) / (double)GAIN_SCALE;
-  if (stage->params.gain_db < -18.0) stage->params.gain_db = -18.0;
-  if (stage->params.gain_db > 18.0) stage->params.gain_db = 18.0;
+  stage->params.gain_db = CLAMP(
+    alsa_get_elem_value(elem) / (double)GAIN_SCALE,
+    -GAIN_DB_LIMIT, GAIN_DB_LIMIT
+  );
 
   if (!stage->editing) {
     g_signal_handlers_block_by_func(stage->gain_entry, filter_gain_changed, stage);
@@ -650,6 +658,7 @@ static void filter_stage_coeffs_updated(
     gtk_filter_response_set_band_enabled(
       stage->response, stage->band_index, stage->enabled
     );
+    gtk_filter_response_auto_range(stage->response);
   }
 
   // Save state (skip if this update originated from state elements to avoid loop)
@@ -756,8 +765,8 @@ static void make_filter_stage(
       if (stage->params.freq > 20000.0) stage->params.freq = 20000.0;
       if (stage->params.q < 0.1) stage->params.q = 0.1;
       if (stage->params.q > 10.0) stage->params.q = 10.0;
-      if (stage->params.gain_db < -18.0) stage->params.gain_db = -18.0;
-      if (stage->params.gain_db > 18.0) stage->params.gain_db = 18.0;
+      stage->params.gain_db = CLAMP(stage->params.gain_db,
+                                    -GAIN_DB_LIMIT, GAIN_DB_LIMIT);
     }
 
     free(fixed);
@@ -1444,6 +1453,8 @@ static void add_channel_controls(
       }
     }
 
+    gtk_filter_response_auto_range(precomp_response);
+
     // Connect presets button now that stages are created
     connect_presets_button(precomp_presets_button, precomp_stages);
 
@@ -1628,6 +1639,8 @@ static void add_channel_controls(
         peq_stages->num_stages = i;
       }
     }
+
+    gtk_filter_response_auto_range(peq_response);
 
     // Connect presets button now that stages are created
     connect_presets_button(peq_presets_button, peq_stages);
