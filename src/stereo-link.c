@@ -37,7 +37,7 @@ int is_snk_left_channel(struct routing_snk *snk) {
   if (!snk || !snk->elem)
     return 0;
 
-  return (snk->elem->lr_num % 2) == 1;
+  return snk->is_left;
 }
 
 // Get generic/constructed pair name for a source (e.g., "PCM 1–2")
@@ -1349,20 +1349,10 @@ static void create_src_stereo_link_elems(
 
   src->link_elem = link_elem;
 
-  // Load initial value and register save callback
+  // Load initial value from state
   const char *value = g_hash_table_lookup(state, link_key);
-  link_elem->value = (value && strcmp(value, "1") == 0) ? 1 : 0;
-
-  struct stereo_link_save_data *link_save_data =
-    g_malloc0(sizeof(struct stereo_link_save_data));
-  link_save_data->card = card;
-  link_save_data->config_key = link_key;
-
-  alsa_elem_add_callback(
-    link_elem, link_state_changed, link_save_data,
-    stereo_link_free_callback_data
-  );
-  alsa_elem_add_callback(link_elem, src_link_state_changed, src, NULL);
+  alsa_set_elem_value(link_elem, (value && strcmp(value, "1") == 0) ? 1 : 0);
+  g_free(link_key);
 
   // Create pair name element
   char *pair_key = make_stereo_elem_name(
@@ -1385,25 +1375,11 @@ static void create_src_stereo_link_elems(
 
   src->pair_name_elem = pair_name_elem;
 
-  // Load initial value and register save callback
+  // Load initial value from state
   const char *pair_value = g_hash_table_lookup(state, pair_key);
   if (pair_value && *pair_value)
     alsa_set_elem_bytes(pair_name_elem, pair_value, strlen(pair_value));
-
-  struct stereo_link_save_data *pair_save_data =
-    g_malloc0(sizeof(struct stereo_link_save_data));
-  pair_save_data->card = card;
-  pair_save_data->config_key = pair_key;
-
-  alsa_elem_add_callback(
-    pair_name_elem, pair_name_changed, pair_save_data,
-    stereo_link_free_callback_data
-  );
-  alsa_elem_add_callback(pair_name_elem, pair_name_display_changed, NULL, NULL);
-
-  // Keep right channel's enable state in sync while linked
-  if (src->enable_elem)
-    alsa_elem_add_callback(src->enable_elem, src_enable_sync_callback, src, NULL);
+  g_free(pair_key);
 }
 
 // Create link and pair name elements for a sink (only on left channel)
@@ -1446,28 +1422,14 @@ static void create_snk_stereo_link_elems(
 
   snk->link_elem = link_elem;
 
-  // Load initial value and register save callback
+  // Load initial value from state
   const char *value = g_hash_table_lookup(state, link_key);
-  link_elem->value = (value && strcmp(value, "1") == 0) ? 1 : 0;
-
-  struct stereo_link_save_data *link_save_data =
-    g_malloc0(sizeof(struct stereo_link_save_data));
-  link_save_data->card = card;
-  link_save_data->config_key = link_key;
-
-  alsa_elem_add_callback(
-    link_elem, link_state_changed, link_save_data,
-    stereo_link_free_callback_data
-  );
-  alsa_elem_add_callback(link_elem, snk_link_state_changed, snk, NULL);
+  alsa_set_elem_value(link_elem, (value && strcmp(value, "1") == 0) ? 1 : 0);
+  g_free(link_key);
 
   // Mixer inputs don't have custom names (they show the connected source)
-  if (elem->port_category == PC_MIX) {
-    // Still register enable sync for linked mixer inputs
-    if (snk->enable_elem)
-      alsa_elem_add_callback(snk->enable_elem, snk_enable_sync_callback, snk, NULL);
+  if (elem->port_category == PC_MIX)
     return;
-  }
 
   // Create pair name element
   char *pair_key = make_stereo_elem_name(
@@ -1490,29 +1452,99 @@ static void create_snk_stereo_link_elems(
 
   snk->pair_name_elem = pair_name_elem;
 
-  // Load initial value and register save callback
+  // Load initial value from state
   const char *pair_value = g_hash_table_lookup(state, pair_key);
   if (pair_value && *pair_value)
     alsa_set_elem_bytes(pair_name_elem, pair_value, strlen(pair_value));
+  g_free(pair_key);
+}
 
-  struct stereo_link_save_data *pair_save_data =
+// Register callbacks for a source's link and pair name elements
+static void register_src_link_callbacks(
+  struct alsa_card   *card,
+  struct routing_src *src
+) {
+  if (!src->link_elem)
+    return;
+
+  struct stereo_link_save_data *link_save_data =
     g_malloc0(sizeof(struct stereo_link_save_data));
-  pair_save_data->card = card;
-  pair_save_data->config_key = pair_key;
+  link_save_data->card = card;
+  link_save_data->config_key = g_strdup(src->link_elem->name);
 
   alsa_elem_add_callback(
-    pair_name_elem, pair_name_changed, pair_save_data,
+    src->link_elem, link_state_changed, link_save_data,
     stereo_link_free_callback_data
   );
-  alsa_elem_add_callback(pair_name_elem, pair_name_display_changed, NULL, NULL);
+  alsa_elem_add_callback(
+    src->link_elem, src_link_state_changed, src, NULL
+  );
 
-  // Register enable sync callback on left channel's enable element
-  // This keeps right channel's enable state in sync while linked
+  if (src->pair_name_elem) {
+    struct stereo_link_save_data *pair_save_data =
+      g_malloc0(sizeof(struct stereo_link_save_data));
+    pair_save_data->card = card;
+    pair_save_data->config_key = g_strdup(src->pair_name_elem->name);
+
+    alsa_elem_add_callback(
+      src->pair_name_elem, pair_name_changed, pair_save_data,
+      stereo_link_free_callback_data
+    );
+    alsa_elem_add_callback(
+      src->pair_name_elem, pair_name_display_changed, NULL, NULL
+    );
+  }
+
+  if (src->enable_elem)
+    alsa_elem_add_callback(
+      src->enable_elem, src_enable_sync_callback, src, NULL
+    );
+}
+
+// Register callbacks for a sink's link and pair name elements
+static void register_snk_link_callbacks(
+  struct alsa_card   *card,
+  struct routing_snk *snk
+) {
+  if (!snk->link_elem)
+    return;
+
+  struct stereo_link_save_data *link_save_data =
+    g_malloc0(sizeof(struct stereo_link_save_data));
+  link_save_data->card = card;
+  link_save_data->config_key = g_strdup(snk->link_elem->name);
+
+  alsa_elem_add_callback(
+    snk->link_elem, link_state_changed, link_save_data,
+    stereo_link_free_callback_data
+  );
+  alsa_elem_add_callback(
+    snk->link_elem, snk_link_state_changed, snk, NULL
+  );
+
+  if (snk->pair_name_elem) {
+    struct stereo_link_save_data *pair_save_data =
+      g_malloc0(sizeof(struct stereo_link_save_data));
+    pair_save_data->card = card;
+    pair_save_data->config_key = g_strdup(snk->pair_name_elem->name);
+
+    alsa_elem_add_callback(
+      snk->pair_name_elem, pair_name_changed, pair_save_data,
+      stereo_link_free_callback_data
+    );
+    alsa_elem_add_callback(
+      snk->pair_name_elem, pair_name_display_changed, NULL, NULL
+    );
+  }
+
   if (snk->enable_elem)
-    alsa_elem_add_callback(snk->enable_elem, snk_enable_sync_callback, snk, NULL);
+    alsa_elem_add_callback(
+      snk->enable_elem, snk_enable_sync_callback, snk, NULL
+    );
 
-  // Register monitor group sync callbacks for HW analogue sinks
-  if (elem->port_category == PC_HW && elem->hw_type == HW_TYPE_ANALOGUE)
+  if (snk->elem &&
+      snk->elem->port_category == PC_HW &&
+      snk->elem->hw_type == HW_TYPE_ANALOGUE)
     register_monitor_group_sync_callbacks(snk);
 }
 
@@ -1560,6 +1592,331 @@ char *get_snk_pair_display_name(struct routing_snk *snk) {
   return get_snk_default_pair_name(snk_l);
 }
 
+// Get default stereo link state for a pair based on category rules
+static int get_pair_category_default(
+  int port_category,
+  int hw_type,
+  int pair_index,
+  int is_sink
+) {
+  if (is_sink) {
+    switch (port_category) {
+      case PC_HW:
+      case PC_PCM:
+      case PC_MIX:
+        return 1;
+      case PC_DSP:
+        return pair_index == 0 ? 0 : 1;
+      default:
+        return 0;
+    }
+  }
+
+  // Source
+  switch (port_category) {
+    case PC_HW:
+      if (hw_type == HW_TYPE_ANALOGUE)
+        return pair_index == 0 ? 0 : 1;
+      return 1;
+    case PC_PCM:
+    case PC_MIX:
+      return 1;
+    case PC_DSP:
+      return pair_index == 0 ? 0 : 1;
+    default:
+      return 0;
+  }
+}
+
+// Determine default stereo link states on first run based on
+// category rules and existing routing/mixer connections.
+// Called before callbacks are registered, so alsa_set_elem_value()
+// is safe (no side effects).
+static void determine_default_stereo_links(struct alsa_card *card) {
+
+  // Phase 1: Set category defaults
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (!src->link_elem || !is_src_left_channel(src))
+      continue;
+
+    int pair_index = (src->lr_num - 1) / 2;
+    alsa_set_elem_value(
+      src->link_elem,
+      get_pair_category_default(
+        src->port_category, src->hw_type, pair_index, 0
+      )
+    );
+  }
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (!snk->link_elem || !snk->elem || !is_snk_left_channel(snk))
+      continue;
+
+    int pair_index = (snk->elem->lr_num - 1) / 2;
+    alsa_set_elem_value(
+      snk->link_elem,
+      get_pair_category_default(
+        snk->elem->port_category, snk->elem->hw_type,
+        pair_index, 1
+      )
+    );
+  }
+
+  // Phase 2: Fixpoint constraint propagation
+  long min_val = get_mixer_gain_min_val(card);
+  int changed = 1;
+
+  while (changed) {
+    changed = 0;
+
+    // Sink-side: check each stereo sink pair
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *snk_l = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      if (!snk_l->link_elem || !snk_l->elem)
+        continue;
+      if (!is_snk_left_channel(snk_l))
+        continue;
+      if (!alsa_get_elem_value(snk_l->link_elem))
+        continue;
+
+      struct routing_snk *snk_r = get_snk_partner(snk_l);
+      if (!snk_r || !snk_r->elem)
+        continue;
+
+      int src_l_id = alsa_get_elem_value(snk_l->elem);
+      int src_r_id = alsa_get_elem_value(snk_r->elem);
+
+      // No connection — leave as stereo
+      if (src_l_id == 0 && src_r_id == 0)
+        continue;
+
+      // Check stereo compatibility
+      int compatible = 0;
+      struct routing_src *src_l = NULL;
+      struct routing_src *src_r = NULL;
+
+      if (src_l_id != 0 && src_r_id != 0 &&
+          src_l_id != src_r_id &&
+          src_l_id < card->routing_srcs->len &&
+          src_r_id < card->routing_srcs->len) {
+        src_l = &g_array_index(
+          card->routing_srcs, struct routing_src, src_l_id
+        );
+        src_r = &g_array_index(
+          card->routing_srcs, struct routing_src, src_r_id
+        );
+
+        if (get_src_partner(src_l) == src_r &&
+            is_src_left_channel(src_l)) {
+          compatible = 1;
+        }
+      }
+
+      if (!compatible) {
+        alsa_set_elem_value(snk_l->link_elem, 0);
+        changed = 1;
+
+        // Downgrade source pair if identifiable
+        if (src_l && src_r &&
+            get_src_partner(src_l) == src_r) {
+          struct alsa_elem *sle = get_src_link_elem(src_l);
+          if (sle && alsa_get_elem_value(sle)) {
+            alsa_set_elem_value(sle, 0);
+            changed = 1;
+          }
+        }
+      } else {
+        // Compatible but source pair is mono — downgrade sink
+        struct alsa_elem *sle = get_src_link_elem(src_l);
+        if (sle && !alsa_get_elem_value(sle)) {
+          alsa_set_elem_value(snk_l->link_elem, 0);
+          changed = 1;
+        }
+      }
+    }
+
+    // Source-side: check each stereo source pair
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *src_l = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+      if (!src_l->link_elem || !is_src_left_channel(src_l))
+        continue;
+      if (!alsa_get_elem_value(src_l->link_elem))
+        continue;
+
+      struct routing_src *src_r = get_src_partner(src_l);
+      if (!src_r)
+        continue;
+
+      int downgrade_src = 0;
+
+      for (int j = 0; j < card->routing_snks->len; j++) {
+        struct routing_snk *snk = &g_array_index(
+          card->routing_snks, struct routing_snk, j
+        );
+        if (!snk->elem)
+          continue;
+
+        // Skip fixed mixer inputs - they follow their source's link state
+        if (snk->elem->port_category == PC_MIX &&
+            !alsa_get_elem_writable(snk->elem))
+          continue;
+
+        int snk_src_id = alsa_get_elem_value(snk->elem);
+        if (snk_src_id != src_l->id && snk_src_id != src_r->id)
+          continue;
+
+        // Found a sink connected to our source pair
+        struct routing_snk *snk_left =
+          get_snk_left_of_pair(snk);
+        if (!snk_left || !snk_left->link_elem) {
+          downgrade_src = 1;
+          break;
+        }
+
+        struct routing_snk *snk_right =
+          get_snk_partner(snk_left);
+        if (!snk_right || !snk_right->elem) {
+          downgrade_src = 1;
+          break;
+        }
+
+        // Check stereo-compatible connection
+        int sl_src = alsa_get_elem_value(snk_left->elem);
+        int sr_src = alsa_get_elem_value(snk_right->elem);
+
+        if (sl_src != src_l->id || sr_src != src_r->id) {
+          downgrade_src = 1;
+          if (alsa_get_elem_value(snk_left->link_elem)) {
+            alsa_set_elem_value(snk_left->link_elem, 0);
+            changed = 1;
+          }
+          break;
+        }
+
+        // Stereo-compatible but sink pair is mono
+        if (!alsa_get_elem_value(snk_left->link_elem)) {
+          downgrade_src = 1;
+          break;
+        }
+      }
+
+      if (downgrade_src &&
+          alsa_get_elem_value(src_l->link_elem)) {
+        alsa_set_elem_value(src_l->link_elem, 0);
+        changed = 1;
+      }
+    }
+
+    // Mixer gain matrix check
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *in_l = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      if (!in_l->elem || !in_l->link_elem)
+        continue;
+      if (in_l->elem->port_category != PC_MIX)
+        continue;
+      if (!is_snk_left_channel(in_l) ||
+          !alsa_get_elem_value(in_l->link_elem))
+        continue;
+
+      struct routing_snk *in_r = get_snk_partner(in_l);
+      if (!in_r || !in_r->elem)
+        continue;
+
+      int input_l = in_l->elem->lr_num;
+      int input_r = in_r->elem->lr_num;
+
+      for (int j = 0; j < card->routing_srcs->len; j++) {
+        struct routing_src *out_l = &g_array_index(
+          card->routing_srcs, struct routing_src, j
+        );
+        if (!out_l->link_elem)
+          continue;
+        if (out_l->port_category != PC_MIX)
+          continue;
+        if (!is_src_left_channel(out_l) ||
+            !alsa_get_elem_value(out_l->link_elem))
+          continue;
+
+        struct routing_src *out_r = get_src_partner(out_l);
+        if (!out_r)
+          continue;
+
+        char name[80];
+
+        snprintf(
+          name, sizeof(name),
+          "Mix %c Input %02d Playback Volume",
+          'A' + out_l->port_num, input_r
+        );
+        struct alsa_elem *off_lr =
+          get_elem_by_name(card->elems, name);
+
+        snprintf(
+          name, sizeof(name),
+          "Mix %c Input %02d Playback Volume",
+          'A' + out_r->port_num, input_l
+        );
+        struct alsa_elem *off_rl =
+          get_elem_by_name(card->elems, name);
+
+        int has_crosstalk =
+          (off_lr &&
+            alsa_get_elem_value(off_lr) != min_val) ||
+          (off_rl &&
+            alsa_get_elem_value(off_rl) != min_val);
+
+        if (has_crosstalk) {
+          if (alsa_get_elem_value(in_l->link_elem)) {
+            alsa_set_elem_value(in_l->link_elem, 0);
+            changed = 1;
+          }
+          if (alsa_get_elem_value(out_l->link_elem)) {
+            alsa_set_elem_value(out_l->link_elem, 0);
+            changed = 1;
+          }
+        }
+      }
+    }
+  }
+
+  // Phase 3: Save all link values
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (!src->link_elem || !is_src_left_channel(src))
+      continue;
+    optional_state_save(
+      card, CONFIG_SECTION_CONTROLS, src->link_elem->name,
+      alsa_get_elem_value(src->link_elem) ? "1" : "0"
+    );
+  }
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (!snk->link_elem || !is_snk_left_channel(snk))
+      continue;
+    optional_state_save(
+      card, CONFIG_SECTION_CONTROLS, snk->link_elem->name,
+      alsa_get_elem_value(snk->link_elem) ? "1" : "0"
+    );
+  }
+}
+
 // Initialise stereo link elements
 void stereo_link_init(struct alsa_card *card) {
   if (!card->serial || !*card->serial)
@@ -1592,5 +1949,60 @@ void stereo_link_init(struct alsa_card *card) {
     create_snk_stereo_link_elems(card, snk, state);
   }
 
+  // Detect first run: if no Link keys exist in state AND all link
+  // elements are simulated, determine sensible defaults.
+  // If any link element is real (driver-provided), the driver
+  // manages its own defaults.
+  int has_link_keys = 0;
+  int has_real_link_elem = 0;
+
+  for (int i = 0; i < card->routing_srcs->len && !has_real_link_elem; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (src->link_elem && !src->link_elem->is_simulated)
+      has_real_link_elem = 1;
+  }
+
+  for (int i = 0; i < card->routing_snks->len && !has_real_link_elem; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (snk->link_elem && !snk->link_elem->is_simulated)
+      has_real_link_elem = 1;
+  }
+
+  if (!has_real_link_elem) {
+    GHashTableIter iter;
+    gpointer key, value;
+
+    g_hash_table_iter_init(&iter, state);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+      if (g_str_has_suffix((const char *)key, " Link")) {
+        has_link_keys = 1;
+        break;
+      }
+    }
+
+    if (!has_link_keys)
+      determine_default_stereo_links(card);
+  }
+
   g_hash_table_destroy(state);
+
+  // Register callbacks after defaults are determined, so that
+  // alsa_set_elem_value() calls above don't trigger side effects
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    register_src_link_callbacks(card, src);
+  }
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    register_snk_link_callbacks(card, snk);
+  }
 }

@@ -182,6 +182,9 @@ struct routing_snk {
   // updated by callback when monitor group controls change
   int effective_source_idx;
 
+  // cached left channel status (for fixed mixer inputs, based on source)
+  int is_left;
+
   // pointers to monitor group controls (NULL if not applicable)
   struct alsa_elem *main_group_switch;
   struct alsa_elem *alt_group_switch;
