@@ -247,14 +247,22 @@ long alsa_get_elem_value(struct alsa_elem *elem) {
   }
 }
 
+// idle callback to trigger element change
+static gboolean alsa_elem_change_idle(gpointer user_data) {
+  struct alsa_elem *elem = user_data;
+  elem->pending_idle = 0;
+  alsa_elem_change(elem);
+  return G_SOURCE_REMOVE;
+}
+
 // for elements with multiple int values, return all the values
 // the int array returned needs to be freed by the caller
 long *alsa_get_elem_int_values(struct alsa_elem *elem) {
   long *values = calloc(elem->count, sizeof(long));
 
-  if (elem->card->num == SIMULATED_CARD_NUM) {
-    for (int i = 0; i < elem->count; i++)
-      values[i] = 0;
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
+    if (elem->values)
+      memcpy(values, elem->values, elem->count * sizeof(long));
     return values;
   }
 
@@ -271,16 +279,34 @@ long *alsa_get_elem_int_values(struct alsa_elem *elem) {
 }
 
 // set multiple int values for an element (e.g., biquad coefficients)
-void alsa_set_elem_int_values(struct alsa_elem *elem, const long *values, int count) {
-  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
+void alsa_set_elem_int_values(
+  struct alsa_elem *elem, const long *values, int count
+) {
+  int n = count < elem->count ? count : elem->count;
+  size_t size = n * sizeof(long);
+
+  // Allocate cache on first use
+  if (!elem->values)
+    elem->values = calloc(elem->count, sizeof(long));
+
+  // Skip if unchanged
+  if (memcmp(elem->values, values, size) == 0)
     return;
+
+  memcpy(elem->values, values, size);
+
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
+    if (!elem->pending_idle)
+      elem->pending_idle =
+        g_idle_add(alsa_elem_change_idle, elem);
+    return;
+  }
 
   snd_ctl_elem_value_t *elem_value;
 
   snd_ctl_elem_value_alloca(&elem_value);
   snd_ctl_elem_value_set_numid(elem_value, elem->numid);
 
-  int n = count < elem->count ? count : elem->count;
   for (int i = 0; i < n; i++)
     snd_ctl_elem_value_set_integer(elem_value, i, values[i]);
 
@@ -439,14 +465,6 @@ const void *alsa_get_elem_bytes(struct alsa_elem *elem, size_t *size) {
     *size = elem->count;
 
   return elem->bytes_value;
-}
-
-// idle callback to trigger element change
-static gboolean alsa_elem_change_idle(gpointer user_data) {
-  struct alsa_elem *elem = user_data;
-  elem->pending_idle = 0;
-  alsa_elem_change(elem);
-  return G_SOURCE_REMOVE;
 }
 
 // set the bytes data for a BYTES element
@@ -1113,6 +1131,8 @@ static void card_destroy_callback(void *data) {
       // free element data
       if (elem->name)
         free(elem->name);
+      if (elem->values)
+        free(elem->values);
       if (elem->bytes_value)
         free(elem->bytes_value);
       if (elem->meter_labels) {
