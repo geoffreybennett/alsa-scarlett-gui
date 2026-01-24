@@ -1,5 +1,44 @@
 # ALSA Scarlett Control Panel Installation
 
+## Quick Start
+
+Choose the path that matches your interface. RPM and deb packages
+are available from each repository's
+[GitHub Releases](https://github.com/geoffreybennett/alsa-scarlett-gui/releases)
+page; alternatively, see [Building from Source](#building-from-source)
+below.
+
+### Scarlett 2nd/3rd Gen, Small 4th Gen, Clarett, Vocaster
+
+1. Ensure your kernel meets the minimum version (see
+   [table below](#linux-kernel)) — all major distros already do
+2. Install
+   [scarlett2-firmware](https://github.com/geoffreybennett/scarlett2-firmware/releases)
+3. Install
+   [alsa-scarlett-gui](https://github.com/geoffreybennett/alsa-scarlett-gui/releases)
+4. Run `alsa-scarlett-gui` — it will prompt you to update your
+   device firmware if needed
+
+### Scarlett 4th Gen 16i16, 18i16, 18i20
+
+1. Ensure you are running Linux 6.14+ (`uname -r` to check)
+2. Install
+   [fcp-support](https://github.com/geoffreybennett/fcp-support/releases)
+   — the `fcp-server` daemon will start automatically when you
+   plug in your interface
+3. Install
+   [scarlett4-firmware](https://github.com/geoffreybennett/scarlett4-firmware/releases)
+4. Install
+   [alsa-scarlett-gui](https://github.com/geoffreybennett/alsa-scarlett-gui/releases)
+5. Run `alsa-scarlett-gui` — it will prompt you to update your
+   device firmware if needed
+
+### Scarlett 1st Gen 6i6, 8i6, 18i6, 18i8, 18i20
+
+1. Ensure you are running Linux 3.19+ (any modern distro)
+2. Install
+   [alsa-scarlett-gui](https://github.com/geoffreybennett/alsa-scarlett-gui/releases)
+
 ## Prerequisites
 
 ### Linux Kernel
@@ -28,14 +67,12 @@ software controls so they don’t need a driver beyond the standard ALSA
 USB Audio driver. This means that this application (alsa-scarlett-gui)
 is not needed, useful, or supported for these models.
 
-If your distribution doesn’t include a recent-enough kernel for your
-interface, you can get the latest driver from here and build it for
-your current kernel, if it’s not too old (the Scarlett2 and FCP
-drivers are both maintained in the same tree here):
-https://github.com/geoffreybennett/linux-fcp/releases
+If your distribution doesn't include a recent-enough kernel for
+your interface, update your distribution or kernel. All major
+distributions now ship kernels that include the required drivers.
 
-Kernel 6.7 and later have the Scarlett2 driver enabled by default. The
-Scarlett 1st Gen driver and the FCP drivers are always enabled.
+Kernel 6.7 and later have the Scarlett2 driver enabled by default.
+The Scarlett 1st Gen driver and the FCP drivers are always enabled.
 
 #### Enabling the Scarlett2 Driver
 
@@ -87,8 +124,9 @@ https://github.com/geoffreybennett/scarlett2-firmware and place it in
 
 #### FCP Driver
 
-Firmware updates for the big Scarlett 4th Gen interfaces are currently
-only possible through the CLI `fcp-tool` utility available in the
+Firmware updates for the big Scarlett 4th Gen interfaces can be done
+through `alsa-scarlett-gui` (which will prompt you automatically when
+an update is available) or the CLI `fcp-tool` utility from the
 [fcp-support](https://github.com/geoffreybennett/fcp-support) repo.
 Updating the firmware is mandatory for these interfaces.
 
@@ -96,7 +134,7 @@ Download the firmware from
 https://github.com/geoffreybennett/scarlett4-firmware and place it in
 `/usr/lib/firmware/scarlett4` or use the RPM/deb package.
 
-## Building and Running
+## Building from Source
 
 On Fedora, these packages need to be installed:
 

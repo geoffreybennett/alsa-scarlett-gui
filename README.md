@@ -1,13 +1,16 @@
-# ALSA Scarlett Control Panel (`alsa-scarlett-gui`)
+# ALSA Scarlett Control Panel (`alsa-scarlett-gui`) v1.0
 
-`alsa-scarlett-gui` is a Gtk4 GUI for the ALSA controls presented by
-the three Linux kernel Focusrite USB drivers:
+<img src="img/alsa-scarlett-gui.png" align="right">
 
-- Scarlett 1st Gen Driver for ALSA
-- Scarlett2 USB Protocol Mixer Driver
-- FCP (Focusrite Control Protocol) Driver
+A Linux control panel for Focusrite Scarlett, Clarett, and Vocaster
+USB audio interfaces — the equivalent of Focusrite Control /
+Scarlett MixControl / Vocaster Hub on Linux.
 
-Supported interfaces:
+Configure routing, mixing, input/output levels, DSP processing,
+and firmware updates through a graphical interface.
+
+## Supported Interfaces
+
 - Scarlett 1st Gen 6i6, 8i6, 18i6, 18i8, 18i20
 - Scarlett 2nd Gen 6i6, 18i8, 18i20
 - Scarlett 3rd Gen Solo, 2i2, 4i4, 8i6, 18i8, 18i20
@@ -16,27 +19,24 @@ Supported interfaces:
 - Clarett+ 2Pre, 4Pre, 8Pre
 - Vocaster One and Vocaster Two
 
-## About
-
-<img src="img/alsa-scarlett-gui.png" align="right">
-
-All Focusrite USB audio interfaces are class compliant meaning that
-they work “out of the box” on Linux as audio and MIDI interfaces
-(although on Gen 3/4/Vocaster you need to disable MSD mode first for
-full functionality). However, except for some of the smallest models,
-they have a bunch of proprietary functionality that required a kernel
-driver to be written specifically for those devices.
-
-Unfortunately, actually using this functionality used to be quite an
-awful experience. The existing applications like `alsamixer` and
-`qasmixer` become completely user-hostile with the hundreds of
-controls presented for the Gen 3 18i20. Even the smallest Gen 3 4i4
-interface at last count had 84 ALSA controls.
-
-Announcing the ALSA Scarlett Control Panel, now supporting all
-Scarlett Gen 1, 2, 3, 4, Clarett, and Vocaster USB interfaces!
-
 ![Demonstration](img/demo.gif)
+
+## Features
+
+- **Drag-and-drop routing** — visual audio routing matrix with
+  real-time signal level glow
+- **Matrix mixer** — full mixer with per-crosspoint gain dials and
+  post-gain level metering
+- **DSP controls** — interactive parametric EQ and compressor with
+  draggable response graph (Vocaster)
+- **Configuration** — custom port names, stereo linking, port
+  visibility, and autogain targets
+- **Monitor groups** — Main/Alt output groups with per-output source
+  and trim (Gen 4 large)
+- **Presets** — quick save/load of named configurations, plus
+  file-based save/load
+- **Level meters** — real-time level display for all routing points
+- **Firmware updates** — integrated firmware upgrade support
 
 ## Documentation
 
@@ -48,31 +48,48 @@ known issues.
 
 Information specific to various models:
 
-- [Scarlett 1st Gen](docs/iface-1st-gen.md)
+- [Scarlett 1st Gen 6i6+](docs/iface-1st-gen.md)
 
 - [Scarlett 3rd Gen Solo and 2i2](docs/iface-small.md)
 
-- [Scarlett 2nd Gen 6i6+, 3rd Gen 4i4+, Clarett USB, and
+- [Scarlett 2nd/3rd Gen 4i4+, Clarett USB, and
   Clarett+](docs/iface-large.md)
 
-- [Scarlett Small 4th Gen](docs/iface-4th-gen-small.md)
+- [Scarlett 4th Gen Solo, 2i2, 4i4](docs/iface-4th-gen-small.md)
 
-- [Scarlett Big 4th Gen](docs/iface-4th-gen-big.md)
+- [Scarlett 4th Gen 16i16, 18i16,
+  18i20](docs/iface-4th-gen-big.md)
+
+- [Vocaster One and Two](docs/iface-vocaster.md)
+
+Additional documentation:
+
+- [Configuration Window](docs/configuration.md)
+- [Presets and Configuration Files](docs/presets.md)
+- [DSP Window](docs/dsp.md) (Vocaster)
+- [Digital I/O Availability](docs/digital-io-availability.md)
+- [FAQ](FAQ.md) — Troubleshooting and common questions
+- [Release Notes](RELEASE-NOTES.md) — What's new in each version
 
 ## Donations
 
-This program is Free Software, developed using my personal resources,
-over hundreds of hours.
+This software — the Linux kernel driver, this control panel, and the
+documentation — represents over a thousand hours of independent
+development: reverse-engineering Focusrite's USB protocols,
+developing and upstreaming the kernel driver, and building a
+complete replacement for Scarlett MixControl, Focusrite Control,
+Focusrite Control 2, and Vocaster Hub — often providing more
+functionality than Focusrite's own software.
 
-If you like this software, please consider a donation to say thank
-you! Any donation is appreciated.
+If you've found it valuable, a donation is a nice way to say thanks:
 
 - https://liberapay.com/gdb
 - https://paypal.me/gdbau
+- Zelle: g@b4.vu
 
 ## License
 
-Copyright 2022-2025 Geoffrey D. Bennett
+Copyright 2022-2026 Geoffrey D. Bennett
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
