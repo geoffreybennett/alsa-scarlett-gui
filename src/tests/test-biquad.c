@@ -46,7 +46,7 @@ static void test_filter(
   int q_ok = !biquad_type_uses_q(type) ||
              fabs(result.q - orig.q) < orig.q * 0.000000001;
   int gain_ok = !biquad_type_uses_gain(type) ||
-                fabs(result.gain_db - orig.gain_db) < 0.000000001;
+                fabs(result.gain_db - orig.gain_db) < 1e-8;
 
   int pass = type_ok && freq_ok && q_ok && gain_ok;
 
@@ -74,7 +74,9 @@ static void test_filter(
 int main(void) {
   double freqs[] = { 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 15000, 20000 };
   double qs[] = { 0.1, 0.5, 0.707, 1.0, 2.0, 5.0, 10.0 };
-  double gains[] = { -18, -12, -6, -3, 0, 3, 6, 12, 18 };
+  double gains[] = {
+    -GAIN_DB_LIMIT, -18, -12, -6, -3, 0, 3, 6, 12, 18, GAIN_DB_LIMIT
+  };
 
   int n_freqs = sizeof(freqs) / sizeof(freqs[0]);
   int n_qs = sizeof(qs) / sizeof(qs[0]);

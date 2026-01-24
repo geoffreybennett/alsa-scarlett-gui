@@ -43,6 +43,20 @@ void gtk_filter_response_set_dsp_enabled(
   gboolean           enabled
 );
 
+// Get/set dB range (DB_RANGE_NARROW or GAIN_DB_LIMIT);
+// set clamps existing gains
+double gtk_filter_response_get_db_range(
+  GtkFilterResponse *response
+);
+void gtk_filter_response_set_db_range(
+  GtkFilterResponse *response, double new_range
+);
+
+// Set range to narrow if all gains fit, otherwise full
+void gtk_filter_response_auto_range(
+  GtkFilterResponse *response
+);
+
 // Set highlighted band (-1 for none)
 void gtk_filter_response_set_highlight(
   GtkFilterResponse *response,

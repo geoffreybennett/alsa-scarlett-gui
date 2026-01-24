@@ -17,10 +17,12 @@
 
 #define FREQ_MIN 20.0
 #define FREQ_MAX 20000.0
-#define DB_MIN -24.0
-#define DB_MAX  24.0
 #define Q_MIN 0.1
 #define Q_MAX 10.0
+
+// Toggle hit region dimensions (pixels)
+#define TOGGLE_HIT_WIDTH  30
+#define TOGGLE_HIT_HEIGHT 16
 
 #define SAMPLE_RATE 48000.0
 
@@ -40,6 +42,7 @@ static const double band_colors[][3] = {
 struct graph_area {
   double left, right, top, bottom;
   double width, height;
+  double db_min, db_max;
 };
 
 struct _GtkFilterResponse {
@@ -50,8 +53,10 @@ struct _GtkFilterResponse {
   struct biquad_coeffs coeffs[FILTER_RESPONSE_MAX_BANDS];
   gboolean band_enabled[FILTER_RESPONSE_MAX_BANDS];
   gboolean dsp_enabled;  // overall DSP enable state
+  double db_range;  // DB_RANGE_NARROW or GAIN_DB_LIMIT
   int highlight_band;  // -1 for none
   int internal_highlight;  // -1 for none, set by hover
+  gboolean hover_toggle;  // mouse over range toggle
 
   // Drag state
   int drag_band;  // -1 for none
@@ -70,13 +75,29 @@ enum {
 static guint signals[N_SIGNALS];
 
 // Calculate graph area from widget dimensions
-static void calc_graph_area(int width, int height, struct graph_area *g) {
+static void calc_graph_area(
+  int width, int height, double db_range, struct graph_area *g
+) {
   g->left = LABEL_MARGIN_LEFT;
   g->right = width - LABEL_MARGIN_RIGHT;
   g->top = PADDING;
   g->bottom = height - LABEL_MARGIN_BOTTOM;
   g->width = g->right - g->left;
   g->height = g->bottom - g->top;
+  g->db_min = -db_range;
+  g->db_max = db_range;
+}
+
+// Calculate graph area from response widget state
+static void get_response_graph_area(
+  GtkFilterResponse *response, struct graph_area *g
+) {
+  calc_graph_area(
+    gtk_widget_get_width(GTK_WIDGET(response)),
+    gtk_widget_get_height(GTK_WIDGET(response)),
+    response->db_range,
+    g
+  );
 }
 
 // Convert frequency to X coordinate (log scale)
@@ -89,7 +110,8 @@ static double freq_to_x(const struct graph_area *g, double freq) {
 
 // Convert dB to Y coordinate
 static double db_to_y(const struct graph_area *g, double db) {
-  return g->bottom - (db - DB_MIN) / (DB_MAX - DB_MIN) * g->height;
+  return g->bottom -
+    (db - g->db_min) / (g->db_max - g->db_min) * g->height;
 }
 
 // Convert X coordinate to frequency (log scale)
@@ -104,7 +126,7 @@ static double x_to_freq(const struct graph_area *g, double x) {
 // Convert Y coordinate to dB
 static double y_to_db(const struct graph_area *g, double y) {
   double t = (g->bottom - y) / g->height;
-  return DB_MIN + t * (DB_MAX - DB_MIN);
+  return g->db_min + t * (g->db_max - g->db_min);
 }
 
 // Convert Q to Y coordinate (log scale, higher Q = higher Y)
@@ -286,11 +308,8 @@ static int find_band_at_position(
   double             mx,
   double             my
 ) {
-  int width = gtk_widget_get_width(GTK_WIDGET(response));
-  int height = gtk_widget_get_height(GTK_WIDGET(response));
-
   struct graph_area g;
-  calc_graph_area(width, height, &g);
+  get_response_graph_area(response, &g);
 
   double hit_radius = 12;  // slightly larger than visual radius for easier targeting
   int closest_band = -1;
@@ -321,6 +340,14 @@ static int find_band_at_position(
   return closest_band;
 }
 
+// Check if a point is in the range toggle region
+static gboolean is_in_toggle_region(
+  const struct graph_area *g, double x, double y
+) {
+  return x >= g->right - TOGGLE_HIT_WIDTH &&
+         y <= g->top + TOGGLE_HIT_HEIGHT;
+}
+
 // Motion event callbacks
 static void response_motion(
   GtkEventControllerMotion *controller,
@@ -328,26 +355,90 @@ static void response_motion(
   double                    y,
   GtkFilterResponse        *response
 ) {
+  struct graph_area g;
+  get_response_graph_area(response, &g);
+
+  gboolean in_toggle = is_in_toggle_region(&g, x, y);
   int band = find_band_at_position(response, x, y);
+
+  gboolean changed = FALSE;
+
+  if (in_toggle != response->hover_toggle) {
+    response->hover_toggle = in_toggle;
+    changed = TRUE;
+  }
 
   if (band != response->internal_highlight) {
     response->internal_highlight = band;
     response->highlight_band = band;
-    g_signal_emit(response, signals[SIGNAL_HIGHLIGHT_CHANGED], 0, band);
-    gtk_widget_queue_draw(GTK_WIDGET(response));
+    g_signal_emit(
+      response, signals[SIGNAL_HIGHLIGHT_CHANGED], 0, band
+    );
+    changed = TRUE;
   }
+
+  if (changed)
+    gtk_widget_queue_draw(GTK_WIDGET(response));
 }
 
 static void response_leave(
   GtkEventControllerMotion *controller,
   GtkFilterResponse        *response
 ) {
+  gboolean changed = response->hover_toggle;
+  response->hover_toggle = FALSE;
+
   if (response->internal_highlight != -1) {
     response->internal_highlight = -1;
     response->highlight_band = -1;
-    g_signal_emit(response, signals[SIGNAL_HIGHLIGHT_CHANGED], 0, -1);
-    gtk_widget_queue_draw(GTK_WIDGET(response));
+    g_signal_emit(
+      response, signals[SIGNAL_HIGHLIGHT_CHANGED], 0, -1
+    );
+    changed = TRUE;
   }
+
+  if (changed)
+    gtk_widget_queue_draw(GTK_WIDGET(response));
+}
+
+double gtk_filter_response_get_db_range(GtkFilterResponse *response) {
+  return response->db_range;
+}
+
+void gtk_filter_response_set_db_range(
+  GtkFilterResponse *response, double new_range
+) {
+  response->db_range = new_range;
+
+  // Clamp existing band gains and notify
+  for (int i = 0; i < response->num_bands; i++) {
+    struct biquad_params *params = &response->bands[i];
+    if (params->gain_db < -new_range ||
+        params->gain_db > new_range) {
+      params->gain_db = CLAMP(params->gain_db,
+                              -new_range, new_range);
+      biquad_calculate(
+        params, SAMPLE_RATE, &response->coeffs[i]
+      );
+      g_signal_emit(
+        response, signals[SIGNAL_FILTER_CHANGED], 0, i, params
+      );
+    }
+  }
+
+  gtk_widget_queue_draw(GTK_WIDGET(response));
+}
+
+void gtk_filter_response_auto_range(GtkFilterResponse *response) {
+  double range = DB_RANGE_NARROW;
+  for (int i = 0; i < response->num_bands; i++) {
+    if (response->bands[i].gain_db > DB_RANGE_NARROW ||
+        response->bands[i].gain_db < -DB_RANGE_NARROW) {
+      range = GAIN_DB_LIMIT;
+      break;
+    }
+  }
+  gtk_filter_response_set_db_range(response, range);
 }
 
 // Drag gesture callbacks
@@ -359,16 +450,14 @@ static void response_drag_begin(
 ) {
   int band = find_band_at_position(response, start_x, start_y);
 
+  struct graph_area g;
+  get_response_graph_area(response, &g);
+
   if (band >= 0) {
     response->drag_band = band;
     response->highlight_band = band;
 
     // Calculate offset from handle center to click point
-    int width = gtk_widget_get_width(GTK_WIDGET(response));
-    int height = gtk_widget_get_height(GTK_WIDGET(response));
-    struct graph_area g;
-    calc_graph_area(width, height, &g);
-
     const struct biquad_params *params = &response->bands[band];
     double handle_x = freq_to_x(&g, params->freq);
     double handle_y;
@@ -381,7 +470,18 @@ static void response_drag_begin(
     response->drag_offset_x = start_x - handle_x;
     response->drag_offset_y = start_y - handle_y;
 
-    gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+    gtk_gesture_set_state(
+      GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED
+    );
+  } else if (is_in_toggle_region(&g, start_x, start_y)) {
+    // Toggle range
+    double new_range =
+      response->db_range == GAIN_DB_LIMIT
+        ? DB_RANGE_NARROW : GAIN_DB_LIMIT;
+    gtk_filter_response_set_db_range(response, new_range);
+    gtk_gesture_set_state(
+      GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED
+    );
   }
 }
 
@@ -401,11 +501,8 @@ static void response_drag_update(
   double x = start_x + offset_x - response->drag_offset_x;
   double y = start_y + offset_y - response->drag_offset_y;
 
-  int width = gtk_widget_get_width(GTK_WIDGET(response));
-  int height = gtk_widget_get_height(GTK_WIDGET(response));
-
   struct graph_area g;
-  calc_graph_area(width, height, &g);
+  get_response_graph_area(response, &g);
 
   // Convert position to freq
   double freq = x_to_freq(&g, x);
@@ -418,10 +515,9 @@ static void response_drag_update(
 
   if (biquad_type_uses_gain(params->type)) {
     // Y adjusts gain
-    double gain_db = y_to_db(&g, y);
-    if (gain_db < DB_MIN) gain_db = DB_MIN;
-    if (gain_db > DB_MAX) gain_db = DB_MAX;
-    params->gain_db = gain_db;
+    params->gain_db = CLAMP(
+      y_to_db(&g, y), g.db_min, g.db_max
+    );
   } else {
     // Y adjusts Q (higher = narrower)
     double q = y_to_q(&g, y);
@@ -507,7 +603,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   int height = gtk_widget_get_height(widget);
 
   struct graph_area g;
-  calc_graph_area(width, height, &g);
+  calc_graph_area(width, height, response->db_range, &g);
 
   cairo_t *cr = gtk_snapshot_append_cairo(
     snapshot,
@@ -522,7 +618,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   // Grid lines - horizontal (dB)
   cairo_set_source_rgba(cr, 1, 1, 1, 0.15);
   cairo_set_line_width(cr, 0.5);
-  for (double db = -18; db <= 18; db += 6) {
+  for (double db = g.db_min; db <= g.db_max; db += 6) {
     double y = db_to_y(&g, db);
     cairo_move_to(cr, g.left, y);
     cairo_line_to(cr, g.right, y);
@@ -557,7 +653,7 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   cairo_set_font_size(cr, 8);
 
   // Y-axis labels (dB)
-  for (double db = -18; db <= 18; db += 6) {
+  for (double db = g.db_min; db <= g.db_max; db += 6) {
     char label[8];
     snprintf(label, sizeof(label), "%+.0f", db);
     cairo_text_extents_t extents;
@@ -696,6 +792,20 @@ static void response_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
 
   cairo_restore(cr);
 
+  // Range toggle indicator (top-right corner)
+  double toggle_alpha = response->hover_toggle ? 0.9 : 0.4;
+  cairo_set_source_rgba(cr, 1, 1, 1, toggle_alpha);
+  cairo_set_font_size(cr, 9);
+  char range_label[8];
+  snprintf(range_label, sizeof(range_label),
+           "\xc2\xb1%d", (int)response->db_range);
+  cairo_text_extents_t rext;
+  cairo_text_extents(cr, range_label, &rext);
+  double rx = g.right - rext.width - 4;
+  double ry = g.top + rext.height + 4;
+  cairo_move_to(cr, rx, ry);
+  cairo_show_text(cr, range_label);
+
   cairo_destroy(cr);
 }
 
@@ -756,6 +866,7 @@ static void gtk_filter_response_class_init(GtkFilterResponseClass *klass) {
 static void gtk_filter_response_init(GtkFilterResponse *response) {
   response->num_bands = 0;
   response->dsp_enabled = TRUE;
+  response->db_range = GAIN_DB_LIMIT;
   response->highlight_band = -1;
   response->internal_highlight = -1;
   response->drag_band = -1;

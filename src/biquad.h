@@ -23,12 +23,16 @@ typedef enum {
   BIQUAD_TYPE_COUNT
 } BiquadFilterType;
 
+// Gain limits
+#define GAIN_DB_LIMIT  24.0
+#define DB_RANGE_NARROW 12.0
+
 // Filter parameters
 struct biquad_params {
   BiquadFilterType type;
   double freq;      // Frequency in Hz (20-20000)
   double q;         // Q factor (0.1-10)
-  double gain_db;   // Gain in dB for peaking/shelving (-18 to +18)
+  double gain_db;   // Gain in dB for peaking/shelving
 };
 
 // Biquad coefficients (normalized so a0=1)
