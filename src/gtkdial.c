@@ -1022,6 +1022,24 @@ static void draw_level_indicator(
   draw_level_arc(dial, cr, radius, 2, 1);
 }
 
+// draw a tick mark symmetrical about the arc path
+static void draw_arc_tick(
+  GtkDial *dial,
+  cairo_t *cr,
+  double   dx,     // unit direction x (from centre)
+  double   dy,     // unit direction y (from centre)
+  double   alpha,
+  double   offset  // extent either side of arc
+) {
+  double inner_r = dial->slider_radius - offset;
+  double outer_r = dial->slider_radius + offset;
+  cairo_move_to(cr, dial->cx + dx * inner_r, dial->cy + dy * inner_r);
+  cairo_line_to(cr, dial->cx + dx * outer_r, dial->cy + dy * outer_r);
+  cairo_set_line_width(cr, 2);
+  cairo_set_source_rgba_dim(cr, 1, 1, 1, alpha, dial->dim);
+  cairo_stroke(cr);
+}
+
 static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   GtkDial *dial = GTK_DIAL(widget);
 
@@ -1050,14 +1068,17 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
   if (dial->peak_hold && dial->show_level && !dial->show_value)
     draw_peak(dial, cr, dial->slider_radius);
 
-  // 3. draw line to zero dB
+  // 3. dim tick at zero dB
   double zero_db = gtk_dial_get_zero_db(dial);
+  double tick_large = dial->slider_thickness / 4;
+  double tick_small = dial->slider_thickness / 6;
   if (zero_db != -G_MAXDOUBLE) {
-    cairo_move_to(cr, dial->cx, dial->cy);
-    cairo_line_to(cr, dial->zero_db_x, dial->zero_db_y);
-    cairo_set_line_width(cr, 2);
-    cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.17, dial->dim);
-    cairo_stroke(cr);
+    draw_arc_tick(
+      dial, cr,
+      (dial->zero_db_x - dial->cx) / dial->slider_radius,
+      (dial->zero_db_y - dial->cy) / dial->slider_radius,
+      0.17, tick_large
+    );
   }
 
   // 4. level arc on outer ring (for level-only dials: show_level && !show_value)
@@ -1066,14 +1087,18 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
 
   // 5. value arc (for dials with show_value)
   if (dial->show_value) {
-    // marker when at min or max
-    if (gtk_dial_get_value(dial) == gtk_adjustment_get_lower(dial->adj) ||
-        gtk_dial_get_value(dial) == gtk_adjustment_get_upper(dial->adj)) {
-      cairo_move_to(cr, dial->cx, dial->cy);
-      cairo_line_to(cr, dial->slider_cx, dial->slider_cy);
-      cairo_set_line_width(cr, 2);
-      cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.5, dial->dim);
-      cairo_stroke(cr);
+    // bold tick when at min, max, or zero dB
+    double value = gtk_dial_get_value(dial);
+    int at_min = value == gtk_adjustment_get_lower(dial->adj);
+    if (at_min ||
+        value == gtk_adjustment_get_upper(dial->adj) ||
+        (zero_db != -G_MAXDOUBLE && value == zero_db)) {
+      draw_arc_tick(
+        dial, cr,
+        (dial->slider_cx - dial->cx) / dial->slider_radius,
+        (dial->slider_cy - dial->cy) / dial->slider_radius,
+        0.5, at_min ? tick_small : tick_large
+      );
     }
 
     // value arc (white)
