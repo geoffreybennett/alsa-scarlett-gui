@@ -9,6 +9,7 @@
 #include "config-monitor-groups.h"
 #include "optional-state.h"
 #include "alsa.h"
+#include "config-monitor-groups.h"
 #include "stereo-link.h"
 #include "window-mixer.h"
 
@@ -46,6 +47,9 @@ static gboolean flush_pending_ui_updates(gpointer user_data) {
     update_config_io_mixer_labels(card);
     rebuild_mixer_grid(card);
   }
+
+  if (card->pending_ui_updates & PENDING_UI_UPDATE_MONITOR_GROUPS)
+    rebuild_monitor_groups_grid(card);
 
   card->pending_ui_updates = 0;
 
@@ -220,9 +224,11 @@ static void src_visibility_changed(
   if (src->card && src->card->routing_lines)
     gtk_widget_queue_draw(src->card->routing_lines);
 
-  // schedule mixer grid rebuild for mixer sources
+  // schedule expensive updates
+  int flags = PENDING_UI_UPDATE_MONITOR_GROUPS;
   if (src->port_category == PC_MIX)
-    schedule_ui_update(src->card, PENDING_UI_UPDATE_MIXER_GRID);
+    flags |= PENDING_UI_UPDATE_MIXER_GRID;
+  schedule_ui_update(src->card, flags);
 }
 
 // Callback to update routing sink visibility
@@ -251,10 +257,16 @@ static void snk_visibility_changed(
       gtk_widget_queue_draw(card->routing_lines);
   }
 
-  // schedule mixer grid rebuild for mixer inputs
-  // (needed for fixed mixer inputs which don't have routing widgets)
-  if (card && snk->elem->port_category == PC_MIX)
-    schedule_ui_update(card, PENDING_UI_UPDATE_MIXER_GRID);
+  if (card) {
+    // rebuild mixer grid for mixer inputs
+    // (needed for fixed mixer inputs which don't have routing widgets)
+    if (snk->elem->port_category == PC_MIX)
+      schedule_ui_update(card, PENDING_UI_UPDATE_MIXER_GRID);
+
+    // rebuild monitor groups for analogue output sinks
+    if (snk->elem->port_category == PC_HW)
+      schedule_ui_update(card, PENDING_UI_UPDATE_MONITOR_GROUPS);
+  }
 }
 
 // Free port enable callback data
