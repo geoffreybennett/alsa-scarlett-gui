@@ -3,7 +3,7 @@
 Refer to [INSTALL.md](INSTALL.md) for prerequisites, how to build,
 install, and run.
 
-## No interface connected
+## No Interface Connected
 
 If no interface is detected (usually because there isn’t one
 connected!) you’ll see this window:
@@ -41,8 +41,11 @@ Click “Update”, then “Yes” to update the firmware.
 
 ![Firmware Update Progress](../img/firmware-updating.png)
 
-The update will take about 15 seconds, and then your interface will
-restart, showing the main window.
+For 4th Gen large interfaces (16i16, 18i16, 18i20), the firmware
+update is a multi-step process (leapfrog, ESP, then application
+firmware). The interface will reboot mid-upgrade and resume
+automatically when the interface reconnects. If something goes wrong,
+just restart the process.
 
 ### MSD (Mass Storage Device/Quick Start/Easy Start) Mode
 
@@ -78,34 +81,63 @@ load a configuration in simulation mode, and to exit the application.
 ### Load/Save Configuration
 
 The entire state of the interface can be loaded and saved using the
-File → Load Configuration and File → Save Configuration menu options.
+File → Load Configuration (Ctrl-O) and File → Save Configuration
+(Ctrl-S) menu options.
 
-Internally, this uses `alsactl`:
+Two formats are supported:
 
-- **Load**: `alsactl restore USB -f <fn>`
-- **Save**: `alsactl store USB -f <fn>`
+- **Native format** (`.conf`, default): Saves all settings including
+  custom port names, port visibility, stereo linking, and DSP filter
+  parameters. This captures the complete state managed by
+  `alsa-scarlett-gui`.
 
-The saved state files can be used to simulate an interface if you
-don’t have one attached. The `demo` directory in the distribution
-contains a sample file for every supported model.
+- **alsactl format** (`.state`): Saves only kernel-level ALSA controls
+  using `alsactl`. Useful for interface simulation (see below) and
+  compatibility with standard ALSA tools.
+
+The file chooser shows both formats, with native as the default. On
+load, the format is determined by the file extension.
+
+For quick access to commonly-used configurations, see
+[Presets](presets.md).
 
 ### Interface Simulation Mode
 
-The GUI can load an `alsactl` state file saved from a real interface
-and display a GUI as if the corresponding interface was connected.
+The GUI can load a `.state` file saved from a real interface and
+display a GUI as if the corresponding interface was connected. Use
+File → Interface Simulation (Ctrl-I) or specify the filename on the
+command line.
 
 This is useful if you don’t have an interface connected and want to
-try, develop, or debug the GUI.
+try, develop, or debug the GUI. The `demo` directory in the
+distribution contains a sample file for every supported model.
 
-Either specify the `.state` filename on the command line or select the
-menu option File → Interface Simulation to load.
+## Keyboard Shortcuts
+
+| Shortcut | Action                 |
+|----------|------------------------|
+| Ctrl-O   | Load Configuration     |
+| Ctrl-S   | Save Configuration     |
+| Ctrl-I   | Interface Simulation   |
+| Ctrl-Q   | Exit                   |
+| Ctrl-R   | Routing Window         |
+| Ctrl-M   | Mixer Window           |
+| Ctrl-L   | Levels Window          |
+| Ctrl-D   | DSP Window             |
+| Ctrl-G   | Configuration Window   |
+| Ctrl-T   | Startup Window         |
+| Ctrl-H   | Supported Hardware     |
+| Ctrl-/   | About                  |
+
+Shortcuts work from any window — subwindows forward unhandled hotkeys
+to the main window.
 
 ## Interface Controls
 
 The controls and menu items which are available vary widely, depending
 on your specific interface.
 
-There are five broad categories of interfaces with different
+There are six broad categories of interfaces with different
 capabilities; each category of interface is described in a separate
 document:
 
@@ -115,7 +147,7 @@ document:
 
 - [Scarlett 3rd Gen Solo and 2i2](iface-small.md)
 
-  Minimal number of controls, and they mostly accessible through
+  Minimal number of controls, and they are mostly accessible through
   hardware buttons anyway. Not very interesting.
 
 - [Scarlett 2nd Gen 6i6+, 3rd Gen 4i4+, Clarett USB, and
@@ -126,31 +158,32 @@ document:
 - [Scarlett Small 4th Gen](iface-4th-gen-small.md)
 
   Full routing and mixing capabilities, remote-controlled input gain,
-  but no output controls.
+  but no software-controlled output controls.
 
 - [Scarlett Big 4th Gen](iface-4th-gen-big.md)
 
-  Full routing and mixing capabilities, remote-controlled input gain
-  and output volume controls.
+  Full routing and mixing capabilities, remote-controlled input gain,
+  software-controlled output volume controls, and monitor groups.
+
+- [Vocaster One and Two](iface-vocaster.md)
+
+  DSP processing (compressor, EQ, filters), routing, and mixing. See
+  also the [DSP window documentation](dsp.md).
+
+## Additional Documentation
+
+- [Configuration Window](configuration.md) — Custom port
+  names, I/O visibility, stereo linking, autogain settings,
+  and monitor groups
+- [Presets](presets.md) — Quick save and load of device
+  configurations
+- [DSP Window](dsp.md) — Compressor, EQ, and filter controls
+  (Vocaster only)
+- [Digital I/O Availability](digital-io-availability.md) —
+  How sample rate and mode affect port availability
 
 ## Known Bugs/Issues
 
-- For interfaces using the FCP driver, alsa-scarlett-gui needs to be
-  started after the interface is connected and fcp-server has started.
-
-- Load/Save uses `alsactl` which will be confused if the ALSA
-  interface name (e.g. `USB`) changes.
-
-- Load/Save is not implemented for simulated interfaces.
-
-- The read-only status of controls in interface simulation mode does
-  not change when the HW/SW button is clicked.
-
-- When there’s more than one main window open, closing one of them
-  doesn’t free and close everything related to that card.
-
-- There is no facility to group channels into stereo pairs (needs
-  kernel support to save this information in the interface).
-
-- There is no facility to give channels custom names (needs kernel
-  support to save this information in the interface).
+- The scarlett2 kernel driver does not report levels correctly when
+  using dual and quad band sample rates (88.2kHz, 176.4kHz, 96kHz,
+  192kHz).

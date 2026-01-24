@@ -9,9 +9,9 @@ with the small Scarlett 4th Gen interfaces:
 
 ### Comparison with earlier Scarlett and Clarett Interfaces
 
-If you are familiar with the Scarlett 2nd and 3rd Gen interfaces or
-the Clarett interfaces, the major differences to the 4th Gen
-interfaces from the point of view of this software are:
+If you are familiar with the Scarlett 2nd and 3rd Gen or Clarett
+interfaces, the major differences to the 4th Gen interfaces from the
+point of view of this software are:
 
 - The 4th Gen Solo and 2i2 interfaces have the full routing and mixing
   capabilities of the larger 2nd and 3rd Gen and Clarett interfaces
@@ -78,7 +78,7 @@ The analogue input controls available depend on the interface model:
 
 The Inst button(s) are used to select between Mic/Line and Instrument
 level/impedance. When plugging in microphones or line-level equipment
-(such as a synthesizer, external preamp, or effects processor) to the
+(such as a synthesiser, external preamp, or effects processor) to the
 input, set it to “Line”. The “Inst” setting is for instruments with
 pickups such as guitars.
 
@@ -94,7 +94,7 @@ harmonics in your sound.
 
 Turning the “48V” switch on sends “Phantom Power” to the XLR
 microphone input. This is required for some microphones (such as
-condensor microphones), and damaging to some microphones (particularly
+condenser microphones), and damaging to some microphones (particularly
 vintage ribbon microphones).
 
 The 2i2 has a single 48V switch that controls both channels, and the
@@ -117,6 +117,11 @@ The “Gain” controls adjust the input gain for the selected channel.
 Click and drag up/down on the control to adjust the gain, use your
 mouse scroll wheel, or click the control to select it and use the
 arrow keys, Page Up, Page Down, Home, and End keys.
+
+The gain dial includes a real-time level meter inside the knob,
+showing the post-gain signal level with a peak hold indicator. This
+gives immediate visual feedback on the input signal without needing to
+open the Levels window.
 
 #### Autogain
 
@@ -164,15 +169,15 @@ windows](#4i4-sample-direct-monitor-configuration).
 The 4i4 interface has volume knobs on the front panel, the position of
 which is shown in the main window.
 
-## Routing and Mixing
+## Routing
 
-The routing and mixing capabilities of the 4th Gen interfaces are the
-same in concept as the 2nd and 3rd Gen interfaces, but there is a DSP
-which is separately routable, and the default routing uses the mixer
+The routing capabilities of the 4th Gen interfaces are the same in
+concept as the 2nd and 3rd Gen interfaces, but there is a DSP which is
+separately routable, and the default routing uses the mixer
 extensively.
 
-From the main window, open the Routing window with the View → Routing
-menu option or pressing Ctrl-R:
+From the main window, open the Routing window with View → Routing or
+press Ctrl-R.
 
 ![4th Gen 2i2 Routing](../img/scarlett-4th-gen-2i2-routing.png)
 
@@ -194,10 +199,12 @@ To understand the signal flow, note the following:
    but can be used for another purpose if you want).
 
 Important Notes:
-- The “Presets” are generally not useful with the 4th Gen interfaces
-  as they are designed for the 2nd and 3rd Gen interfaces. If you try
-  these out, you’ll probably want to reset back to the factory
-  defaults afterwards.
+- The routing window’s “Presets” menu (Clear, Direct, Preamp, Stereo
+  Out) is designed for the 2nd and 3rd Gen interfaces and is generally
+  not useful with the 4th Gen. If you try these, you’ll probably want
+  to reset back to the factory defaults afterwards. For saving and
+  restoring your own configurations, use the [Presets
+  button](#presets) in the main window instead.
 - Besides Air Mode, the DSP is also used for the gain halo level
   meters and autogain, so if you route something else to the DSP
   Inputs, those features will work “rather differently”.
@@ -217,13 +224,74 @@ To adjust the routing:
 Note that a sink can only be connected to one source, but one source
 can be connected to many sinks.
 
-To adjust the mixer output levels:
+### Signal Level Glow
 
-1) Open the mixer window with the main window View → Mixer menu
-   option, or press Ctrl-M.
+Active routing connections are overlaid with a glow effect showing the
+real-time signal level flowing through them. The glow colour
+transitions from green (normal) through yellow (high) to red
+(clipping). Sources with an active signal but no connected sink show a
+circular glow around the source port.
 
-2) Mixer levels can be adjusted with your keyboard or mouse in the
-   same way as the [Gain Controls](#gain).
+### Arrow Indicators
+
+When a port has been hidden via the [Configuration
+window](configuration.md), any routing connections involving that port
+are shown with an arrow indicator at the visible end. This lets you
+see that a hidden port has an active connection without needing to
+show all ports.
+
+### Stereo Linking
+
+Adjacent ports can be stereo-linked via the [Configuration
+window](configuration.md) (available on the 2i2 and 4i4). Linked ports
+appear as a single stereo socket with L and R sub-ports. Routing lines
+for stereo pairs are drawn in parallel, each with independent signal
+glow.
+
+When dragging a stereo-linked source to a sink (or vice versa), the
+connection is made stereo-aware: the left source connects to the left
+sink and the right source to the right sink.
+
+## Mixer
+
+Open the Mixer window with View → Mixer or press Ctrl-M.
+
+The mixer is a matrix where any combination of inputs can be mixed to
+any output at adjustable levels. Mixer levels can be adjusted with
+your keyboard or mouse in the same way as the [Gain Controls](#gain).
+
+### Signal Level Glow
+
+Mixer input and output labels display a real-time glow effect behind
+them, showing the signal level with green, yellow, and red colour
+transitions. For stereo-linked channels, the glow is split into
+separate L and R bars.
+
+### Level Metering on Gain Dials
+
+Each mixer gain knob includes a post-gain level meter inside the dial,
+showing the signal level at that point in the mix with a peak hold
+indicator.
+
+### Custom Port Names
+
+Mixer labels reflect any custom names set in the [Configuration
+window](configuration.md). Long names are ellipsised with the full
+name shown in a tooltip on hover.
+
+### Stereo-Aware Controls
+
+When adjacent mixer inputs or outputs are stereo-linked, their gain
+controls are ganged together with an averaged value. Adjusting one
+updates both channels. For a stereo-linked input going to a
+stereo-linked output, the gain is computed as a diagonal average
+across the four crosspoints.
+
+### Port Visibility
+
+Ports hidden in the [Configuration window](configuration.md) are
+removed from the mixer grid, keeping the display focused on the ports
+you’re actively using.
 
 ### Solo Direct Monitor
 
@@ -275,7 +343,7 @@ This can be useful if you want to treat the PCM 1 & 2 Inputs as a
 stereo pair, and not have the line/instrument input panned hard left
 and the microphone input panned hard right.
 
-The mixer levels for the Mix E & F Outputs can adjusted to suit.
+The mixer levels for the Mix E & F Outputs can be adjusted to suit.
 
 ### 4i4 Routing and Mixing
 
@@ -311,9 +379,9 @@ the Analogue Outputs 1–2 as they are. This is an advanced version of
 the direct monitoring feature that is available on the Solo and 2i2.
 It can be implemented by:
 
-1) Route Mixer Outputs E & F to Analogue Outputs 5 & 6.
-2) Turn up Mix E & F DSP 1 & 2 levels in the mixer (see the mixer
-   example above for [2i2 Direct Monitor](#2i2-direct-monitor)).
+1) Route Mixer Outputs E & F to Analogue Outputs 5 & 6. 2) Turn up Mix
+E & F DSP 1 & 2 levels in the mixer (see the mixer example above for
+[2i2 Direct Monitor](#2i2-direct-monitor)).
 
 As there are only 6 Mixer Outputs, the PCM 5 & 6 Inputs (Loopback) are
 now shared with the headphones. If you want to retain the Loopback
@@ -328,19 +396,89 @@ routing/mixing with the 4i4. For example, by using the additional PCM
 Outputs and Inputs you could set up a mix-minus configuration for a
 podcast/video call.
 
+## Configuration
+
+The Configuration window provides settings for customising port names,
+visibility, stereo linking, and autogain targets. Open it with View →
+Configuration or press Ctrl-G. See [Configuration
+Window](configuration.md) for full details.
+
+Available tabs for the 4th Gen small interfaces:
+
+| Tab | Interfaces |
+|-----|------------|
+| Device Name | Solo, 2i2, 4i4 |
+| I/O Configuration | Solo, 2i2, 4i4 |
+| Autogain | 2i2, 4i4 |
+
+### Custom Port Names
+
+Give meaningful names to your ports (e.g. “Vocal Mic”, “Guitar”,
+“Monitors”) in the I/O Configuration tab. These names appear
+throughout the application — in the routing window, mixer labels, and
+level meters.
+
+### Port Visibility
+
+Show or hide individual ports to reduce clutter in the routing and
+mixer windows. Hidden ports with active connections show arrow
+indicators in the routing window.
+
+### Stereo Linking (2i2 and 4i4)
+
+Link adjacent ports together for stereo operation. Linked ports share
+names, appear as stereo sockets in the routing window, and have ganged
+controls in the mixer.
+
+### Autogain Targets (2i2 and 4i4)
+
+Set the target levels for the autogain feature: Mean Target and Peak
+Target. These determine what signal level the autogain algorithm aims
+for when calibrating input gain.
+
+## Presets
+
+The Presets button in the main window provides quick save/load of
+named configurations. See [Presets and Configuration
+Files](presets.md) for full details.
+
+You can also save and load configurations to files via the File menu
+(Ctrl-S to save, Ctrl-O to load).
+
 ## Levels
 
 The meters show the levels seen by the interface at every routing
 sink: Hardware Outputs, Mixer Inputs, DSP Inputs, and PCM Inputs. Open
-this window by selecting the View → Levels menu option or pressing
-Ctrl-L.
+this window with View → Levels or press Ctrl-L.
 
 ![Levels](../img/window-levels-4th-gen-small.gif)
 
 Look at this in conjunction with the routing window to understand
 which meter corresponds to which source or sink.
 
-Thanks for reading this far! If you appreciate the hundreds of hours
-of work that went into the kernel driver, the control panel, and this
-documentation, please consider supporting the author with a
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl-O | Load Configuration |
+| Ctrl-S | Save Configuration |
+| Ctrl-I | Interface Simulation |
+| Ctrl-Q | Exit |
+| Ctrl-R | Routing Window |
+| Ctrl-M | Mixer Window |
+| Ctrl-L | Levels Window |
+| Ctrl-G | Configuration Window |
+| Ctrl-T | Startup Window |
+| Ctrl-H | Supported Hardware |
+| Ctrl-/ | About |
+
+Keyboard shortcuts work from any window — subwindows forward unhandled
+shortcuts to the main window.
+
+---
+
+Thanks for reading this far! This software represents over a thousand
+hours of independent work — reverse-engineering, kernel development,
+and building a complete replacement for Focusrite's proprietary apps.
+If you've found it valuable, please consider a
 [donation](../README.md#donations).
