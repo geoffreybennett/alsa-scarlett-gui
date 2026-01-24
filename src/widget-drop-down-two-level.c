@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "custom-names.h"
+#include "port-enable.h"
 #include "stereo-link.h"
 #include "widget-drop-down-two-level.h"
 
@@ -173,6 +174,10 @@ static void build_groups_stereo(struct drop_down_two_level *data) {
       g_free(group_name);
       continue;
     }
+
+    // Skip disabled sources
+    if (!is_routing_src_enabled(src))
+      continue;
 
     int src_linked = is_src_linked(src);
     int src_is_left = is_src_left_channel(src);

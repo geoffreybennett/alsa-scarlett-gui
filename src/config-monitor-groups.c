@@ -5,6 +5,7 @@
 
 #include "alsa.h"
 #include "custom-names.h"
+#include "port-enable.h"
 #include "stereo-link.h"
 #include "widget-drop-down-two-level.h"
 #include "widget-gain.h"
@@ -257,9 +258,10 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
     if (!data.main_elem && !data.alt_elem)
       break;
 
-    // Check stereo link state — skip right channel of linked pair
+    // Skip hidden or right-channel-of-linked-pair sinks
     struct routing_snk *snk = get_analogue_output_snk(card, i);
-    if (snk && !should_display_snk(snk))
+    if (snk && (!should_display_snk(snk) ||
+                !is_routing_snk_enabled(snk)))
       continue;
 
     int linked = snk && is_snk_linked(snk);
