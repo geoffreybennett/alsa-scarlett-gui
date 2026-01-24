@@ -351,7 +351,8 @@ struct alsa_card {
 };
 
 // flags for pending_ui_updates
-#define PENDING_UI_UPDATE_MIXER_GRID (1 << 0)
+#define PENDING_UI_UPDATE_MIXER_GRID     (1 << 0)
+#define PENDING_UI_UPDATE_MONITOR_GROUPS (1 << 1)
 
 // utility
 void fatal_alsa_error(const char *msg, int err);
