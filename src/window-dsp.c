@@ -58,6 +58,9 @@ struct filter_stage {
   struct alsa_elem    *state_q_elem;
   struct alsa_elem    *state_gain_elem;
 
+  // Last coefficients written by the UI (for echo suppression)
+  long                 last_ui_coeffs[5];
+
   // Re-entrancy guard: set when updating coefficients from state elements
   gboolean             updating_from_state;
 };
@@ -194,6 +197,7 @@ static void filter_stage_update_coeffs(struct filter_stage *stage) {
     fixed[4] = 0;
   }
 
+  memcpy(stage->last_ui_coeffs, fixed, sizeof(stage->last_ui_coeffs));
   alsa_set_elem_int_values(stage->coeff_elem, fixed, 5);
 
   // Update response graph
@@ -580,6 +584,13 @@ static void filter_stage_coeffs_updated(
   long *fixed = alsa_get_elem_int_values(elem);
   if (!fixed)
     return;
+
+  // Skip if these are the coefficients we last wrote
+  if (memcmp(fixed, stage->last_ui_coeffs,
+             sizeof(stage->last_ui_coeffs)) == 0) {
+    free(fixed);
+    return;
+  }
 
   struct biquad_coeffs coeffs;
   biquad_from_fixed_point(fixed, &coeffs);
