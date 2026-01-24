@@ -235,7 +235,8 @@ struct alsa_elem {
   int  is_simulated;
   int  is_writable;
   int  is_volatile;
-  long value;
+  long  value;
+  long *values;  // cached multi-value integer state
 
   // for simulated enumerated elements, the items
   int    item_count;
