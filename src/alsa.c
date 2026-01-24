@@ -993,6 +993,23 @@ static void get_routing_snks(struct alsa_card *card) {
       // Non-HW-analogue sinks just use normal routing
       r->effective_source_idx = alsa_get_elem_value(elem);
     }
+
+    // Cache is_left status
+    // For fixed mixer inputs, use source's left/right (lr_num can be
+    // misaligned on devices with odd analogue input count)
+    if (elem->port_category == PC_MIX && !alsa_get_elem_writable(elem)) {
+      int src_id = r->effective_source_idx;
+      if (src_id > 0 && src_id < card->routing_srcs->len) {
+        struct routing_src *src = &g_array_index(
+          card->routing_srcs, struct routing_src, src_id
+        );
+        r->is_left = (src->lr_num % 2) == 1;
+      } else {
+        r->is_left = (elem->lr_num % 2) == 1;
+      }
+    } else {
+      r->is_left = (elem->lr_num % 2) == 1;
+    }
   }
 
   assert(j == count);
