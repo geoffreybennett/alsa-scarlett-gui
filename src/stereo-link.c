@@ -1218,6 +1218,10 @@ static void src_link_state_changed(struct alsa_elem *elem, void *private) {
   if (src_l && src_l->port_category == PC_MIX)
     recreate_mixer_widgets(src_l->card);
 
+  // Rebuild monitor groups grid (source link affects dropdown filtering)
+  if (src_l && src_l->card && src_l->card->monitor_groups_grid)
+    rebuild_monitor_groups_grid(src_l->card);
+
   // Trigger visibility callbacks via enable_elem change notifications
   // The visibility callback in port-enable.c is the single source of truth
   if (src_l && src_l->enable_elem)

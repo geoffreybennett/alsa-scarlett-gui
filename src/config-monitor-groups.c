@@ -319,8 +319,8 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
     // Main Source dropdown (create before checkbox so we can track it)
     GtkWidget *main_source = NULL;
     if (data.main_source_elem && main_source_col >= 0) {
-      main_source = make_drop_down_two_level_alsa_elem(
-        data.main_source_elem
+      main_source = make_monitor_group_source_dropdown(
+        data.main_source_elem, card, linked
       );
       gtk_widget_set_size_request(main_source, 120, -1);
       gtk_widget_set_hexpand(main_source, FALSE);
@@ -407,8 +407,8 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
     // Alt Source dropdown (create before checkbox so we can track it)
     GtkWidget *alt_source = NULL;
     if (data.alt_source_elem && alt_source_col >= 0) {
-      alt_source = make_drop_down_two_level_alsa_elem(
-        data.alt_source_elem
+      alt_source = make_monitor_group_source_dropdown(
+        data.alt_source_elem, card, linked
       );
       gtk_widget_set_size_request(alt_source, 120, -1);
       gtk_widget_set_hexpand(alt_source, FALSE);
