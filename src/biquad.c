@@ -336,8 +336,8 @@ gboolean biquad_analyze(
     params->freq = 1000.0;  // Arbitrary, not used
     params->q = 0.707;      // Arbitrary, not used
     params->gain_db = 20.0 * log10(b0);
-    if (params->gain_db < -18.0) params->gain_db = -18.0;
-    if (params->gain_db > 18.0) params->gain_db = 18.0;
+    params->gain_db = CLAMP(params->gain_db,
+                            -GAIN_DB_LIMIT, GAIN_DB_LIMIT);
     return TRUE;
   }
 
@@ -372,8 +372,8 @@ gboolean biquad_analyze(
       params->type = BIQUAD_TYPE_LOW_SHELF_1;
       double dc_gain = (b0 + b1) / (1.0 + a1);
       params->gain_db = 20.0 * log10(fabs(dc_gain));
-      if (params->gain_db < -18.0) params->gain_db = -18.0;
-      if (params->gain_db > 18.0) params->gain_db = 18.0;
+      if (params->gain_db < -24.0) params->gain_db = -24.0;
+      if (params->gain_db > 24.0) params->gain_db = 24.0;
 
       // Recover K: boost uses a1 = (K-1)/(K+1), cut uses a1 = (V*K-1)/(V*K+1)
       double V = pow(10.0, fabs(params->gain_db) / 20.0);
@@ -391,8 +391,8 @@ gboolean biquad_analyze(
       params->type = BIQUAD_TYPE_HIGH_SHELF_1;
       double nyq_gain = (b0 - b1) / (1.0 - a1);
       params->gain_db = 20.0 * log10(fabs(nyq_gain));
-      if (params->gain_db < -18.0) params->gain_db = -18.0;
-      if (params->gain_db > 18.0) params->gain_db = 18.0;
+      if (params->gain_db < -24.0) params->gain_db = -24.0;
+      if (params->gain_db > 24.0) params->gain_db = 24.0;
 
       // Recover K: boost uses a1 = (K-1)/(K+1), cut uses a1 = (K-V)/(K+V)
       double V = pow(10.0, fabs(params->gain_db) / 20.0);
@@ -447,8 +447,8 @@ gboolean biquad_analyze(
     params->type = BIQUAD_TYPE_LOW_SHELF;
     // dc_gain = A² from cookbook, so gain_db = 20*log10(A²) = 40*log10(A)
     params->gain_db = 20.0 * log10(fabs(dc_gain));
-    if (params->gain_db < -18.0) params->gain_db = -18.0;
-    if (params->gain_db > 18.0) params->gain_db = 18.0;
+    params->gain_db = CLAMP(params->gain_db,
+                            -GAIN_DB_LIMIT, GAIN_DB_LIMIT);
 
     // For frequency formula, we need actual A = sqrt(dc_gain)
     double A = sqrt(fabs(dc_gain));
@@ -487,8 +487,8 @@ gboolean biquad_analyze(
     params->type = BIQUAD_TYPE_HIGH_SHELF;
     // nyq_gain = A² from cookbook, so gain_db = 20*log10(A²) = 40*log10(A)
     params->gain_db = 20.0 * log10(fabs(nyq_gain));
-    if (params->gain_db < -18.0) params->gain_db = -18.0;
-    if (params->gain_db > 18.0) params->gain_db = 18.0;
+    params->gain_db = CLAMP(params->gain_db,
+                            -GAIN_DB_LIMIT, GAIN_DB_LIMIT);
 
     // For frequency formula, we need actual A = sqrt(nyq_gain)
     double A = sqrt(fabs(nyq_gain));
@@ -563,8 +563,8 @@ gboolean biquad_analyze(
     double alpha = (alpha_sq > 0) ? sqrt(alpha_sq) : 0.001;
 
     params->gain_db = 40.0 * log10(A);
-    if (params->gain_db < -18.0) params->gain_db = -18.0;
-    if (params->gain_db > 18.0) params->gain_db = 18.0;
+    params->gain_db = CLAMP(params->gain_db,
+                            -GAIN_DB_LIMIT, GAIN_DB_LIMIT);
 
     if (alpha > 1e-10)
       params->q = sin_w0 / (2.0 * alpha);

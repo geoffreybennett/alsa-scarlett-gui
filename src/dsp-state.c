@@ -168,12 +168,12 @@ static void create_filter_stage_elems(
   );
   g_free(name);
 
-  // Gain (dB * GAIN_SCALE, -18 to +18 dB)
+  // Gain (dB * GAIN_SCALE)
   name = get_filter_elem_name(filter_type, channel, stage, "Gain");
   create_dsp_elem(
     card, name,
-    -18 * GAIN_SCALE,
-    18 * GAIN_SCALE,
+    (long)(-GAIN_DB_LIMIT * GAIN_SCALE),
+    (long)(GAIN_DB_LIMIT * GAIN_SCALE),
     0,
     state
   );
