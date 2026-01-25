@@ -8,12 +8,16 @@
 #include "gtkhelper.h"
 #include "optional-state.h"
 #include "peq-response.h"
+#include "stereo-link.h"
 #include "stringhelper.h"
 #include "widget-boolean.h"
 #include "widget-filter-type.h"
 #include "window-dsp.h"
 
 #define SAMPLE_RATE 48000.0
+
+// DSP link element name for persisted state
+#define DSP_LINK_ELEM_NAME "DSP 1-2 Link"
 
 // Compressor curve update function type
 typedef void (*curve_update_fn)(GtkCompressorCurve *curve, int value);
@@ -897,6 +901,26 @@ struct dsp_enable_data {
   GtkFilterResponse  *peq_response;
 };
 
+// Visibility toggling for DSP stereo pair
+struct dsp_pair_visibility_data {
+  GtkWidget        *ch2_header;
+  GtkWidget        *ch2_sections;
+  struct alsa_elem *link_elem;
+};
+
+// Sync data for DSP element pairs
+struct dsp_sync_data {
+  struct alsa_elem *link_elem;
+  struct alsa_elem *elem_l;
+  struct alsa_elem *elem_r;
+  int               is_coeffs;  // TRUE for multi-value coefficient elements
+};
+
+// Save callback data for DSP link element
+struct dsp_link_save_data {
+  struct alsa_card *card;
+};
+
 static void dsp_enable_updated(
   struct alsa_elem *elem,
   void             *private
@@ -913,39 +937,48 @@ static void dsp_enable_updated(
 
 // Callback data for DSP header name updates
 struct dsp_header_data {
-  GtkWidget         *button;  // toggle button (NULL if using label)
-  GtkWidget         *label;   // label widget (NULL if using button)
-  struct routing_src *src;
-  int                channel;
+  GtkWidget          *button;     // toggle button (NULL if using label)
+  GtkWidget          *label;      // label widget (NULL if using button)
+  struct routing_src *src;        // this channel's source
+  struct alsa_elem   *link_elem;  // DSP link element
 };
 
+// Compute DSP header name based on link state - single source of truth
+static char *get_dsp_header_name(struct dsp_header_data *data) {
+  gboolean linked = data->link_elem && alsa_get_elem_value(data->link_elem);
+
+  if (linked)
+    return get_src_pair_display_name(data->src);
+
+  // Not linked: use single channel display name
+  const char *name = get_routing_src_display_name(data->src);
+  return name ? g_strdup(name) : NULL;
+}
+
+// Update the header widget with current name
+static void dsp_header_update(struct dsp_header_data *data) {
+  char *name = get_dsp_header_name(data);
+  const char *display_name = name ? name : "DSP";
+
+  if (data->button) {
+    // Update the boolean widget's stored labels so toggling DSP doesn't
+    // revert to old text
+    boolean_widget_update_labels(data->button, display_name, display_name);
+  } else if (data->label) {
+    char *markup = g_strdup_printf("<b>%s</b>", display_name);
+    gtk_label_set_markup(GTK_LABEL(data->label), markup);
+    g_free(markup);
+  }
+
+  g_free(name);
+}
+
+// Callback when any relevant element changes
 static void dsp_header_name_updated(
   struct alsa_elem *elem,
   void             *private
 ) {
-  struct dsp_header_data *data = private;
-  const char *name = get_routing_src_display_name(data->src);
-
-  if (!name) {
-    char fallback[16];
-    snprintf(fallback, sizeof(fallback), "DSP %d", data->channel);
-    if (data->button)
-      gtk_button_set_label(GTK_BUTTON(data->button), fallback);
-    else if (data->label) {
-      char *markup = g_strdup_printf("<b>%s</b>", fallback);
-      gtk_label_set_markup(GTK_LABEL(data->label), markup);
-      g_free(markup);
-    }
-    return;
-  }
-
-  if (data->button)
-    gtk_button_set_label(GTK_BUTTON(data->button), name);
-  else if (data->label) {
-    char *markup = g_strdup_printf("<b>%s</b>", name);
-    gtk_label_set_markup(GTK_LABEL(data->label), markup);
-    g_free(markup);
-  }
+  dsp_header_update(private);
 }
 
 static void dsp_header_destroy(struct dsp_header_data *data) {
@@ -954,6 +987,319 @@ static void dsp_header_destroy(struct dsp_header_data *data) {
 
 static void dsp_enable_destroy(struct dsp_enable_data *data) {
   g_free(data);
+}
+
+static void dsp_pair_visibility_destroy(struct dsp_pair_visibility_data *data) {
+  g_free(data);
+}
+
+static void dsp_link_save_destroy(struct dsp_link_save_data *data) {
+  g_free(data);
+}
+
+static void dsp_sync_destroy(struct dsp_sync_data *data) {
+  g_free(data);
+}
+
+// Callback when DSP link state changes - save to state file
+static void dsp_link_state_save(struct alsa_elem *elem, void *private) {
+  struct dsp_link_save_data *data = private;
+  long value = alsa_get_elem_value(elem);
+  optional_state_save(
+    data->card, CONFIG_SECTION_CONTROLS, DSP_LINK_ELEM_NAME, value ? "1" : "0"
+  );
+}
+
+// Update link button appearance based on state
+static void update_dsp_link_button_appearance(GtkToggleButton *button) {
+  gboolean active = gtk_toggle_button_get_active(button);
+
+  GtkWidget *label = gtk_button_get_child(GTK_BUTTON(button));
+  gtk_label_set_text(GTK_LABEL(label), active ? "🔗" : "⛓️‍💥");
+
+  if (active)
+    gtk_widget_remove_css_class(GTK_WIDGET(button), "dim-label");
+  else
+    gtk_widget_add_css_class(GTK_WIDGET(button), "dim-label");
+}
+
+// Callback when link toggle button is clicked
+static void dsp_link_button_toggled(GtkToggleButton *button, gpointer user_data) {
+  struct alsa_elem *elem = user_data;
+  gboolean active = gtk_toggle_button_get_active(button);
+  alsa_set_elem_value(elem, active ? 1 : 0);
+  update_dsp_link_button_appearance(button);
+}
+
+// Callback when link element changes
+static void dsp_link_button_updated(struct alsa_elem *elem, void *private) {
+  GtkToggleButton *button = GTK_TOGGLE_BUTTON(private);
+  int value = alsa_get_elem_value(elem);
+  gtk_toggle_button_set_active(button, value != 0);
+  update_dsp_link_button_appearance(button);
+}
+
+// Create a link toggle button for DSP stereo pair
+static GtkWidget *create_dsp_link_button(struct alsa_elem *link_elem) {
+  GtkWidget *link_button = gtk_toggle_button_new();
+  GtkWidget *label = gtk_label_new("🔗");
+  gtk_button_set_child(GTK_BUTTON(link_button), label);
+  gtk_widget_set_halign(link_button, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(link_button, GTK_ALIGN_CENTER);
+  gtk_widget_set_tooltip_text(link_button, "Link DSP channels as stereo pair");
+  gtk_widget_add_css_class(link_button, "flat");
+
+  g_signal_connect(link_button, "toggled",
+    G_CALLBACK(dsp_link_button_toggled), link_elem);
+  alsa_elem_add_callback(link_elem, dsp_link_button_updated, link_button, NULL);
+
+  int value = alsa_get_elem_value(link_elem);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(link_button), value != 0);
+  update_dsp_link_button_appearance(GTK_TOGGLE_BUTTON(link_button));
+
+  return link_button;
+}
+
+// Get or create the DSP link element and load its state
+static struct alsa_elem *get_dsp_link_elem(struct alsa_card *card) {
+  struct alsa_elem *link_elem = get_elem_by_name(card->elems, DSP_LINK_ELEM_NAME);
+  if (link_elem)
+    return link_elem;
+
+  // Create simulated element
+  link_elem = alsa_create_optional_elem(
+    card, DSP_LINK_ELEM_NAME, SND_CTL_ELEM_TYPE_BOOLEAN, 0
+  );
+  if (!link_elem)
+    return NULL;
+
+  // Load initial value from state
+  GHashTable *state = optional_state_load(card, CONFIG_SECTION_CONTROLS);
+  if (state) {
+    const char *value = g_hash_table_lookup(state, DSP_LINK_ELEM_NAME);
+    alsa_set_elem_value(link_elem, (value && strcmp(value, "1") == 0) ? 1 : 0);
+    g_hash_table_destroy(state);
+  }
+
+  return link_elem;
+}
+
+// Sync simple value elements bidirectionally when linked
+static void dsp_sync_callback(struct alsa_elem *elem, void *private) {
+  struct dsp_sync_data *data = private;
+
+  if (!alsa_get_elem_value(data->link_elem))
+    return;
+
+  // Determine which is source and which is target
+  struct alsa_elem *other = (elem == data->elem_l) ? data->elem_r : data->elem_l;
+
+  int src_value = alsa_get_elem_value(elem);
+  int dst_value = alsa_get_elem_value(other);
+
+  // Only sync if different to avoid infinite callback loops
+  if (src_value != dst_value)
+    alsa_set_elem_value(other, src_value);
+}
+
+// Sync coefficient elements (5 values) bidirectionally when linked
+static void dsp_coeff_sync_callback(struct alsa_elem *elem, void *private) {
+  struct dsp_sync_data *data = private;
+
+  if (!alsa_get_elem_value(data->link_elem))
+    return;
+
+  // Determine which is source and which is target
+  struct alsa_elem *other = (elem == data->elem_l) ? data->elem_r : data->elem_l;
+
+  long *src_values = alsa_get_elem_int_values(elem);
+  long *dst_values = alsa_get_elem_int_values(other);
+
+  if (!src_values || !dst_values) {
+    free(src_values);
+    free(dst_values);
+    return;
+  }
+
+  // Only sync if different to avoid infinite callback loops
+  if (memcmp(src_values, dst_values, 5 * sizeof(long)) != 0)
+    alsa_set_elem_int_values(other, src_values, 5);
+
+  free(src_values);
+  free(dst_values);
+}
+
+// Register sync callback on both elements for bidirectional sync
+static void register_dsp_sync_pair(
+  struct alsa_elem *link_elem,
+  struct alsa_elem *elem_l,
+  struct alsa_elem *elem_r,
+  int               is_coeffs,
+  GtkWidget        *parent
+) {
+  if (!link_elem || !elem_l || !elem_r)
+    return;
+
+  struct dsp_sync_data *data = g_malloc0(sizeof(struct dsp_sync_data));
+  data->link_elem = link_elem;
+  data->elem_l = elem_l;
+  data->elem_r = elem_r;
+  data->is_coeffs = is_coeffs;
+
+  AlsaElemCallback *callback =
+    is_coeffs ? dsp_coeff_sync_callback : dsp_sync_callback;
+
+  // Register on both elements for bidirectional sync
+  alsa_elem_add_callback(elem_l, callback, data, NULL);
+  alsa_elem_add_callback(elem_r, callback, data, NULL);
+
+  g_object_weak_ref(
+    G_OBJECT(parent), (GWeakNotify)dsp_sync_destroy, data
+  );
+}
+
+// Hide/show channel 2 widgets based on link state
+static void dsp_link_visibility_changed(
+  struct alsa_elem *elem,
+  void             *private
+) {
+  struct dsp_pair_visibility_data *pv = private;
+  int linked = alsa_get_elem_value(elem);
+
+  if (pv->ch2_header)
+    gtk_widget_set_visible(pv->ch2_header, !linked);
+  if (pv->ch2_sections)
+    gtk_widget_set_visible(pv->ch2_sections, !linked);
+}
+
+// Copy all channel 1 DSP values to channel 2 when first linked
+static void sync_dsp_channels_on_link(struct alsa_card *card) {
+  GPtrArray *elems = card->elems;
+
+  // DSP Capture Switch
+  struct alsa_elem *elem_l = get_elem_by_name(elems, "Line In 1 DSP Capture Switch");
+  struct alsa_elem *elem_r = get_elem_by_name(elems, "Line In 2 DSP Capture Switch");
+  if (elem_l && elem_r)
+    alsa_set_elem_value(elem_r, alsa_get_elem_value(elem_l));
+
+  // Compressor parameters
+  const char *comp_params[] = {
+    "Compressor Threshold", "Compressor Ratio", "Compressor Knee Width",
+    "Compressor Attack", "Compressor Release", "Compressor Makeup Gain"
+  };
+  for (size_t i = 0; i < sizeof(comp_params) / sizeof(comp_params[0]); i++) {
+    char *name_l = g_strdup_printf("Line In 1 %s", comp_params[i]);
+    char *name_r = g_strdup_printf("Line In 2 %s", comp_params[i]);
+    elem_l = get_elem_by_name(elems, name_l);
+    elem_r = get_elem_by_name(elems, name_r);
+    if (elem_l && elem_r)
+      alsa_set_elem_value(elem_r, alsa_get_elem_value(elem_l));
+    g_free(name_l);
+    g_free(name_r);
+  }
+
+  // Pre-comp coefficients (2 stages)
+  for (int i = 1; i <= 2; i++) {
+    char *name_l = g_strdup_printf("Line In 1 Pre-Comp Coefficients %d", i);
+    char *name_r = g_strdup_printf("Line In 2 Pre-Comp Coefficients %d", i);
+    elem_l = get_elem_by_name(elems, name_l);
+    elem_r = get_elem_by_name(elems, name_r);
+    if (elem_l && elem_r) {
+      long *values = alsa_get_elem_int_values(elem_l);
+      if (values) {
+        alsa_set_elem_int_values(elem_r, values, 5);
+        free(values);
+      }
+    }
+    g_free(name_l);
+    g_free(name_r);
+  }
+
+  // PEQ coefficients (3 stages)
+  for (int i = 1; i <= 3; i++) {
+    char *name_l = g_strdup_printf("Line In 1 PEQ Coefficients %d", i);
+    char *name_r = g_strdup_printf("Line In 2 PEQ Coefficients %d", i);
+    elem_l = get_elem_by_name(elems, name_l);
+    elem_r = get_elem_by_name(elems, name_r);
+    if (elem_l && elem_r) {
+      long *values = alsa_get_elem_int_values(elem_l);
+      if (values) {
+        alsa_set_elem_int_values(elem_r, values, 5);
+        free(values);
+      }
+    }
+    g_free(name_l);
+    g_free(name_r);
+  }
+}
+
+// Data for link state change callback
+struct dsp_link_data {
+  struct alsa_card *card;
+  int               was_linked;
+};
+
+static void dsp_link_data_destroy(struct dsp_link_data *data) {
+  g_free(data);
+}
+
+// Trigger initial sync when link state changes to linked
+static void dsp_link_state_changed(struct alsa_elem *elem, void *private) {
+  struct dsp_link_data *data = private;
+  int linked = alsa_get_elem_value(elem);
+
+  // Only sync when transitioning from unlinked to linked
+  if (linked && !data->was_linked)
+    sync_dsp_channels_on_link(data->card);
+
+  data->was_linked = linked;
+}
+
+// Register ongoing sync callbacks for all DSP elements
+static void register_dsp_sync_callbacks(
+  struct alsa_card *card,
+  struct alsa_elem *link_elem,
+  GtkWidget        *parent
+) {
+  GPtrArray *elems = card->elems;
+
+  // Simple value elements
+  const char *simple_elems[] = {
+    "DSP Capture Switch",
+    "Compressor Threshold", "Compressor Ratio", "Compressor Knee Width",
+    "Compressor Attack", "Compressor Release", "Compressor Makeup Gain"
+  };
+  for (size_t i = 0; i < sizeof(simple_elems) / sizeof(simple_elems[0]); i++) {
+    char *name_l = g_strdup_printf("Line In 1 %s", simple_elems[i]);
+    char *name_r = g_strdup_printf("Line In 2 %s", simple_elems[i]);
+    struct alsa_elem *elem_l = get_elem_by_name(elems, name_l);
+    struct alsa_elem *elem_r = get_elem_by_name(elems, name_r);
+    register_dsp_sync_pair(link_elem, elem_l, elem_r, FALSE, parent);
+    g_free(name_l);
+    g_free(name_r);
+  }
+
+  // Pre-comp coefficients (2 stages)
+  for (int i = 1; i <= 2; i++) {
+    char *name_l = g_strdup_printf("Line In 1 Pre-Comp Coefficients %d", i);
+    char *name_r = g_strdup_printf("Line In 2 Pre-Comp Coefficients %d", i);
+    struct alsa_elem *elem_l = get_elem_by_name(elems, name_l);
+    struct alsa_elem *elem_r = get_elem_by_name(elems, name_r);
+    register_dsp_sync_pair(link_elem, elem_l, elem_r, TRUE, parent);
+    g_free(name_l);
+    g_free(name_r);
+  }
+
+  // PEQ coefficients (3 stages)
+  for (int i = 1; i <= 3; i++) {
+    char *name_l = g_strdup_printf("Line In 1 PEQ Coefficients %d", i);
+    char *name_r = g_strdup_printf("Line In 2 PEQ Coefficients %d", i);
+    struct alsa_elem *elem_l = get_elem_by_name(elems, name_l);
+    struct alsa_elem *elem_r = get_elem_by_name(elems, name_r);
+    register_dsp_sync_pair(link_elem, elem_l, elem_r, TRUE, parent);
+    g_free(name_l);
+    g_free(name_r);
+  }
 }
 
 // Preset types
@@ -1308,11 +1654,17 @@ static void connect_compressor_presets_button(
 }
 
 // Create controls for one line input channel
+// Output parameters return widgets needed for stereo linking visibility
 static void add_channel_controls(
-  struct alsa_card *card,
-  GtkWidget        *grid,
-  int              *grid_y,
-  int               channel
+  struct alsa_card    *card,
+  GtkWidget           *grid,
+  int                 *grid_y,
+  int                  channel,
+  struct alsa_elem    *link_elem,
+  struct routing_src  *src_partner,
+  GtkWidget          **header_out,
+  GtkWidget          **sections_out,
+  struct routing_src **dsp_src_out
 ) {
   GPtrArray *elems = card->elems;
   char *prefix = g_strdup_printf("Line In %d ", channel);
@@ -1357,7 +1709,6 @@ static void add_channel_controls(
   g_free(name);
 
   GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-  gtk_widget_set_margin_top(header_box, *grid_y > 0 ? 15 : 0);
   gtk_grid_attach(GTK_GRID(grid), header_box, 0, (*grid_y)++, 1, 1);
 
   const char *header = dsp_src
@@ -1387,17 +1738,42 @@ static void add_channel_controls(
   }
   g_free(header_fallback);
 
-  // Register callback for custom name changes
-  if (dsp_src && dsp_src->custom_name_elem) {
+  // Register callback for custom name changes and link state changes
+  if (dsp_src) {
     struct dsp_header_data *hdr_data = g_malloc0(sizeof(struct dsp_header_data));
     hdr_data->button = header_button;
     hdr_data->label = header_label;
     hdr_data->src = dsp_src;
-    hdr_data->channel = channel;
-    alsa_elem_add_callback(
-      dsp_src->custom_name_elem, dsp_header_name_updated, hdr_data,
-      (GDestroyNotify)dsp_header_destroy
+    hdr_data->link_elem = link_elem;
+
+    if (dsp_src->custom_name_elem)
+      alsa_elem_add_callback(
+        dsp_src->custom_name_elem, dsp_header_name_updated, hdr_data, NULL
+      );
+
+    // Also update when partner name changes (pair display uses both names)
+    if (src_partner && src_partner->custom_name_elem)
+      alsa_elem_add_callback(
+        src_partner->custom_name_elem, dsp_header_name_updated, hdr_data, NULL
+      );
+
+    // Also update when pair name changes (used when linked)
+    struct alsa_elem *pair_name_elem = get_src_pair_name_elem(dsp_src);
+    if (pair_name_elem)
+      alsa_elem_add_callback(
+        pair_name_elem, dsp_header_name_updated, hdr_data, NULL
+      );
+
+    // Also update when link state changes
+    if (link_elem)
+      alsa_elem_add_callback(link_elem, dsp_header_name_updated, hdr_data, NULL);
+
+    g_object_weak_ref(
+      G_OBJECT(header_box), (GWeakNotify)dsp_header_destroy, hdr_data
     );
+
+    // Set initial header name (use callback function for DRY)
+    dsp_header_update(hdr_data);
   }
 
   // Horizontal box for the three sections
@@ -1665,6 +2041,14 @@ static void add_channel_controls(
     dsp_enable_updated(dsp_enable, dsp_data);
   }
 
+  // Set output parameters for stereo linking
+  if (header_out)
+    *header_out = header_box;
+  if (sections_out)
+    *sections_out = sections_box;
+  if (dsp_src_out)
+    *dsp_src_out = dsp_src;
+
   g_free(prefix);
 }
 
@@ -1679,16 +2063,101 @@ GtkWidget *create_dsp_controls(struct alsa_card *card) {
   gtk_grid_set_row_spacing(GTK_GRID(grid), 5);
   gtk_frame_set_child(GTK_FRAME(top), grid);
 
+  // Check which channels have DSP controls
+  struct alsa_elem *dsp_elem_1 = get_elem_by_name(
+    card->elems, "Line In 1 DSP Capture Switch"
+  );
+  struct alsa_elem *dsp_elem_2 = get_elem_by_name(
+    card->elems, "Line In 2 DSP Capture Switch"
+  );
+  gboolean has_both = dsp_elem_1 && dsp_elem_2;
+
+  // Find DSP sources for custom names
+  struct routing_src *dsp_src_1 = NULL, *dsp_src_2 = NULL;
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (src->port_category == PC_DSP) {
+      if (src->port_num == 0)
+        dsp_src_1 = src;
+      else if (src->port_num == 1)
+        dsp_src_2 = src;
+    }
+  }
+
+  // Get or create DSP link element if both channels exist
+  struct alsa_elem *link_elem = NULL;
+  if (has_both) {
+    link_elem = get_dsp_link_elem(card);
+    if (link_elem) {
+      // Register save callback
+      struct dsp_link_save_data *save_data =
+        g_malloc0(sizeof(struct dsp_link_save_data));
+      save_data->card = card;
+      alsa_elem_add_callback(link_elem, dsp_link_state_save, save_data, NULL);
+      g_object_weak_ref(
+        G_OBJECT(top), (GWeakNotify)dsp_link_save_destroy, save_data
+      );
+    }
+  }
+
   int grid_y = 0;
+  GtkWidget *ch2_header = NULL, *ch2_sections = NULL;
 
-  // add controls for each channel that has DSP controls
-  for (int ch = 1; ch <= 2; ch++) {
-    char *name = g_strdup_printf("Line In %d DSP Capture Switch", ch);
-    struct alsa_elem *elem = get_elem_by_name(card->elems, name);
-    g_free(name);
+  // Channel 1 controls (partner is channel 2)
+  if (dsp_elem_1) {
+    add_channel_controls(
+      card, grid, &grid_y, 1, link_elem, dsp_src_2, NULL, NULL, NULL
+    );
+  }
 
-    if (elem)
-      add_channel_controls(card, grid, &grid_y, ch);
+  // Link button between channels (if both exist)
+  if (has_both && link_elem) {
+    GtkWidget *link_button = create_dsp_link_button(link_elem);
+    gtk_grid_attach(GTK_GRID(grid), link_button, 0, grid_y++, 1, 1);
+  }
+
+  // Channel 2 controls (partner is channel 1)
+  if (dsp_elem_2) {
+    add_channel_controls(
+      card, grid, &grid_y, 2, link_elem, dsp_src_1,
+      &ch2_header, &ch2_sections, NULL
+    );
+  }
+
+  // Set up stereo linking if both channels exist
+  if (has_both && link_elem) {
+    // Set up visibility toggling for channel 2 widgets
+    struct dsp_pair_visibility_data *pv =
+      g_malloc0(sizeof(struct dsp_pair_visibility_data));
+    pv->ch2_header = ch2_header;
+    pv->ch2_sections = ch2_sections;
+    pv->link_elem = link_elem;
+
+    alsa_elem_add_callback(link_elem, dsp_link_visibility_changed, pv, NULL);
+    g_object_weak_ref(
+      G_OBJECT(top), (GWeakNotify)dsp_pair_visibility_destroy, pv
+    );
+
+    // Set initial visibility
+    int linked = alsa_get_elem_value(link_elem);
+    if (ch2_header)
+      gtk_widget_set_visible(ch2_header, !linked);
+    if (ch2_sections)
+      gtk_widget_set_visible(ch2_sections, !linked);
+
+    // Register link state change callback for initial sync
+    struct dsp_link_data *link_data = g_malloc0(sizeof(struct dsp_link_data));
+    link_data->card = card;
+    link_data->was_linked = linked;
+    alsa_elem_add_callback(link_elem, dsp_link_state_changed, link_data, NULL);
+    g_object_weak_ref(
+      G_OBJECT(top), (GWeakNotify)dsp_link_data_destroy, link_data
+    );
+
+    // Register ongoing sync callbacks for all DSP elements
+    register_dsp_sync_callbacks(card, link_elem, top);
   }
 
   return top;
