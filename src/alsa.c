@@ -293,14 +293,15 @@ void alsa_set_elem_int_values(
   if (memcmp(elem->values, values, size) == 0)
     return;
 
-  memcpy(elem->values, values, size);
-
   if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
+    memcpy(elem->values, values, size);
     if (!elem->pending_idle)
       elem->pending_idle =
         g_idle_add(alsa_elem_change_idle, elem);
     return;
   }
+
+  // Don't update cache here - let ALSA callback do it so callbacks fire
 
   snd_ctl_elem_value_t *elem_value;
 
@@ -739,6 +740,13 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
     // allocate new element and copy data
     struct alsa_elem *elem = malloc(sizeof(struct alsa_elem));
     *elem = alsa_elem;
+
+    // Initialise value cache for change detection
+    if (elem->count == 1)
+      elem->value = alsa_get_elem_value(elem);
+    else if (elem->count > 1)
+      elem->values = alsa_get_elem_int_values(elem);
+
     g_ptr_array_add(card->elems, elem);
   }
 }
@@ -1400,8 +1408,26 @@ static gboolean alsa_card_callback(
   for (int i = 0; i < card->elems->len; i++) {
     struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
-    if (elem->numid == numid)
+    if (elem->numid == numid) {
+      // Only fire callback if value actually changed
+      if (elem->count == 1) {
+        long new_value = alsa_get_elem_value(elem);
+        if (new_value == elem->value)
+          break;
+        elem->value = new_value;
+      } else if (elem->count > 1) {
+        long *new_values = alsa_get_elem_int_values(elem);
+        int changed = !elem->values ||
+          memcmp(new_values, elem->values, elem->count * sizeof(long)) != 0;
+        if (!changed) {
+          free(new_values);
+          break;
+        }
+        free(elem->values);
+        elem->values = new_values;
+      }
       alsa_elem_change(elem);
+    }
   }
 
   return 1;
