@@ -1,0 +1,112 @@
+name: Build Release Packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 1.0-rc1)'
+        required: true
+        default: 'test'
+
+env:
+  APP_NAME: alsa-scarlett-gui
+  APP_VERSION: ${{ github.event.release.tag_name || github.event.inputs.version }}
+
+jobs:
+  build-rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: >
+          dnf install -y rpm-build make gcc git
+          gtk4-devel alsa-lib-devel openssl-devel
+
+      - name: Build RPM
+        run: |
+          VERSION=$(echo "${{ env.APP_VERSION }}" | sed 's/-rc/~rc/g')
+          make rpm VERSION="$VERSION"
+
+      - name: Find RPM
+        id: find-rpm
+        run: |
+          echo "rpm_path=$(find ~/rpmbuild/RPMS -name '*.rpm' -not -name '*debug*' \
+            | head -1)" >> $GITHUB_OUTPUT
+
+      - name: Upload RPM as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: ${{ steps.find-rpm.outputs.rpm_path }}
+
+      - name: Upload RPM to release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ steps.find-rpm.outputs.rpm_path }}
+          asset_name: ${{ env.APP_NAME }}-${{ env.APP_VERSION }}.x86_64.rpm
+          asset_content_type: application/x-rpm
+
+  build-deb:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt -y update
+          sudo apt -y install make gcc libgtk-4-dev libasound2-dev libssl-dev
+
+      - name: Build from sources
+        run: make -C src -j$(nproc) VERSION=${{ env.APP_VERSION }} PREFIX=/usr
+
+      - name: Prepare package workspace
+        run: |
+          mkdir -p deb-workspace/usr/bin \
+                   deb-workspace/usr/share/applications \
+                   deb-workspace/usr/share/icons/hicolor/256x256/apps \
+                   deb-workspace/usr/share/doc/${{ env.APP_NAME }}
+          cp src/alsa-scarlett-gui deb-workspace/usr/bin/
+          cp src/vu.b4.alsa-scarlett-gui.desktop \
+            deb-workspace/usr/share/applications/
+          cp src/img/vu.b4.alsa-scarlett-gui.png \
+            deb-workspace/usr/share/icons/hicolor/256x256/apps/
+          cp -r *.md demo docs img deb-workspace/usr/share/doc/${{ env.APP_NAME }}/
+
+      - name: Build debian package
+        uses: jiro4989/build-deb-action@v2
+        with:
+          package: ${{ env.APP_NAME }}
+          package_root: deb-workspace
+          maintainer: geoffreybennett
+          depends: 'libgtk-4-1, libasound2, alsa-utils'
+          version: ${{ env.APP_VERSION }}
+          desc: >
+            Gtk4 GUI for the ALSA controls presented by the Linux kernel
+            Focusrite USB drivers.
+
+      - name: Upload deb as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: ./${{ env.APP_NAME }}_${{ env.APP_VERSION }}_amd64.deb
+
+      - name: Upload deb to release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ env.APP_NAME }}_${{ env.APP_VERSION }}_amd64.deb
+          asset_name: ${{ env.APP_NAME }}_${{ env.APP_VERSION }}_amd64.deb
+          asset_content_type: application/vnd.debian.binary-package
