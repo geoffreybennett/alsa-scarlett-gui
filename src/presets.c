@@ -225,6 +225,7 @@ static void show_save_preset_dialog(struct presets_data *data) {
   );
   gtk_window_set_resizable(GTK_WINDOW(dialog_data->window), FALSE);
   gtk_widget_add_css_class(dialog_data->window, "window-frame");
+  gtk_widget_add_css_class(dialog_data->window, "modal");
 
   // Clean up data when window is destroyed
   g_object_set_data_full(

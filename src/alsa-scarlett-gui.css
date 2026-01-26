@@ -3,8 +3,52 @@
   background: black;
   color: white;
   padding: 15px;
-  border-radius: 0px;
+  border-radius: 0;
   border: none;
+}
+
+/* Force headerbar styling for modal windows */
+.window-frame.modal headerbar,
+.window-frame.modal headerbar:backdrop {
+  background: transparent;
+  color: white;
+  border: none;
+  box-shadow: none;
+}
+
+/* Modal close button */
+.window-frame.modal headerbar windowcontrols button,
+.window-frame.modal headerbar windowcontrols button:hover,
+.window-frame.modal headerbar windowcontrols button:active {
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  border: none;
+  padding-right: 0;
+  border-radius: 0;
+}
+
+.window-frame.modal headerbar windowcontrols button > image {
+  background: transparent;
+  border-radius: 0;
+}
+
+.window-frame.modal headerbar windowcontrols button:hover > image {
+  background: #303030;
+  border-radius: 5px;
+}
+
+/* Modal window frame */
+.window-frame.modal {
+  padding-top: 0;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Modal content needs matching top border-radius */
+.window-frame.modal .window-content {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
 }
 
 /* Top-level window content */
