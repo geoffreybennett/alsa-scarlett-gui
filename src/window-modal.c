@@ -88,6 +88,7 @@ void create_modal_window(
       GTK_WINDOW(dialog), GTK_WINDOW(card->window_main)
     );
   gtk_widget_add_css_class(dialog, "window-frame");
+  gtk_widget_add_css_class(dialog, "modal");
 
   GtkWidget *content_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 50);
   gtk_window_set_child(GTK_WINDOW(dialog), content_box);
@@ -158,6 +159,7 @@ void create_modal_window_autostart(
       GTK_WINDOW(dialog), GTK_WINDOW(card->window_main)
     );
   gtk_widget_add_css_class(dialog, "window-frame");
+  gtk_widget_add_css_class(dialog, "modal");
 
   GtkWidget *content_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 50);
   gtk_window_set_child(GTK_WINDOW(dialog), content_box);
