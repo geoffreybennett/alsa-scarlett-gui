@@ -536,6 +536,13 @@ static void create_input_phantom_control(
   gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(w, phantom_descr);
 
+  // For Forte controls like "Input 1 48V Phantom Power Switch",
+  // use column_num directly to avoid parsing "48" as a channel number
+  if (strstr(elem->name, "48V Phantom Power")) {
+    gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+    return;
+  }
+
   int from, to;
   get_two_num_from_string(elem->name, &from, &to);
   if (to == -1)
@@ -771,10 +778,7 @@ static void create_input_controls(
     elems, input_grid, &current_row,
     "Source", create_input_source_control  // Input X Source (Mic/Line/Inst)
   );
-  create_input_controls_by_type(
-    elems, input_grid, &current_row,
-    " Gain", create_input_gain_control  // Input X Gain (Forte preamp)
-  );
+  // Note: Forte gain now uses "Gain Capture Volume" pattern above
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "48V Phantom Power", create_input_phantom_control
