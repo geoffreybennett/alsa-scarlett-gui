@@ -102,3 +102,7 @@ char *get_src_default_pair_name(struct routing_src *src);
 // Used for display in routing window when no custom name is set
 // Returns newly allocated string that must be freed
 char *get_snk_default_pair_name(struct routing_snk *snk);
+
+// Register talkback sync callback for a mixer output source
+// Called from window-routing.c after talkback_elem is set
+void stereo_link_register_talkback_callback(struct routing_src *src);

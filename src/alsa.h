@@ -130,6 +130,9 @@ struct routing_src {
 
   // routing window talkback button widget (for mixer outputs with talkback)
   GtkWidget *talkback_widget;
+
+  // talkback element for this mixer output (if talkback is supported)
+  struct alsa_elem *talkback_elem;
 };
 
 // entry in alsa_card routing_snks (routing sinks) array for alsa
