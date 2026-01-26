@@ -217,6 +217,10 @@ static void src_visibility_changed(
   int visible = enabled && should_display_src(src);
   gtk_widget_set_visible(src->widget, visible);
 
+  // talkback widget visibility mirrors routing widget visibility
+  if (src->talkback_widget)
+    gtk_widget_set_visible(src->talkback_widget, visible);
+
   // update section visibility
   update_routing_section_visibility(src->card);
 
