@@ -1230,8 +1230,14 @@ static GtkWidget *make_talkback_mix_widget(
   if (!talkback_elem)
     return NULL;
 
-  // Use the formatted display name (e.g., "A" for defaults, custom name if set)
-  char *display_name = get_src_display_name_formatted(r_src);
+  // Store the element in the routing source for sync callbacks
+  r_src->talkback_elem = talkback_elem;
+
+  // Register talkback sync callback for stereo linking
+  stereo_link_register_talkback_callback(r_src);
+
+  // Use stereo-aware name (e.g., "A" or "A–B" when linked)
+  char *display_name = get_src_stereo_aware_name(r_src);
   GtkWidget *button = make_boolean_alsa_elem(
     talkback_elem, display_name, display_name
   );
@@ -1817,6 +1823,10 @@ static void add_routing_widgets(
       int enabled = is_routing_src_enabled(r_src);
       int visible = enabled && should_display_src(r_src);
       gtk_widget_set_visible(r_src->widget, visible);
+
+      // talkback widget visibility mirrors routing widget visibility
+      if (r_src->talkback_widget)
+        gtk_widget_set_visible(r_src->talkback_widget, visible);
     }
   }
 

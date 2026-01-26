@@ -8,6 +8,7 @@
 #include "device-port-names.h"
 #include "optional-state.h"
 #include "alsa.h"
+#include "stereo-link.h"
 #include "widget-boolean.h"
 #include "window-mixer.h"
 #include "window-routing.h"
@@ -206,25 +207,18 @@ static void src_custom_name_display_changed(
   }
 
   // update talkback button label in routing window if it exists
+  // talkback buttons use abbreviated stereo-aware names (A, B, A–B)
   if (src->talkback_widget && src->port_category == PC_MIX) {
-    // use custom name if set, otherwise just the letter (e.g., "A")
-    const char *display_name = src->display_name;
-    char *formatted_name = NULL;
+    char *formatted_name;
 
-    if (src->custom_name_elem) {
-      size_t size;
-      const void *bytes = alsa_get_elem_bytes(src->custom_name_elem, &size);
-      size_t str_len = bytes ? strnlen((const char *)bytes, size) : 0;
-
-      if (str_len > 0) {
-        // custom name - use it as-is
-        formatted_name = g_strdup(display_name);
-      }
-    }
-
-    if (!formatted_name) {
-      // default name - strip "Mix " prefix (src->name is "Mix X")
-      formatted_name = g_strdup(src->name + 4);
+    if (is_src_linked(src) && is_src_left_channel(src)) {
+      // linked: show "A–B" format
+      formatted_name = g_strdup_printf(
+        "%c\xe2\x80\x93%c", src->port_num + 'A', src->port_num + 'B'
+      );
+    } else {
+      // not linked: show single letter
+      formatted_name = g_strdup_printf("%c", src->port_num + 'A');
     }
 
     boolean_widget_update_labels(

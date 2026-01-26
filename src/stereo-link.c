@@ -12,6 +12,7 @@
 #include "device-port-names.h"
 #include "optional-state.h"
 #include "port-enable.h"
+#include "widget-boolean.h"
 #include "window-mixer.h"
 #include "window-routing.h"
 
@@ -385,6 +386,45 @@ static void pair_name_changed(struct alsa_elem *elem, void *private) {
   }
 }
 
+// Get the stereo-aware talkback label for a mixer output source
+// Returns newly allocated string that must be freed
+static char *get_talkback_stereo_aware_name(struct routing_src *src) {
+  if (is_src_linked(src) && is_src_left_channel(src)) {
+    // Linked: show "A–B" format
+    return g_strdup_printf(
+      "%c\xe2\x80\x93%c", src->port_num + 'A', src->port_num + 'B'
+    );
+  }
+  // Not linked: show single letter (e.g., "A")
+  return g_strdup_printf("%c", src->port_num + 'A');
+}
+
+// Update talkback button labels for stereo linking
+static void update_talkback_labels(struct alsa_card *card) {
+  if (!card || !card->has_talkback || !card->routing_srcs)
+    return;
+
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (r_src->port_category != PC_MIX)
+      continue;
+
+    // Skip R channel of linked pair (it's hidden anyway)
+    if (!should_display_src(r_src))
+      continue;
+
+    if (!r_src->talkback_widget)
+      continue;
+
+    char *name = get_talkback_stereo_aware_name(r_src);
+    boolean_widget_update_labels(r_src->talkback_widget, name, name);
+    g_free(name);
+  }
+}
+
 // Schedule UI update for stereo link changes
 void schedule_stereo_link_ui_update(struct alsa_card *card) {
   if (!card)
@@ -392,6 +432,7 @@ void schedule_stereo_link_ui_update(struct alsa_card *card) {
 
   // Routing updates done synchronously to avoid flicker
   update_routing_section_visibility(card);
+  update_talkback_labels(card);
   if (card->routing_lines)
     gtk_widget_queue_draw(card->routing_lines);
 
@@ -409,6 +450,20 @@ static void sync_enable_on_link(
 
   long left_val = alsa_get_elem_value(left_enable);
   alsa_set_elem_value(right_enable, left_val);
+}
+
+// Sync talkback state when linking: right channel = left channel (left wins)
+static void sync_talkback_on_link(
+  struct routing_src *src_l,
+  struct routing_src *src_r
+) {
+  if (!src_l || !src_r)
+    return;
+  if (!src_l->talkback_elem || !src_r->talkback_elem)
+    return;
+
+  long left_val = alsa_get_elem_value(src_l->talkback_elem);
+  alsa_set_elem_value(src_r->talkback_elem, left_val);
 }
 
 // Callback to sync source enable state while linked
@@ -451,6 +506,31 @@ static void snk_enable_sync_callback(struct alsa_elem *elem, void *private) {
   // Only update if different to avoid infinite loops
   if (left_val != right_val)
     alsa_set_elem_value(snk_r->enable_elem, left_val);
+}
+
+// Callback to sync talkback state while linked (mixer outputs only)
+// When either channel changes, update the other to match
+static void src_talkback_sync_callback(struct alsa_elem *elem, void *private) {
+  struct routing_src *src = private;
+
+  // Only applies to mixer outputs
+  if (!src || src->port_category != PC_MIX)
+    return;
+
+  // Only sync if linked
+  if (!is_src_linked(src))
+    return;
+
+  struct routing_src *src_partner = get_src_partner(src);
+  if (!src_partner || !src_partner->talkback_elem)
+    return;
+
+  long this_val = alsa_get_elem_value(elem);
+  long partner_val = alsa_get_elem_value(src_partner->talkback_elem);
+
+  // Only update if different to avoid infinite loops
+  if (this_val != partner_val)
+    alsa_set_elem_value(src_partner->talkback_elem, this_val);
 }
 
 // Check if two sources form a valid stereo routing connection
@@ -1204,8 +1284,12 @@ static void src_link_state_changed(struct alsa_elem *elem, void *private) {
     validate_and_propagate_src_link(src);
 
     // Average mixer gains when mixer outputs are linked
-    if (src_l && src_r && src_l->port_category == PC_MIX)
+    if (src_l && src_r && src_l->port_category == PC_MIX) {
       average_mixer_output_gains(src_l->card, src_l, src_r);
+
+      // Sync talkback state when linking (left wins)
+      sync_talkback_on_link(src_l, src_r);
+    }
   } else {
     // Distribute mixer gains before unlinking
     if (src_l && src_r && src_l->port_category == PC_MIX)
@@ -2009,4 +2093,15 @@ void stereo_link_init(struct alsa_card *card) {
     );
     register_snk_link_callbacks(card, snk);
   }
+}
+
+// Register talkback sync callback for a mixer output source
+// Called from window-routing.c after talkback_elem is set
+void stereo_link_register_talkback_callback(struct routing_src *src) {
+  if (!src || !src->talkback_elem || src->port_category != PC_MIX)
+    return;
+
+  alsa_elem_add_callback(
+    src->talkback_elem, src_talkback_sync_callback, src, NULL
+  );
 }
