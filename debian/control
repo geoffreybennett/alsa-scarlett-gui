@@ -1,0 +1,8 @@
+Package: alsa-scarlett-gui
+Version: VERSION
+Section: sound
+Priority: optional
+Architecture: amd64
+Depends: libgtk-4-1, libasound2, libssl3
+Maintainer: Geoffrey D. Bennett <g@b4.vu>
+Description: GTK4 GUI for Focusrite Scarlett/Clarett/Vocaster audio interfaces
