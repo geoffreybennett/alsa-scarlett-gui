@@ -27,6 +27,18 @@ static char *get_presets_dir(void) {
   return g_build_filename(config_home, "alsa-scarlett-gui", NULL);
 }
 
+// Get the initial config file path for a given serial
+static char *get_init_config_path(const char *serial) {
+  char *presets_dir = get_presets_dir();
+  char *filename = g_strdup_printf(".%s-init.conf", serial);
+  char *path = g_build_filename(presets_dir, filename, NULL);
+
+  g_free(presets_dir);
+  g_free(filename);
+
+  return path;
+}
+
 // Get the preset file path for a given serial and preset name
 static char *get_preset_path(const char *serial, const char *name) {
   char *presets_dir = get_presets_dir();
@@ -423,6 +435,29 @@ static void popover_show(GtkWidget *popover, gpointer user_data) {
 // Free presets data
 static void free_presets_data(gpointer user_data) {
   g_free(user_data);
+}
+
+// Save initial configuration on first-ever load of a real interface
+void save_initial_config(struct alsa_card *card) {
+  // Only save for cards with a serial number
+  if (!card->serial || !*card->serial)
+    return;
+
+  // Check if init file already exists (not first-ever load)
+  char *path = get_init_config_path(card->serial);
+  if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+    g_free(path);
+    return;
+  }
+
+  // Create presets directory if needed and save
+  if (ensure_presets_dir() < 0) {
+    g_free(path);
+    return;
+  }
+
+  save_native(card, path);
+  g_free(path);
 }
 
 // Create the Presets button with popover menu
