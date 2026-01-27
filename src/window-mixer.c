@@ -128,8 +128,14 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
   // create the Mix X labels on the left and right of the grid
   for (int i = 0; i < mix_count; i++) {
-    char name[10];
-    snprintf(name, 10, "Mix %c", i + 'A');
+    char name[20];
+    // For Forte (4 mixes), use output names instead of Mix A/B/C/D
+    if (mix_count == 4 && mix_inputs == 6) {
+      const char *output_names[] = { "Line L", "Line R", "HP L", "HP R" };
+      snprintf(name, sizeof(name), "%s", output_names[i]);
+    } else {
+      snprintf(name, sizeof(name), "Mix %c", i + 'A');
+    }
 
     GtkWidget *l_left = mix_labels_left[i] = gtk_label_new(name);
     gtk_grid_attach(
@@ -209,7 +215,13 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
       // For devices without routing (like Forte), create static labels
       // based on the Matrix input number
       char label_text[20];
-      snprintf(label_text, sizeof(label_text), "Matrix %02d", input_num + 1);
+      // Forte has 6 inputs: DAW L/R (main stereo), Cue L/R (secondary), Analog 1-2 (mic/inst)
+      if (mix_inputs == 6) {
+        const char *forte_input_names[] = { "DAW L", "DAW R", "Cue L", "Cue R", "Analog 1", "Analog 2" };
+        snprintf(label_text, sizeof(label_text), "%s", forte_input_names[input_num]);
+      } else {
+        snprintf(label_text, sizeof(label_text), "Matrix %02d", input_num + 1);
+      }
       l_top = gtk_label_new(label_text);
       l_bottom = gtk_label_new(label_text);
       gtk_widget_add_css_class(l_top, "mixer-label");

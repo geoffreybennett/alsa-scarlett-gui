@@ -878,7 +878,13 @@ static void create_output_controls(
 
   for (int i = 0; i < output_count; i++) {
     char s[20];
-    snprintf(s, 20, "%d", i + 1);
+    // Forte has 4 outputs: Line L, Line R, HP L, HP R
+    if (strstr(card->name, "Forte") && output_count == 4) {
+      const char *output_names[] = { "Line L", "Line R", "HP L", "HP R" };
+      snprintf(s, sizeof(s), "%s", output_names[i]);
+    } else {
+      snprintf(s, sizeof(s), "%d", i + 1);
+    }
     GtkWidget *label = gtk_label_new(s);
     gtk_grid_attach(GTK_GRID(output_grid), label, i + line_1_col, 0, 1, 1);
   }
