@@ -65,33 +65,30 @@ done:
     g_error_free(error);
 }
 
-static void add_state_filter(GtkFileChooserNative *native) {
+static GtkFileFilter *create_state_filter(void) {
   GtkFileFilter *filter = gtk_file_filter_new();
   gtk_file_filter_set_name(filter, "alsactl state file (.state)");
   gtk_file_filter_add_pattern(filter, "*.state");
-  gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(native), filter);
+  return filter;
 }
 
-static void load_response(
-  GtkNativeDialog *native,
-  int              response,
-  gpointer         data
+static void load_ready(
+  GObject      *source,
+  GAsyncResult *result,
+  gpointer      data
 ) {
   struct alsa_card *card = data;
+  GtkFileDialog *dialog = GTK_FILE_DIALOG(source);
 
-  if (response != GTK_RESPONSE_ACCEPT)
-    goto done;
+  GFile *file = gtk_file_dialog_open_finish(dialog, result, NULL);
+  if (!file)
+    return;
 
-  GFile *file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(native));
   char *fn = g_file_get_path(file);
-
   run_alsactl(card, "restore", fn);
 
   g_free(fn);
   g_object_unref(file);
-
-done:
-  g_object_unref(native);
 }
 
 void activate_load(
@@ -101,31 +98,36 @@ void activate_load(
 ) {
   struct alsa_card *card = data;
 
-  GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Load Configuration",
+  GtkFileDialog *dialog = gtk_file_dialog_new();
+  gtk_file_dialog_set_title(dialog, "Load Configuration");
+
+  GListStore *filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
+  g_list_store_append(filters, create_state_filter());
+  gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
+  g_object_unref(filters);
+
+  gtk_file_dialog_open(
+    dialog,
     GTK_WINDOW(card->window_main),
-    GTK_FILE_CHOOSER_ACTION_OPEN,
-    "_Load",
-    "_Cancel"
+    NULL,
+    load_ready,
+    card
   );
-
-  add_state_filter(native);
-
-  g_signal_connect(native, "response", G_CALLBACK(load_response), card);
-  gtk_native_dialog_show(GTK_NATIVE_DIALOG(native));
+  g_object_unref(dialog);
 }
 
-static void save_response(
-  GtkNativeDialog *native,
-  int              response,
-  gpointer         data
+static void save_ready(
+  GObject      *source,
+  GAsyncResult *result,
+  gpointer      data
 ) {
   struct alsa_card *card = data;
+  GtkFileDialog *dialog = GTK_FILE_DIALOG(source);
 
-  if (response != GTK_RESPONSE_ACCEPT)
-    goto done;
+  GFile *file = gtk_file_dialog_save_finish(dialog, result, NULL);
+  if (!file)
+    return;
 
-  GFile *file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(native));
   char *fn = g_file_get_path(file);
 
   // append .state if not present
@@ -140,9 +142,6 @@ static void save_response(
   g_free(fn);
   g_free(fn_with_ext);
   g_object_unref(file);
-
-done:
-  g_object_unref(native);
 }
 
 void activate_save(
@@ -152,40 +151,41 @@ void activate_save(
 ) {
   struct alsa_card *card = data;
 
-  GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Save Configuration",
+  GtkFileDialog *dialog = gtk_file_dialog_new();
+  gtk_file_dialog_set_title(dialog, "Save Configuration");
+
+  GListStore *filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
+  g_list_store_append(filters, create_state_filter());
+  gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
+  g_object_unref(filters);
+
+  gtk_file_dialog_save(
+    dialog,
     GTK_WINDOW(card->window_main),
-    GTK_FILE_CHOOSER_ACTION_SAVE,
-    "_Save",
-    "_Cancel"
+    NULL,
+    save_ready,
+    card
   );
-
-  add_state_filter(native);
-
-  g_signal_connect(native, "response", G_CALLBACK(save_response), card);
-  gtk_native_dialog_show(GTK_NATIVE_DIALOG(native));
+  g_object_unref(dialog);
 }
 
-static void sim_response(
-  GtkNativeDialog *native,
-  int              response,
-  gpointer         data
+static void sim_ready(
+  GObject      *source,
+  GAsyncResult *result,
+  gpointer      data
 ) {
   GtkWindow *w = data;
+  GtkFileDialog *dialog = GTK_FILE_DIALOG(source);
 
-  if (response != GTK_RESPONSE_ACCEPT)
-    goto done;
+  GFile *file = gtk_file_dialog_open_finish(dialog, result, NULL);
+  if (!file)
+    return;
 
-  GFile *file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(native));
   char *fn = g_file_get_path(file);
-
   create_sim_from_file(w, fn);
 
   g_free(fn);
   g_object_unref(file);
-
-done:
-  g_object_unref(native);
 }
 
 void activate_sim(
@@ -195,16 +195,20 @@ void activate_sim(
 ) {
   GtkWidget *w = data;
 
-  GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Load Configuration File for Interface Simulation",
+  GtkFileDialog *dialog = gtk_file_dialog_new();
+  gtk_file_dialog_set_title(dialog, "Load Configuration File for Interface Simulation");
+
+  GListStore *filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
+  g_list_store_append(filters, create_state_filter());
+  gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
+  g_object_unref(filters);
+
+  gtk_file_dialog_open(
+    dialog,
     GTK_WINDOW(w),
-    GTK_FILE_CHOOSER_ACTION_OPEN,
-    "_Load",
-    "_Cancel"
+    NULL,
+    sim_ready,
+    w
   );
-
-  add_state_filter(native);
-
-  g_signal_connect(native, "response", G_CALLBACK(sim_response), w);
-  gtk_native_dialog_show(GTK_NATIVE_DIALOG(native));
+  g_object_unref(dialog);
 }
