@@ -4,6 +4,29 @@
 # Credit to Tom Tromey and Paul D. Smith:
 # http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
 
+# Parallel build by default
+MAKEFLAGS += -j$(shell nproc)
+
+# Colors for pretty output
+COLOR_RESET = \033[0m
+COLOR_GREEN = \033[32m
+COLOR_BLUE  = \033[34m
+
+# Pretty print (use V=1 to see full commands)
+ifeq ($(V),1)
+  Q =
+  PRINTF = @true
+else
+  Q = @
+  PRINTF = @printf
+endif
+
+# Progress counter
+TOTAL := $(words $(sort $(wildcard *.c) $(patsubst %.xml,%.c,$(wildcard *.xml))))
+DONE :=
+counter = $(words $(DONE))$(eval DONE += x)
+PCT = $$(( $(counter) * 100 / $(TOTAL) ))
+
 VERSION := $(shell \
   git describe --abbrev=4 --dirty --always --tags 2>/dev/null || \
   echo $${APP_VERSION:-Unknown} \
@@ -32,15 +55,17 @@ LDFLAGS += -lm -lcrypto -pie
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 
 %.c: %.xml $(DEPDIR)/%-xml.d | $(DEPDIR)
-	echo $@: $(shell $(GLIB_COMPILE_RESOURCES) $< --generate-dependencies) > $(DEPDIR)/$*-xml.d
-	$(GLIB_COMPILE_RESOURCES) $< --target=$@ --generate-source
+	$(PRINTF) "$(COLOR_GREEN)[%3d%%]$(COLOR_RESET) $(COLOR_BLUE)RES$(COLOR_RESET)  %s\n" $(PCT) $<
+	$(Q)echo $@: $(shell $(GLIB_COMPILE_RESOURCES) $< --generate-dependencies) > $(DEPDIR)/$*-xml.d
+	$(Q)$(GLIB_COMPILE_RESOURCES) $< --target=$@ --generate-source
 
 XML_SRC := $(wildcard *.xml)
 XML_OBJ := $(patsubst %.xml,%.c,$(XML_SRC))
 
 %.o: %.c
 %.o: %.c Makefile $(DEPDIR)/%.d | $(DEPDIR)
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
+	$(PRINTF) "$(COLOR_GREEN)[%3d%%]$(COLOR_RESET) $(COLOR_BLUE)CC$(COLOR_RESET)   %s\n" $(PCT) $<
+	$(Q)$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 SRCS := $(sort $(wildcard *.c) $(XML_OBJ))
 OBJS := $(patsubst %.c,%.o,$(SRCS))
@@ -67,7 +92,8 @@ $(DEPFILES):
 include $(wildcard $(DEPFILES))
 
 $(TARGET): $(OBJS)
-	$(CC) -o $(TARGET) $(OBJS) ${LDFLAGS}
+	$(PRINTF) "$(COLOR_GREEN)[100%%]$(COLOR_RESET) $(COLOR_BLUE)LINK$(COLOR_RESET) %s\n" $@
+	$(Q)$(CC) -o $(TARGET) $(OBJS) ${LDFLAGS}
 
 ifeq ($(PREFIX),)
   PREFIX := /usr/local
@@ -79,20 +105,27 @@ ICONDIR := $(ICONTOP)/256x256/apps
 DESKTOPDIR := $(DESTDIR)$(PREFIX)/share/applications
 
 $(DESKTOP_FILE): $(DESKTOP_FILE).template
-	sed 's_PREFIX_$(PREFIX)_' < $< > $@
+	$(PRINTF) "$(COLOR_GREEN)[100%%]$(COLOR_RESET) $(COLOR_BLUE)GEN$(COLOR_RESET)  %s\n" $@
+	$(Q)sed 's_PREFIX_$(PREFIX)_' < $< > $@
 
 install: all
-	install -d $(BINDIR)
-	install -m 755 $(TARGET) $(BINDIR)
-	install -d $(ICONDIR)
-	install -m 644 img/$(ICON_FILE) $(ICONDIR)
-	install -d $(DESKTOPDIR)
-	install -m 644 $(DESKTOP_FILE) $(DESKTOPDIR)
+	$(PRINTF) "$(COLOR_BLUE)INSTALL$(COLOR_RESET) %s\n" $(BINDIR)/$(TARGET)
+	$(Q)install -d $(BINDIR)
+	$(Q)install -m 755 $(TARGET) $(BINDIR)
+	$(PRINTF) "$(COLOR_BLUE)INSTALL$(COLOR_RESET) %s\n" $(ICONDIR)/$(ICON_FILE)
+	$(Q)install -d $(ICONDIR)
+	$(Q)install -m 644 img/$(ICON_FILE) $(ICONDIR)
+	$(PRINTF) "$(COLOR_BLUE)INSTALL$(COLOR_RESET) %s\n" $(DESKTOPDIR)/$(DESKTOP_FILE)
+	$(Q)install -d $(DESKTOPDIR)
+	$(Q)install -m 644 $(DESKTOP_FILE) $(DESKTOPDIR)
 
 uninstall:
-	rm -f $(BINDIR)/$(TARGET)
-	rm -f $(ICONDIR)/$(ICON_FILE)
-	rm -f $(DESKTOPDIR)/$(DESKTOP_FILE)
+	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(BINDIR)/$(TARGET)
+	$(Q)rm -f $(BINDIR)/$(TARGET)
+	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(ICONDIR)/$(ICON_FILE)
+	$(Q)rm -f $(ICONDIR)/$(ICON_FILE)
+	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(DESKTOPDIR)/$(DESKTOP_FILE)
+	$(Q)rm -f $(DESKTOPDIR)/$(DESKTOP_FILE)
 
 help:
 	@echo "alsa-scarlett-gui"
