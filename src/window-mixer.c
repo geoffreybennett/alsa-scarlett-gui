@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <graphene.h>
 #include <gtk/gtk.h>
 
 #include "alsa.h"
@@ -59,11 +60,17 @@ static gboolean get_label_centre(
   if (!label || !gtk_widget_get_visible(label))
     return FALSE;
 
-  double lw = gtk_widget_get_allocated_width(label);
-  double lh = gtk_widget_get_allocated_height(label);
-  return gtk_widget_translate_coordinates(
-    label, parent, lw / 2.0, lh / 2.0, cx, cy
+  graphene_point_t src = GRAPHENE_POINT_INIT(
+    gtk_widget_get_width(label) / 2.0,
+    gtk_widget_get_height(label) / 2.0
   );
+  graphene_point_t dest;
+  if (!gtk_widget_compute_point(label, parent, &src, &dest))
+    return FALSE;
+
+  *cx = dest.x;
+  *cy = dest.y;
+  return TRUE;
 }
 
 // draw a single mono glow bar centred on a label

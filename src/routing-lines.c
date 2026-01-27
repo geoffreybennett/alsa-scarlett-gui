@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <graphene.h>
+
 #include "alsa.h"
 #include "glow.h"
 #include "routing-lines.h"
@@ -382,9 +384,18 @@ static void get_widget_center(
   double    *x,
   double    *y
 ) {
-  double src_x = gtk_widget_get_allocated_width(w) / 2;
-  double src_y = gtk_widget_get_allocated_height(w) / 2;
-  gtk_widget_translate_coordinates(w, parent, src_x, src_y, x, y);
+  graphene_point_t src = GRAPHENE_POINT_INIT(
+    gtk_widget_get_width(w) / 2.0,
+    gtk_widget_get_height(w) / 2.0
+  );
+  graphene_point_t dest;
+  if (gtk_widget_compute_point(w, parent, &src, &dest)) {
+    *x = dest.x;
+    *y = dest.y;
+  } else {
+    *x = 0;
+    *y = 0;
+  }
 }
 
 // Apply stereo offset to socket center coordinates
@@ -398,8 +409,8 @@ static void apply_stereo_offset(
   double    *x,
   double    *y
 ) {
-  double w = gtk_widget_get_allocated_width(socket);
-  double h = gtk_widget_get_allocated_height(socket);
+  double w = gtk_widget_get_width(socket);
+  double h = gtk_widget_get_height(socket);
 
   if (IS_MIXER(port_category))
     *x += is_left ? -w * 0.25 : w * 0.25;
@@ -830,13 +841,17 @@ void draw_drag_line(
   // the drag mouse position is relative to card->routing_grid
   // translate it to the overlay card->drag_line
   // (don't need to do this if both src_drag and snk_drag are set)
-  double drag_x, drag_y;
-  if (!card->src_drag || !card->snk_drag)
-    gtk_widget_translate_coordinates(
-      card->routing_grid, parent,
-      card->drag_x, card->drag_y,
-      &drag_x, &drag_y
-    );
+  double drag_x = 0, drag_y = 0;
+  if (!card->src_drag || !card->snk_drag) {
+    graphene_point_t src =
+      GRAPHENE_POINT_INIT(card->drag_x, card->drag_y);
+    graphene_point_t dest;
+    if (gtk_widget_compute_point(
+          card->routing_grid, parent, &src, &dest)) {
+      drag_x = dest.x;
+      drag_y = dest.y;
+    }
+  }
 
   // Check for stereo sources/sinks
   double src_x_l = 0, src_y_l = 0, src_x_r = 0, src_y_r = 0;

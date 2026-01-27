@@ -3,6 +3,7 @@
 
 #include <gdk/gdk.h>
 #include <glib/gstdio.h>
+#include <graphene.h>
 
 #include "error.h"
 #include "file.h"
@@ -302,9 +303,10 @@ static void preset_row_clicked(
   // Check if click was on the delete button (translate coordinates)
   gboolean on_delete = FALSE;
   if (delete_btn) {
-    double del_x, del_y;
-    if (gtk_widget_translate_coordinates(row, delete_btn, x, y, &del_x, &del_y))
-      on_delete = gtk_widget_contains(delete_btn, del_x, del_y);
+    graphene_point_t src = GRAPHENE_POINT_INIT(x, y);
+    graphene_point_t dest;
+    if (gtk_widget_compute_point(row, delete_btn, &src, &dest))
+      on_delete = gtk_widget_contains(delete_btn, dest.x, dest.y);
   }
 
   if (on_delete)
