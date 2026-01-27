@@ -20,6 +20,7 @@ struct hw_info gen_1_info[] = {
   { "Scarlett 18i6 1st Gen" },
   { "Scarlett 18i8 1st Gen" },
   { "Scarlett 18i20 1st Gen" },
+  { "Focusrite Forte" },
   { }
 };
 

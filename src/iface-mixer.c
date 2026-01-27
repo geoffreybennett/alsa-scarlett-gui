@@ -536,12 +536,76 @@ static void create_input_phantom_control(
   gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(w, phantom_descr);
 
+  // For Forte controls like "Input 1 48V Phantom Power Switch",
+  // use column_num directly to avoid parsing "48" as a channel number
+  if (strstr(elem->name, "48V Phantom Power")) {
+    gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+    return;
+  }
+
   int from, to;
   get_two_num_from_string(elem->name, &from, &to);
   if (to == -1)
     to = from;
 
   gtk_grid_attach(GTK_GRID(grid), w, from - 1, current_row, to - from + 1, 1);
+}
+
+// Forte-specific control: High Pass Filter
+static void create_input_hpf_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "HPF", NULL);
+  gtk_widget_add_css_class(w, "hpf");
+  gtk_widget_set_hexpand(w, TRUE);
+  gtk_widget_set_tooltip_text(
+    w,
+    "High Pass Filter removes low frequencies (rumble, pops) from "
+    "the input signal."
+  );
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+}
+
+// Forte-specific control: Phase Invert
+static void create_input_phase_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Phase", NULL);
+  gtk_widget_add_css_class(w, "phase");
+  gtk_widget_set_hexpand(w, TRUE);
+  gtk_widget_set_tooltip_text(
+    w,
+    "Inverts the phase of the input signal by 180 degrees. "
+    "Useful for fixing phase issues when using multiple microphones."
+  );
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+}
+
+// Forte-specific control: Input Source (Mic/Line/Inst)
+static void create_input_source_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_drop_down_alsa_elem(elem, NULL);
+  gtk_widget_add_css_class(w, "source");
+  gtk_widget_set_hexpand(w, TRUE);
+  gtk_widget_set_tooltip_text(
+    w,
+    "Select the input type: Mic (microphone with preamp), "
+    "Line (line-level signal), or Inst (high-impedance instrument input)."
+  );
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
 static void create_input_controls_by_type(
@@ -698,10 +762,8 @@ static void create_input_controls(
     elems, input_grid, &current_row,
     "Pad Capture Switch", create_input_pad_control
   );
-  create_input_controls_by_type(
-    elems, input_grid, &current_row,
-    "Pad Switch", create_input_pad_control
-  );
+  // Note: "Pad Switch" would match Forte's "Input X Pad" - skip to avoid duplicate
+  // with Forte-specific "Pad" below
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "Gain Switch", create_input_gain_switch_control
@@ -709,6 +771,29 @@ static void create_input_controls(
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "Phantom Power Capture Switch", create_input_phantom_control
+  );
+
+  // Forte-specific controls (won't match other devices)
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Source", create_input_source_control  // Input X Source (Mic/Line/Inst)
+  );
+  // Note: Forte gain now uses "Gain Capture Volume" pattern above
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "48V Phantom Power", create_input_phantom_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "High Pass Filter", create_input_hpf_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Phase Invert", create_input_phase_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    " Pad", create_input_pad_control  // Space prefix to match "Input X Pad" not "Pad Switch"
   );
 
   (*x)++;
@@ -793,7 +878,13 @@ static void create_output_controls(
 
   for (int i = 0; i < output_count; i++) {
     char s[20];
-    snprintf(s, 20, "%d", i + 1);
+    // Forte has 4 outputs: Line L, Line R, HP L, HP R
+    if (strstr(card->name, "Forte") && output_count == 4) {
+      const char *output_names[] = { "Line L", "Line R", "HP L", "HP R" };
+      snprintf(s, sizeof(s), "%s", output_names[i]);
+    } else {
+      snprintf(s, sizeof(s), "%d", i + 1);
+    }
     GtkWidget *label = gtk_label_new(s);
     gtk_grid_attach(GTK_GRID(output_grid), label, i + line_1_col, 0, 1, 1);
   }
@@ -990,6 +1081,10 @@ static GtkWidget *create_main_window_controls(struct alsa_card *card) {
   if (!input_count)
     input_count =
       get_max_elem_by_name(card->elems, "Input", "Switch");
+  if (!input_count)
+    // Forte: "Input 1 Source", "Input 2 Source" etc.
+    input_count =
+      get_max_elem_by_name(card->elems, "Input", "Source");
 
   int output_count = get_max_elem_by_name(
     card->elems, "Line", "Playback Volume"
@@ -1090,14 +1185,14 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   gtk_frame_set_child(GTK_FRAME(top), contents);
 
   GtkWidget *routing_top = create_routing_controls(card);
-  if (!routing_top)
-    return NULL;
+  // Forte and similar devices don't have routing controls - skip routing window
+  if (routing_top) {
+    card->window_routing = create_subwindow(
+      card, "Routing", G_CALLBACK(window_routing_close_request)
+    );
 
-  card->window_routing = create_subwindow(
-    card, "Routing", G_CALLBACK(window_routing_close_request)
-  );
-
-  create_scrollable_window(card->window_routing, routing_top);
+    create_scrollable_window(card->window_routing, routing_top);
+  }
 
   GtkWidget *mixer_top = create_mixer_controls(card);
 
