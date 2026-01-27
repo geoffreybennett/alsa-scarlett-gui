@@ -214,9 +214,18 @@ static void get_widget_center(
   double    *x,
   double    *y
 ) {
-  double src_x = gtk_widget_get_allocated_width(w) / 2;
-  double src_y = gtk_widget_get_allocated_height(w) / 2;
-  gtk_widget_translate_coordinates(w, parent, src_x, src_y, x, y);
+  graphene_point_t src = GRAPHENE_POINT_INIT(
+    gtk_widget_get_width(w) / 2.0,
+    gtk_widget_get_height(w) / 2.0
+  );
+  graphene_point_t dest;
+  if (gtk_widget_compute_point(w, parent, &src, &dest)) {
+    *x = dest.x;
+    *y = dest.y;
+  } else {
+    *x = src.x;
+    *y = src.y;
+  }
 }
 
 static void get_src_center(
@@ -334,13 +343,15 @@ void draw_drag_line(
   // the drag mouse position is relative to card->routing_grid
   // translate it to the overlay card->drag_line
   // (don't need to do this if both src_drag and snk_drag are set)
-  double drag_x, drag_y;
-  if (!card->src_drag || !card->snk_drag)
-    gtk_widget_translate_coordinates(
-      card->routing_grid, parent,
-      card->drag_x, card->drag_y,
-      &drag_x, &drag_y
-    );
+  double drag_x = 0, drag_y = 0;
+  if (!card->src_drag || !card->snk_drag) {
+    graphene_point_t src = GRAPHENE_POINT_INIT(card->drag_x, card->drag_y);
+    graphene_point_t dest;
+    if (gtk_widget_compute_point(card->routing_grid, parent, &src, &dest)) {
+      drag_x = dest.x;
+      drag_y = dest.y;
+    }
+  }
 
   // get the line start position; either a routing source socket
   // widget or the drag mouse position
