@@ -17,6 +17,7 @@
 #include "stereo-link.h"
 #include "dsp-state.h"
 #include "hw-io-availability.h"
+#include "presets.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -1307,6 +1308,9 @@ static void complete_card_init(struct alsa_card *card) {
 
     g_hash_table_remove(reopen_callbacks, card->serial);
   }
+
+  // Save initial configuration on first-ever load
+  save_initial_config(card);
 
   create_card_window(card);
 }
