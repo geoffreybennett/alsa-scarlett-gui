@@ -982,6 +982,13 @@ static gboolean src_drop_accept(
   if (card->snk_drag && is_src_linked(r_src) && !is_snk_linked(card->snk_drag))
     return FALSE;
 
+  // Reject mixer → mixer routing if device doesn't support it
+  if (!card->mixer_has_mix_srcs &&
+      r_src->port_category == PC_MIX &&
+      card->snk_drag &&
+      card->snk_drag->elem->port_category == PC_MIX)
+    return FALSE;
+
   return TRUE;
 }
 
@@ -1003,6 +1010,13 @@ static gboolean snk_drop_accept(
 
   // Reject stereo source → mono sink
   if (card->src_drag && is_src_linked(card->src_drag) && !is_snk_linked(r_snk))
+    return FALSE;
+
+  // Reject mixer → mixer routing if device doesn't support it
+  if (!card->mixer_has_mix_srcs &&
+      r_snk->elem->port_category == PC_MIX &&
+      card->src_drag &&
+      card->src_drag->port_category == PC_MIX)
     return FALSE;
 
   return TRUE;
