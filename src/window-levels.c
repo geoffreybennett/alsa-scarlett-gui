@@ -116,9 +116,6 @@ static int update_levels_controls(void *user_data) {
           level_db = src_level;
       }
 
-      if (level_db == -INFINITY)
-        continue;
-
       // apply gain value to get post-gain level (in dB, so we add)
       if (mg->elem) {
         int gain_val = alsa_get_elem_value(mg->elem);
