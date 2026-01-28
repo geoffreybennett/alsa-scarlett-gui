@@ -7,6 +7,22 @@
 #include "device-port-names.h"
 #include "hardware.h"
 
+// Scarlett 1st Gen 18i6 analogue inputs (sources)
+static const char *scarlett_gen1_18i6_analogue_src[] = {
+  "Mic/Line/Inst 1", "Mic/Line/Inst 2",
+  "Line 3", "Line 4",
+  "Line 5", "Line 6",
+  "Line 7", "Line 8",
+  NULL
+};
+
+// Scarlett 1st Gen 18i6 analogue outputs (sinks)
+static const char *scarlett_gen1_18i6_analogue_snk[] = {
+  "Line 1", "Line 2",
+  "Headphones (L)", "Headphones (R)",
+  NULL
+};
+
 // Scarlett 2nd Gen 6i6 analogue inputs (sources)
 static const char *scarlett_gen2_6i6_analogue_src[] = {
   "Mic/Line/Inst 1", "Mic/Line/Inst 2",
@@ -363,6 +379,11 @@ struct device_port_names {
 
 // Stereo pair names (indexed by pair number: 0 = ports 1-2, 1 = ports 3-4, etc.)
 
+// Scarlett 1st Gen 18i6 analogue output pairs
+static const char *scarlett_gen1_18i6_analogue_snk_pairs[] = {
+  "Line 1–2", "Headphones", NULL
+};
+
 // Scarlett 2nd Gen 6i6 analogue output pairs
 static const char *scarlett_gen2_6i6_analogue_snk_pairs[] = {
   "Line 1–2/Headphones 1", "Line 3–4/Headphones 2", NULL
@@ -511,6 +532,11 @@ static const char *analogue_src_pairs_inst_12_line_3456[] = {
   "Mic/Line/Inst 1–2", "Line 3–4", "Line 5–6", NULL
 };
 
+// Mic/Line/Inst 1–2, Line 3–4, Line 5–6, Line 7–8
+static const char *analogue_src_pairs_inst_12_line_345678[] = {
+  "Mic/Line/Inst 1–2", "Line 3–4", "Line 5–6", "Line 7–8", NULL
+};
+
 // Mic/Line/Inst 1–2, Mic/Line 3–4, Line 5–6, Line 7–8
 static const char *analogue_src_pairs_inst_12_mic_34_line_5678[] = {
   "Mic/Line/Inst 1–2", "Mic/Line 3–4", "Line 5–6", "Line 7–8",
@@ -532,6 +558,26 @@ struct device_pair_names {
 };
 
 static const struct device_pair_names device_pair_names[] = {
+  // Scarlett 1st Gen 6i6 (same as Gen 2)
+  { PID_SCARLETT_GEN1_6I6, PC_HW, HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12_line_34 },
+  { PID_SCARLETT_GEN1_6I6, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_6i6_analogue_snk_pairs },
+
+  // Scarlett 1st Gen 8i6 (same as Gen 3 4i4)
+  { PID_SCARLETT_GEN1_8I6, PC_HW, HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12_line_34 },
+  { PID_SCARLETT_GEN1_8I6, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen3_4i4_analogue_snk_pairs },
+
+  // Scarlett 1st Gen 18i6
+  { PID_SCARLETT_GEN1_18I6, PC_HW, HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12_line_345678 },
+  { PID_SCARLETT_GEN1_18I6, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen1_18i6_analogue_snk_pairs },
+
+  // Scarlett 1st Gen 18i8 (same as Gen 2)
+  { PID_SCARLETT_GEN1_18I8, PC_HW, HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12_mic_34_line_5678 },
+  { PID_SCARLETT_GEN1_18I8, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_18i8_analogue_snk_pairs },
+
+  // Scarlett 1st Gen 18i20 (same as Gen 2)
+  { PID_SCARLETT_GEN1_18I20, PC_HW, HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12_mic_345678 },
+  { PID_SCARLETT_GEN1_18I20, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_18i20_analogue_snk_pairs },
+
   // Scarlett 2nd Gen 6i6
   { PID_SCARLETT_GEN2_6I6, PC_HW, HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12_line_34 },
   { PID_SCARLETT_GEN2_6I6, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_6i6_analogue_snk_pairs },
@@ -625,6 +671,26 @@ static const struct device_pair_names device_pair_names[] = {
 };
 
 static const struct device_port_names device_port_names[] = {
+  // Scarlett 1st Gen 6i6 (same as Gen 2)
+  { PID_SCARLETT_GEN1_6I6, PC_HW, HW_TYPE_ANALOGUE, 0, scarlett_gen2_6i6_analogue_src },
+  { PID_SCARLETT_GEN1_6I6, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_6i6_analogue_snk },
+
+  // Scarlett 1st Gen 8i6 (same as Gen 3 4i4)
+  { PID_SCARLETT_GEN1_8I6, PC_HW, HW_TYPE_ANALOGUE, 0, scarlett_gen2_6i6_analogue_src },
+  { PID_SCARLETT_GEN1_8I6, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen3_4i4_analogue_snk },
+
+  // Scarlett 1st Gen 18i6
+  { PID_SCARLETT_GEN1_18I6, PC_HW, HW_TYPE_ANALOGUE, 0, scarlett_gen1_18i6_analogue_src },
+  { PID_SCARLETT_GEN1_18I6, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen1_18i6_analogue_snk },
+
+  // Scarlett 1st Gen 18i8 (same as Gen 2)
+  { PID_SCARLETT_GEN1_18I8, PC_HW, HW_TYPE_ANALOGUE, 0, scarlett_gen2_18i8_analogue_src },
+  { PID_SCARLETT_GEN1_18I8, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_18i8_analogue_snk },
+
+  // Scarlett 1st Gen 18i20 (same as Gen 2)
+  { PID_SCARLETT_GEN1_18I20, PC_HW, HW_TYPE_ANALOGUE, 0, scarlett_gen2_18i20_analogue_src },
+  { PID_SCARLETT_GEN1_18I20, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_18i20_analogue_snk },
+
   // Scarlett 2nd Gen 18i20
   { PID_SCARLETT_GEN2_18I20, PC_HW,  HW_TYPE_ANALOGUE, 0, scarlett_gen2_18i20_analogue_src },
   { PID_SCARLETT_GEN2_18I20, PC_HW,  HW_TYPE_ANALOGUE, 1, scarlett_gen2_18i20_analogue_snk },
