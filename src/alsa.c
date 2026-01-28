@@ -608,10 +608,8 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
   if (strcmp(alsa_elem.name, "Level Meter") == 0)
     count = 1;
 
-  if (count > 2) {
-    fprintf(stderr, "element %s has count %d\n", alsa_elem.name, count);
+  if (count > 2)
     count = 1;
-  }
 
   for (int i = 0; i < count; i++, alsa_elem.lr_num++) {
     alsa_elem.index = i;
