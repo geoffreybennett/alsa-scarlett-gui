@@ -333,7 +333,7 @@ gboolean modal_start_reboot_progress(gpointer user_data) {
   );
 
   modal_data->timeout_id = g_timeout_add(
-    55, update_progress_bar_reboot, progress_data
+    75, update_progress_bar_reboot, progress_data
   );
 
   alsa_register_reopen_callback(
