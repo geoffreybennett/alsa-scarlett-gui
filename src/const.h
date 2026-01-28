@@ -8,6 +8,3 @@
 
 // maximum number of mux inputs
 #define MAX_MUX_IN 42
-
-// maximum number of meters
-#define MAX_METERS 92

@@ -35,7 +35,7 @@ struct levels {
   struct alsa_elem *level_meter_elem;
   GtkWidget        *top;
   GtkGrid          *grid;
-  GtkWidget        *meters[MAX_METERS];
+  GtkWidget       **meters;
 };
 
 static int update_levels_controls(void *user_data) {
@@ -228,6 +228,7 @@ static GtkWidget *add_count_label(GtkGrid *grid, int count) {
 
 static void on_destroy(struct levels *data, GtkWidget *widget) {
   // timer is cancelled in card_destroy_callback before we get here
+  g_free(data->meters);
   g_free(data);
 }
 
@@ -237,6 +238,8 @@ static GtkWidget *create_levels_controls_with_labels(
 ) {
   struct alsa_elem *level_meter_elem = data->level_meter_elem;
   int count = level_meter_elem->count;
+
+  data->meters = g_malloc0(count * sizeof(GtkWidget *));
 
   int row = 1;
   int max_count = 0;
@@ -362,8 +365,11 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
   if (data->level_meter_elem->meter_labels)
     return create_levels_controls_with_labels(card, data);
 
+  int elem_count = data->level_meter_elem->count;
+  data->meters = g_malloc0(elem_count * sizeof(GtkWidget *));
+
   // go through the port categories
-  for (int i = 0, row = 1; i < PC_COUNT; i++) {
+  for (int i = 0, row = 1; i < PC_COUNT && meter_num < elem_count; i++) {
 
     if (card->routing_out_count[i] == 0)
       continue;
@@ -375,7 +381,9 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
     gtk_grid_attach(GTK_GRID(grid), l, 0, row, 1, 1);
 
     // go through the ports in that category
-    for (int j = 0; j < card->routing_out_count[i]; j++) {
+    for (int j = 0;
+         j < card->routing_out_count[i] && meter_num < elem_count;
+         j++) {
 
       // add a count label if that hasn't already been done
       if (!count_labels[j])
@@ -408,11 +416,8 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
     row++;
   }
 
-  int elem_count = data->level_meter_elem->count;
-  if (meter_num != elem_count) {
+  if (meter_num != elem_count)
     printf("meter_num is %d but elem count is %d\n", meter_num, elem_count);
-  }
-  data->level_meter_elem->count = elem_count;
 
   card->levels_timer = g_timeout_add(50, update_levels_controls, data);
   g_object_weak_ref(G_OBJECT(grid), (GWeakNotify)on_destroy, data);
