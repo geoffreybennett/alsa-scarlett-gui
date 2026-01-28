@@ -26,6 +26,8 @@ static void modal_no_callback(GtkWidget *w, struct modal_data *modal_data) {
 }
 
 static void modal_yes_callback(GtkWidget *w, struct modal_data *modal_data) {
+  modal_data->in_progress = 1;
+
   // remove the buttons
   GtkWidget *child;
   while ((child = gtk_widget_get_first_child(modal_data->button_box)))
@@ -46,10 +48,31 @@ static void modal_yes_callback(GtkWidget *w, struct modal_data *modal_data) {
   modal_data->callback(modal_data);
 }
 
-// Handle window close (X button, Escape, etc.)
-static gboolean modal_close_request(GtkWindow *window, struct modal_data *modal_data) {
+// Handle window close (X button)
+static gboolean modal_close_request(
+  GtkWindow         *window,
+  struct modal_data *modal_data
+) {
+  if (modal_data->in_progress)
+    return TRUE;
   modal_cleanup(modal_data);
-  return FALSE;  // Allow the window to close
+  return FALSE;
+}
+
+// Handle Escape key
+static gboolean modal_key_pressed(
+  GtkEventControllerKey *controller,
+  guint                  keyval,
+  guint                  keycode,
+  GdkModifierType        state,
+  struct modal_data     *modal_data
+) {
+  if (keyval == GDK_KEY_Escape && !modal_data->in_progress) {
+    modal_cleanup(modal_data);
+    gtk_window_destroy(GTK_WINDOW(modal_data->dialog));
+    return TRUE;
+  }
+  return FALSE;
 }
 
 static void free_modal_data(gpointer user_data) {
@@ -111,6 +134,18 @@ void create_modal_window(
     G_OBJECT(dialog), "modal_data", modal_data, free_modal_data
   );
 
+  // Handle window close (X button)
+  g_signal_connect(
+    dialog, "close-request", G_CALLBACK(modal_close_request), modal_data
+  );
+
+  // Handle Escape key
+  GtkEventController *key_controller = gtk_event_controller_key_new();
+  g_signal_connect(
+    key_controller, "key-pressed", G_CALLBACK(modal_key_pressed), modal_data
+  );
+  gtk_widget_add_controller(dialog, key_controller);
+
   GtkWidget *no_button = gtk_button_new_with_label("No");
   g_signal_connect(
     no_button, "clicked", G_CALLBACK(modal_no_callback), modal_data
@@ -151,6 +186,7 @@ void create_modal_window_autostart(
   modal_data->dialog = dialog;
   modal_data->callback = callback;
   modal_data->parent_label = parent_label;
+  modal_data->in_progress = 1;
 
   gtk_window_set_title(GTK_WINDOW(dialog), title_active);
   gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
@@ -182,7 +218,7 @@ void create_modal_window_autostart(
     G_OBJECT(dialog), "modal_data", modal_data, free_modal_data
   );
 
-  // Handle window close (X button, Escape, etc.)
+  // Block window close (X button) during operation
   g_signal_connect(
     dialog, "close-request", G_CALLBACK(modal_close_request), modal_data
   );
@@ -204,6 +240,7 @@ gboolean modal_update_progress(gpointer user_data) {
   // Done? Replace the progress bar with an Ok button.
   if (progress_data->progress < 0) {
     modal_data->had_error = 1;
+    modal_data->in_progress = 0;
 
     GtkWidget *child;
     while ((child = gtk_widget_get_first_child(modal_data->button_box)))
@@ -237,7 +274,8 @@ static gboolean update_progress_bar_reboot(gpointer user_data) {
   struct modal_data *modal_data = progress_data->modal_data;
 
   if (progress_data->progress >= 200) {
-    // Done?
+    modal_data->in_progress = 0;
+
     gtk_label_set_text(
       GTK_LABEL(modal_data->label),
       "Reboot failed? Try unplugging/replugging/power-cycling the device."

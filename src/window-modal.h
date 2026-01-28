@@ -25,6 +25,7 @@ struct modal_data {
   modal_callback    callback;
   GtkWidget        *parent_label;
   int               had_error;
+  int               in_progress;
 };
 
 void create_modal_window(
