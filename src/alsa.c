@@ -897,6 +897,7 @@ static void get_routing_snks(struct alsa_card *card) {
   GPtrArray *elems = card->elems;
 
   int count = 0;
+  struct alsa_elem *first_mix_snk = NULL;
 
   // count and label routing snks
   for (int i = 0; i < elems->len; i++) {
@@ -914,8 +915,8 @@ static void get_routing_snks(struct alsa_card *card) {
         strncmp(elem->name, "Matrix", 6) == 0) {
       elem->port_category = PC_MIX;
 
-      if (!alsa_get_elem_writable(elem))
-        card->has_fixed_mixer_inputs = 1;
+      if (!first_mix_snk)
+        first_mix_snk = elem;
 
     } else if (strncmp(elem->name, "DSP", 3) == 0) {
       elem->port_category = PC_DSP;
@@ -943,6 +944,21 @@ static void get_routing_snks(struct alsa_card *card) {
     }
 
     count++;
+  }
+
+  // Check mixer input capabilities from first PC_MIX sink
+  if (first_mix_snk) {
+    if (!alsa_get_elem_writable(first_mix_snk))
+      card->has_fixed_mixer_inputs = 1;
+
+    int item_count = alsa_get_item_count(first_mix_snk);
+    for (int i = 0; i < item_count; i++) {
+      char *item_name = alsa_get_item_name(first_mix_snk, i);
+      if (strncmp(item_name, "Mix", 3) == 0) {
+        card->mixer_has_mix_srcs = 1;
+        break;
+      }
+    }
   }
 
   // create an array of routing snks pointing to those elements
