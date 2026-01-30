@@ -980,6 +980,7 @@ static void get_routing_snks(struct alsa_card *card) {
   }
 
   assert(j == count);
+  assert(card->routing_out_count[PC_MIX] <= MAX_MUX_IN);
 }
 
 // Build lookup table mapping monitor group source enum values to routing
