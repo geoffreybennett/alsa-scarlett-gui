@@ -109,6 +109,13 @@
   background: #801010;
 }
 
+/* Suppress GTK default drop highlight on routing overlay */
+.window-routing:drop(active) {
+  box-shadow: none;
+  outline: none;
+  background: transparent;
+}
+
 .mixer-label {
 }
 

@@ -15,6 +15,7 @@
 #include "routing-lines.h"
 #include "window-iface.h"
 #include "window-mixer.h"
+#include "window-routing.h"
 #include "window-startup.h"
 #include "optional-controls.h"
 
@@ -132,6 +133,9 @@ static void cleanup_gain_widget_lists(struct alsa_card *card) {
 
 // Clean up subwindows
 static void cleanup_subwindows(struct alsa_card *card) {
+  // Release refs on routing widgets before destroying routing window
+  cleanup_routing_widgets(card);
+
   if (card->window_routing) {
     gtk_window_destroy(GTK_WINDOW(card->window_routing));
     card->window_routing = NULL;

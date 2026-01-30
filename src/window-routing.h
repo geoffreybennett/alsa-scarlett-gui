@@ -26,3 +26,10 @@ void update_all_hw_io_labels(struct alsa_card *card);
 
 // Check if a sink is currently muted (in inactive monitor group)
 int is_snk_monitor_muted(struct routing_snk *r_snk);
+
+// Arrange source/sink widgets in their grids (removes empty rows/columns)
+void arrange_src_grid(struct alsa_card *card, int port_category);
+void arrange_snk_grid(struct alsa_card *card, int port_category);
+
+// Release refs held on routing widgets (call before window destroy)
+void cleanup_routing_widgets(struct alsa_card *card);
