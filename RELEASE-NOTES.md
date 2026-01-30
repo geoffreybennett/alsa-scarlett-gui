@@ -487,8 +487,8 @@ Pressing Escape in any subwindow closes it.
 ### Scarlett Big 4th Gen (16i16, 18i16, 18i20)
 
 Full support for big 4th Gen interfaces has been added, including
-hardware identification, monitor groups, and output volume/mute/dim
-controls. These devices require Linux 6.14+, the `fcp-server` daemon
+hardware identification, monitor groups, input mute, and output
+volume/mute/dim controls. These devices require Linux 6.14+, the `fcp-server` daemon
 from [fcp-support](https://github.com/geoffreybennett/fcp-support),
 and the firmware from
 [scarlett4-firmware](https://github.com/geoffreybennett/scarlett4-firmware).
@@ -519,6 +519,10 @@ parameters are all stored locally per device (identified by serial
 number) in `~/.config/alsa-scarlett-gui/`. These settings persist
 across application restarts and are separate from the device's own
 firmware state.
+
+On first connection, the device's initial state is saved to
+`.{serial}-init.conf` in the config directory, providing a baseline
+for comparison or recovery.
 
 Resetting the device configuration (via the startup screen's Reset
 button) also removes this local configuration file, so custom names,

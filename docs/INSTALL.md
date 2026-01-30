@@ -139,7 +139,7 @@ https://github.com/geoffreybennett/scarlett4-firmware and place it in
 On Fedora, these packages need to be installed:
 
 ```
-sudo dnf -y install alsa-lib-devel gtk4-devel openssl-devel
+sudo dnf -y install make gcc alsa-lib-devel gtk4-devel openssl-devel
 ```
 
 On OpenSUSE:
