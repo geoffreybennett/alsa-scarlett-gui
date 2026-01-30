@@ -6,8 +6,8 @@
 // maximum number of mix outputs
 #define MAX_MIX_OUT 12
 
-// maximum number of mux inputs
-#define MAX_MUX_IN 42
+// maximum number of mux inputs (4th Gen 18i20 has 53)
+#define MAX_MUX_IN 53
 
 // maximum number of meters
 #define MAX_METERS 92
