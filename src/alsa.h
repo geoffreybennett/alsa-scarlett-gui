@@ -337,6 +337,8 @@ struct alsa_card {
   struct routing_src *src_drag;
   struct routing_snk *snk_drag;
   double              drag_x, drag_y;
+  struct routing_src *hovered_src;
+  struct routing_snk *hovered_snk;
   int                 pending_ui_updates;
   gboolean            pending_ui_update_idle;
   guint               levels_timer;

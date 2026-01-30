@@ -12,6 +12,7 @@
 #include "config-monitor-groups.h"
 #include "stereo-link.h"
 #include "window-mixer.h"
+#include "window-routing.h"
 
 // Callback structure to pass data to save callback
 struct port_enable_save_data {
@@ -142,58 +143,59 @@ static void update_sinks_label(struct alsa_card *card) {
   gtk_label_set_text(GTK_LABEL(card->routing_snk_label), text);
 }
 
+// Helper to set visibility on a grid's parent container
+static void set_grid_container_visible(GtkWidget *grid, int visible) {
+  if (!grid)
+    return;
+  GtkWidget *container = gtk_widget_get_parent(grid);
+  if (container)
+    gtk_widget_set_visible(container, visible);
+}
+
 // Update visibility of routing section grids based on port enable states
 void update_routing_section_visibility(struct alsa_card *card) {
   if (!card)
     return;
 
   // Hardware Inputs
-  if (card->routing_hw_in_grid) {
-    int all_disabled = all_sources_disabled(card, PC_HW);
-    gtk_widget_set_visible(card->routing_hw_in_grid, !all_disabled);
-  }
+  set_grid_container_visible(
+    card->routing_hw_in_grid, !all_sources_disabled(card, PC_HW)
+  );
 
   // Hardware Outputs
-  if (card->routing_hw_out_grid) {
-    int all_disabled = all_sinks_disabled(card, PC_HW);
-    gtk_widget_set_visible(card->routing_hw_out_grid, !all_disabled);
-  }
+  set_grid_container_visible(
+    card->routing_hw_out_grid, !all_sinks_disabled(card, PC_HW)
+  );
 
   // PCM Inputs (sources - to PC)
-  if (card->routing_pcm_in_grid) {
-    int all_disabled = all_sources_disabled(card, PC_PCM);
-    gtk_widget_set_visible(card->routing_pcm_in_grid, !all_disabled);
-  }
+  set_grid_container_visible(
+    card->routing_pcm_in_grid, !all_sources_disabled(card, PC_PCM)
+  );
 
   // PCM Outputs (sinks - from PC)
-  if (card->routing_pcm_out_grid) {
-    int all_disabled = all_sinks_disabled(card, PC_PCM);
-    gtk_widget_set_visible(card->routing_pcm_out_grid, !all_disabled);
-  }
+  set_grid_container_visible(
+    card->routing_pcm_out_grid, !all_sinks_disabled(card, PC_PCM)
+  );
 
   // DSP Inputs (sinks)
-  if (card->routing_dsp_in_grid) {
-    int all_disabled = all_sinks_disabled(card, PC_DSP);
-    gtk_widget_set_visible(card->routing_dsp_in_grid, !all_disabled);
-  }
+  set_grid_container_visible(
+    card->routing_dsp_in_grid, !all_sinks_disabled(card, PC_DSP)
+  );
 
   // DSP Outputs (sources)
-  if (card->routing_dsp_out_grid) {
-    int all_disabled = all_sources_disabled(card, PC_DSP);
-    gtk_widget_set_visible(card->routing_dsp_out_grid, !all_disabled);
-  }
+  set_grid_container_visible(
+    card->routing_dsp_out_grid, !all_sources_disabled(card, PC_DSP)
+  );
 
   // Mixer Inputs (sinks)
-  if (card->routing_mixer_in_grid) {
-    int all_disabled = all_sinks_disabled(card, PC_MIX);
-    gtk_widget_set_visible(card->routing_mixer_in_grid, !all_disabled);
-  }
+  set_grid_container_visible(
+    card->routing_mixer_in_grid, !all_sinks_disabled(card, PC_MIX)
+  );
 
   // Mixer Outputs (sources)
-  if (card->routing_mixer_out_grid) {
-    int all_disabled = all_sources_disabled(card, PC_MIX);
-    gtk_widget_set_visible(card->routing_mixer_out_grid, !all_disabled);
-  }
+  set_grid_container_visible(
+    card->routing_mixer_out_grid, !all_sources_disabled(card, PC_MIX)
+  );
 
   // Update the Sources and Sinks label arrows
   update_sources_label(card);
@@ -211,22 +213,11 @@ static void src_visibility_changed(
   if (!src->widget)
     return;
 
-  // A source is visible if enabled AND should be displayed
-  // (should_display_src returns 0 for right channel of linked pair)
-  int enabled = alsa_get_elem_value(elem);
-  int visible = enabled && should_display_src(src);
-  gtk_widget_set_visible(src->widget, visible);
-
-  // talkback widget visibility mirrors routing widget visibility
-  if (src->talkback_widget)
-    gtk_widget_set_visible(src->talkback_widget, visible);
+  // Rearrange grid to add/remove widgets
+  arrange_src_grid(src->card, src->port_category);
 
   // update section visibility
   update_routing_section_visibility(src->card);
-
-  // redraw routing lines to reflect new layout
-  if (src->card && src->card->routing_lines)
-    gtk_widget_queue_draw(src->card->routing_lines);
 
   // schedule expensive updates
   int flags = PENDING_UI_UPDATE_MONITOR_GROUPS;
@@ -242,33 +233,25 @@ static void snk_visibility_changed(
 ) {
   struct routing_snk *snk = private;
   struct alsa_card *card = snk->elem ? snk->elem->card : NULL;
+  int port_category = snk->elem->port_category;
 
-  // update routing widget visibility if it exists
+  // Rearrange grid if routing widgets exist
   // (fixed mixer inputs don't have routing widgets)
-  if (snk->box_widget) {
-    // A sink is visible if enabled AND should be displayed
-    // (should_display_snk returns 0 for right channel of linked pair)
-    int enabled = alsa_get_elem_value(elem);
-    int visible = enabled && should_display_snk(snk);
-    gtk_widget_set_visible(snk->box_widget, visible);
+  if (snk->socket_widget) {
+    arrange_snk_grid(card, port_category);
 
-    // update section visibility
     if (card)
       update_routing_section_visibility(card);
-
-    // redraw routing lines to reflect new layout
-    if (card && card->routing_lines)
-      gtk_widget_queue_draw(card->routing_lines);
   }
 
   if (card) {
     // rebuild mixer grid for mixer inputs
     // (needed for fixed mixer inputs which don't have routing widgets)
-    if (snk->elem->port_category == PC_MIX)
+    if (port_category == PC_MIX)
       schedule_ui_update(card, PENDING_UI_UPDATE_MIXER_GRID);
 
     // rebuild monitor groups for analogue output sinks
-    if (snk->elem->port_category == PC_HW)
+    if (port_category == PC_HW)
       schedule_ui_update(card, PENDING_UI_UPDATE_MONITOR_GROUPS);
   }
 }

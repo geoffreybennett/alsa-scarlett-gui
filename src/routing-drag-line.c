@@ -22,12 +22,8 @@ static void drag_leave(
   GtkDropControllerMotion *motion,
   gpointer                 data
 ) {
-  struct alsa_card *card = data;
-
-  card->drag_x = -1;
-  card->drag_y = -1;
-  gtk_widget_queue_draw(card->drag_line);
-  gtk_widget_queue_draw(card->routing_lines);
+  // Don't clear drag_x/drag_y or queue redraws here - routing_drag_end
+  // needs the coordinates for hit-testing and will handle the redraws
 }
 
 static void drag_motion(
