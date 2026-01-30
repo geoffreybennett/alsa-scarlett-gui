@@ -3,6 +3,7 @@
 
 #include "alsa.h"
 #include "alsa-sim.h"
+#include "debug.h"
 #include "main.h"
 #include "menu.h"
 #include "scarlett2-firmware.h"
@@ -32,6 +33,8 @@ static void load_css(void) {
 // gtk init
 
 static void startup(GtkApplication *app, gpointer user_data) {
+  debug_init();
+
   gtk_application_set_menubar(app, G_MENU_MODEL(create_app_menu(app)));
 
   load_css();
