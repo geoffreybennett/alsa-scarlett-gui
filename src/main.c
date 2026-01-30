@@ -3,6 +3,7 @@
 
 #include "alsa.h"
 #include "alsa-sim.h"
+#include "welcome.h"
 #include "debug.h"
 #include "main.h"
 #include "menu.h"
@@ -45,6 +46,8 @@ static void startup(GtkApplication *app, gpointer user_data) {
 
   create_no_card_window();
   create_hardware_window(app);
+
+  show_welcome(app);
 }
 
 // not called when any files are opened from the command-line so we do
