@@ -159,6 +159,19 @@ static GtkWidget *make_preset_menu_button(struct alsa_card *card) {
   return button;
 }
 
+// Forward declaration for highlight drawing
+static void draw_group_highlights(
+  GtkDrawingArea *drawing_area,
+  cairo_t        *cr,
+  int             width,
+  int             height,
+  void           *user_data
+);
+
+// Create a routing group with heading label and grid for widgets.
+// Returns a container (hbox or vbox) with heading outside the grid.
+// grid_out receives the inner grid for attaching socket/label widgets at row/col 0+
+// The grid is wrapped in an overlay with a highlight drawing area below.
 static GtkWidget *create_routing_group_grid(
   struct alsa_card *card,
   char             *name,
@@ -166,38 +179,70 @@ static GtkWidget *create_routing_group_grid(
   char             *tooltip,
   GtkOrientation    orientation,
   GtkAlign          align,
-  GtkWidget       **heading_label
+  GtkWidget       **heading_label,
+  GtkWidget       **grid_out
 ) {
   GtkWidget *grid = gtk_grid_new();
   gtk_widget_set_name(grid, name);
-  gtk_widget_add_css_class(grid, "controls-content");
-
   gtk_grid_set_spacing(GTK_GRID(grid), 2);
+  // Add margin for highlight padding (2px) to avoid clipping
+  gtk_widget_set_margin_start(grid, 2);
+  gtk_widget_set_margin_end(grid, 2);
+  gtk_widget_set_margin_top(grid, 2);
+  gtk_widget_set_margin_bottom(grid, 2);
 
-  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
-    gtk_widget_set_halign(grid, GTK_ALIGN_CENTER);
-    gtk_widget_set_valign(grid, GTK_ALIGN_FILL);
-    gtk_widget_set_hexpand(grid, TRUE);
-  } else {
-    gtk_widget_set_halign(grid, GTK_ALIGN_FILL);
-    gtk_widget_set_valign(grid, GTK_ALIGN_CENTER);
-    gtk_widget_set_vexpand(grid, TRUE);
-  }
+  // Create overlay with highlight drawing area below the grid
+  GtkWidget *overlay = gtk_overlay_new();
+  GtkWidget *highlight_area = gtk_drawing_area_new();
+  gtk_drawing_area_set_draw_func(
+    GTK_DRAWING_AREA(highlight_area), draw_group_highlights, card, NULL
+  );
+  gtk_widget_set_can_target(highlight_area, FALSE);
+  gtk_overlay_set_child(GTK_OVERLAY(overlay), highlight_area);
+  gtk_overlay_add_overlay(GTK_OVERLAY(overlay), grid);
+  gtk_overlay_set_measure_overlay(GTK_OVERLAY(overlay), grid, TRUE);
 
   GtkWidget *label = gtk_label_new(descr);
-  gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
-  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
-    gtk_widget_set_valign(label, align);
-    gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
-  } else {
-    gtk_widget_set_halign(label, align);
-  }
   gtk_widget_set_tooltip_text(label, tooltip);
+  gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
 
   if (heading_label)
     *heading_label = label;
 
-  return grid;
+  if (grid_out)
+    *grid_out = grid;
+
+  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
+    // Horizontal: hbox with label_vbox on left, overlay on right
+    GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_widget_add_css_class(hbox, "controls-content");
+    gtk_widget_set_halign(hbox, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(hbox, GTK_ALIGN_CENTER);
+
+    // Wrap label in vbox so additional labels can be added (e.g. Talkback)
+    GtkWidget *label_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    gtk_widget_set_valign(label_vbox, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(label, align);
+    gtk_box_append(GTK_BOX(label_vbox), label);
+
+    gtk_box_append(GTK_BOX(hbox), label_vbox);
+    gtk_box_append(GTK_BOX(hbox), overlay);
+    return hbox;
+  }
+
+  // Vertical: vbox with label on top, overlay below
+  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_add_css_class(vbox, "controls-content");
+  gtk_widget_set_halign(vbox, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(vbox, GTK_ALIGN_CENTER);
+  gtk_widget_set_vexpand(vbox, TRUE);
+  gtk_widget_set_halign(label, align);
+  gtk_widget_set_halign(overlay, GTK_ALIGN_FILL);
+
+  gtk_box_append(GTK_BOX(vbox), label);
+  gtk_box_append(GTK_BOX(vbox), overlay);
+
+  return vbox;
 }
 
 static void create_routing_grid(struct alsa_card *card) {
@@ -213,55 +258,68 @@ static void create_routing_grid(struct alsa_card *card) {
     routing_grid, preset_menu_button, 0, 0, 1, 1
   );
 
-  card->routing_hw_in_grid = create_routing_group_grid(
+  // All grids: container is vbox/hbox, grid is separate for widget attachment
+  GtkWidget *hw_in_container = create_routing_group_grid(
     card, "routing_hw_in_grid", "Hardware Inputs",
     "Hardware Inputs are the physical inputs on the interface",
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END, NULL
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END, NULL,
+    &card->routing_hw_in_grid
   );
-  card->routing_pcm_in_grid = create_routing_group_grid(
+  GtkWidget *pcm_in_container = create_routing_group_grid(
     card, "routing_pcm_in_grid", "PCM Outputs",
     "PCM Outputs are the digital audio channels sent from the PC to "
     "the interface over USB, used for audio playback",
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END, NULL
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END, NULL,
+    &card->routing_pcm_in_grid
   );
-  card->routing_pcm_out_grid = create_routing_group_grid(
+  GtkWidget *pcm_out_container = create_routing_group_grid(
     card, "routing_pcm_out_grid", "PCM Inputs",
     "PCM Inputs are the digital audio channels sent from the interface "
     "to the PC over USB, use for audio recording",
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START, NULL
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START, NULL,
+    &card->routing_pcm_out_grid
   );
-  card->routing_hw_out_grid = create_routing_group_grid(
+  GtkWidget *hw_out_container = create_routing_group_grid(
     card, "routing_hw_out_grid", "Hardware Outputs",
     "Hardware Outputs are the physical outputs on the interface",
-    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START, NULL
+    GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START, NULL,
+    &card->routing_hw_out_grid
   );
+
+  GtkWidget *dsp_in_container = NULL;
+  GtkWidget *dsp_out_container = NULL;
+  GtkWidget *mixer_in_container = NULL;
+  GtkWidget *mixer_out_container = NULL;
+
   if (has_dsp) {
-    card->routing_dsp_in_grid = create_routing_group_grid(
+    dsp_in_container = create_routing_group_grid(
       card, "routing_dsp_in_grid", "DSP\nInputs",
       "DSP Inputs are used to send audio to the DSP, which is used for "
       "features such as the input level meters, Air mode, and Autogain",
-      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER, NULL
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER, NULL,
+      &card->routing_dsp_in_grid
     );
-    card->routing_dsp_out_grid = create_routing_group_grid(
+    dsp_out_container = create_routing_group_grid(
       card, "routing_dsp_out_grid", "DSP\nOutputs",
       "DSP Outputs are used to send audio from the DSP after it has "
       "done its processing",
-      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER, NULL
+      GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER, NULL,
+      &card->routing_dsp_out_grid
     );
   }
   if (!card->has_fixed_mixer_inputs)
-    card->routing_mixer_in_grid = create_routing_group_grid(
+    mixer_in_container = create_routing_group_grid(
       card, "routing_mixer_in_grid", "Mixer\nInputs",
       "Mixer Inputs are used to mix multiple audio channels together",
       GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER,
-      &card->routing_mixer_in_heading
+      &card->routing_mixer_in_heading, &card->routing_mixer_in_grid
     );
-  card->routing_mixer_out_grid = create_routing_group_grid(
+  mixer_out_container = create_routing_group_grid(
     card, "routing_mixer_out_grid",
     card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
     "Mixer Outputs are used to send audio from the mixer",
     GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER,
-    &card->routing_mixer_out_heading
+    &card->routing_mixer_out_heading, &card->routing_mixer_out_grid
   );
 
   int left_col_num = 0;
@@ -275,33 +333,17 @@ static void create_routing_grid(struct alsa_card *card) {
   gtk_widget_set_size_request(spacer, 200, 1);
   gtk_grid_attach(routing_grid, spacer, mix_col_num, 0, 1, 1);
 
-  gtk_grid_attach(
-    routing_grid, card->routing_hw_in_grid, left_col_num, 1, 1, 1
-  );
-  gtk_grid_attach(
-    routing_grid, card->routing_pcm_in_grid, left_col_num, 2, 1, 1
-  );
-  gtk_grid_attach(
-    routing_grid, card->routing_pcm_out_grid, right_col_num, 1, 1, 1
-  );
-  gtk_grid_attach(
-    routing_grid, card->routing_hw_out_grid, right_col_num, 2, 1, 1
-  );
+  gtk_grid_attach(routing_grid, hw_in_container, left_col_num, 1, 1, 1);
+  gtk_grid_attach(routing_grid, pcm_in_container, left_col_num, 2, 1, 1);
+  gtk_grid_attach(routing_grid, pcm_out_container, right_col_num, 1, 1, 1);
+  gtk_grid_attach(routing_grid, hw_out_container, right_col_num, 2, 1, 1);
   if (has_dsp) {
-    gtk_grid_attach(
-      routing_grid, card->routing_dsp_in_grid, dsp_col_num, 0, 1, 1
-    );
-    gtk_grid_attach(
-      routing_grid, card->routing_dsp_out_grid, dsp_col_num, 3, 1, 1
-    );
+    gtk_grid_attach(routing_grid, dsp_in_container, dsp_col_num, 0, 1, 1);
+    gtk_grid_attach(routing_grid, dsp_out_container, dsp_col_num, 3, 1, 1);
   }
   if (!card->has_fixed_mixer_inputs)
-    gtk_grid_attach(
-      routing_grid, card->routing_mixer_in_grid, mix_col_num, 0, 1, 1
-    );
-  gtk_grid_attach(
-    routing_grid, card->routing_mixer_out_grid, mix_col_num, 3, 1, 1
-  );
+    gtk_grid_attach(routing_grid, mixer_in_container, mix_col_num, 0, 1, 1);
+  gtk_grid_attach(routing_grid, mixer_out_container, mix_col_num, 3, 1, 1);
   gtk_grid_set_spacing(routing_grid, 10);
 
   card->routing_src_label = gtk_label_new("↑\nSources →");
@@ -391,6 +433,193 @@ static char *get_snk_stereo_aware_name(struct routing_snk *snk) {
   return get_snk_display_name_formatted(snk);
 }
 
+// Label width for mono/stereo display
+#define LABEL_WIDTH_MONO   3
+#define LABEL_WIDTH_STEREO 4
+
+// Helper to check if a source should be visible in routing grid
+static int is_src_visible(struct routing_src *r_src) {
+  return is_routing_src_enabled(r_src) && should_display_src(r_src);
+}
+
+// Helper to check if a sink should be visible in routing grid
+static int is_snk_visible(struct routing_snk *r_snk) {
+  return is_routing_snk_enabled(r_snk) && should_display_snk(r_snk);
+}
+
+// Helper to unparent a widget from a grid if it has a parent
+static void unparent_from_grid(GtkWidget *grid, GtkWidget *widget) {
+  if (widget && gtk_widget_get_parent(widget))
+    gtk_grid_remove(GTK_GRID(grid), widget);
+}
+
+// Get the routing grid for a source port category
+static GtkWidget *get_src_grid(struct alsa_card *card, int port_category) {
+  switch (port_category) {
+    case PC_MIX: return card->routing_mixer_out_grid;
+    case PC_DSP: return card->routing_dsp_out_grid;
+    case PC_HW:  return card->routing_hw_in_grid;
+    case PC_PCM: return card->routing_pcm_in_grid;
+    default:     return NULL;
+  }
+}
+
+// Get the routing grid for a sink port category
+static GtkWidget *get_snk_grid(struct alsa_card *card, int port_category) {
+  switch (port_category) {
+    case PC_MIX: return card->routing_mixer_in_grid;
+    case PC_DSP: return card->routing_dsp_in_grid;
+    case PC_HW:  return card->routing_hw_out_grid;
+    case PC_PCM: return card->routing_pcm_out_grid;
+    default:     return NULL;
+  }
+}
+
+// Check if port category uses horizontal layout (MIX/DSP)
+static int is_horiz_port_category(int port_category) {
+  return port_category == PC_MIX || port_category == PC_DSP;
+}
+
+// Release refs held on routing widgets.
+// Called before the routing window is destroyed.
+void cleanup_routing_widgets(struct alsa_card *card) {
+  // Clear hover state to prevent dangling pointers
+  card->hovered_src = NULL;
+  card->hovered_snk = NULL;
+
+  // Clean up source widgets
+  if (card->routing_srcs) {
+    for (int i = 1; i < card->routing_srcs->len; i++) {
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+
+      if (r_src->widget) {
+        g_object_unref(r_src->widget);
+        r_src->widget = NULL;
+        r_src->widget2 = NULL;
+      }
+      if (r_src->label_widget) {
+        g_object_unref(r_src->label_widget);
+        r_src->label_widget = NULL;
+      }
+      if (r_src->talkback_widget) {
+        g_object_unref(r_src->talkback_widget);
+        r_src->talkback_widget = NULL;
+      }
+    }
+  }
+
+  // Clean up sink widgets
+  if (card->routing_snks) {
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+
+      if (r_snk->socket_widget) {
+        g_object_unref(r_snk->socket_widget);
+        r_snk->socket_widget = NULL;
+      }
+      if (r_snk->label_widget) {
+        g_object_unref(r_snk->label_widget);
+        r_snk->label_widget = NULL;
+      }
+    }
+  }
+}
+
+// Arrange source widgets in their grid.
+// Removes all widgets and re-attaches only visible ones at consecutive positions.
+void arrange_src_grid(struct alsa_card *card, int port_category) {
+  GtkWidget *grid = get_src_grid(card, port_category);
+  if (!grid)
+    return;
+
+  int is_horiz = is_horiz_port_category(port_category);
+  int pos = 0;
+
+  for (int i = 1; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (r_src->port_category != port_category || !r_src->widget)
+      continue;
+
+    // Unparent all widgets
+    unparent_from_grid(grid, r_src->widget);
+    unparent_from_grid(grid, r_src->label_widget);
+    unparent_from_grid(grid, r_src->talkback_widget);
+
+    if (!is_src_visible(r_src))
+      continue;
+
+    if (is_horiz) {
+      // Horizontal: socket at row 0, talkback/label at row 1
+      gtk_grid_attach(GTK_GRID(grid), r_src->widget, pos, 0, 1, 1);
+      if (r_src->talkback_widget)
+        gtk_grid_attach(GTK_GRID(grid), r_src->talkback_widget, pos, 1, 1, 1);
+      else if (r_src->label_widget)
+        gtk_grid_attach(GTK_GRID(grid), r_src->label_widget, pos, 1, 1, 1);
+    } else {
+      // Vertical: label at col 0, socket at col 1
+      gtk_grid_attach(GTK_GRID(grid), r_src->label_widget, 0, pos, 1, 1);
+      gtk_grid_attach(GTK_GRID(grid), r_src->widget, 1, pos, 1, 1);
+    }
+    pos++;
+  }
+
+  if (card->routing_lines)
+    gtk_widget_queue_draw(card->routing_lines);
+}
+
+// Arrange sink widgets in their grid.
+void arrange_snk_grid(struct alsa_card *card, int port_category) {
+  GtkWidget *grid = get_snk_grid(card, port_category);
+  if (!grid)
+    return;
+
+  // Skip for fixed mixer inputs (no routing widgets)
+  if (port_category == PC_MIX && card->has_fixed_mixer_inputs)
+    return;
+
+  int is_horiz = is_horiz_port_category(port_category);
+  int pos = 0;
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    if (!r_snk->elem ||
+        r_snk->elem->port_category != port_category ||
+        !r_snk->socket_widget)
+      continue;
+
+    // Unparent all widgets
+    unparent_from_grid(grid, r_snk->socket_widget);
+    unparent_from_grid(grid, r_snk->label_widget);
+
+    if (!is_snk_visible(r_snk))
+      continue;
+
+    if (is_horiz) {
+      // Horizontal: label at row 0, socket at row 1 (sinks point down)
+      gtk_grid_attach(GTK_GRID(grid), r_snk->label_widget, pos, 0, 1, 1);
+      gtk_grid_attach(GTK_GRID(grid), r_snk->socket_widget, pos, 1, 1, 1);
+    } else {
+      // Vertical: socket at col 0, label at col 1
+      gtk_grid_attach(GTK_GRID(grid), r_snk->socket_widget, 0, pos, 1, 1);
+      gtk_grid_attach(GTK_GRID(grid), r_snk->label_widget, 1, pos, 1, 1);
+    }
+    pos++;
+  }
+
+  if (card->routing_lines)
+    gtk_widget_queue_draw(card->routing_lines);
+}
+
 // Callback to update source socket and label when link state changes
 static void src_socket_link_changed(struct alsa_elem *elem, void *private) {
   struct routing_src *src = private;
@@ -403,6 +632,10 @@ static void src_socket_link_changed(struct alsa_elem *elem, void *private) {
   update_socket_widget(src->widget2, linked, orient);
 
   update_routing_src_label(src);
+
+  // Rearrange grid (only after routing window is fully initialized)
+  if (src->card->routing_lines)
+    arrange_src_grid(src->card, src->port_category);
 }
 
 // Callback to update sink socket and label when link state changes
@@ -413,106 +646,656 @@ static void snk_socket_link_changed(struct alsa_elem *elem, void *private) {
     return;
 
   int linked = is_snk_linked(snk);
-  GtkOrientation orient = get_socket_orientation(snk->elem->port_category);
+  int port_category = snk->elem->port_category;
+  GtkOrientation orient = get_socket_orientation(port_category);
   update_socket_widget(snk->socket_widget, linked, orient);
 
-  // Update label - use comprehensive label updater which is now stereo-aware
   update_hw_output_label(snk);
+
+  // Rearrange grid (only after routing window is fully initialized)
+  if (snk->elem->card->routing_lines)
+    arrange_snk_grid(snk->elem->card, port_category);
 }
 
-static void routing_label_enter(
-  GtkEventControllerMotion *controller,
-  double x, double y,
-  gpointer user_data
+// Helper to draw a rounded highlight rectangle
+static void draw_highlight_rect(
+  cairo_t               *cr,
+  const graphene_rect_t *bounds
 ) {
-  GtkWidget *widget = GTK_WIDGET(user_data);
+  double x = graphene_rect_get_x(bounds);
+  double y = graphene_rect_get_y(bounds);
+  double w = graphene_rect_get_width(bounds);
+  double h = graphene_rect_get_height(bounds);
+  double radius = 4.0;
 
-  gtk_widget_add_css_class(widget, "route-label-hover");
+  // Add some padding
+  double pad = 2.0;
+  x -= pad;
+  y -= pad;
+  w += pad * 2;
+  h += pad * 2;
 
-  struct routing_src *r_src = g_object_get_data(G_OBJECT(widget), "routing_src");
-  struct routing_snk *r_snk = g_object_get_data(G_OBJECT(widget), "routing_snk");
+  // Clamp radius to half the smallest dimension
+  if (radius > w / 2) radius = w / 2;
+  if (radius > h / 2) radius = h / 2;
 
-  if (r_src) {
-    struct alsa_card *card = r_src->card;
+  cairo_new_sub_path(cr);
+  cairo_arc(cr, x + w - radius, y + radius, radius, -M_PI_2, 0);
+  cairo_arc(cr, x + w - radius, y + h - radius, radius, 0, M_PI_2);
+  cairo_arc(cr, x + radius, y + h - radius, radius, M_PI_2, M_PI);
+  cairo_arc(cr, x + radius, y + radius, radius, M_PI, 3 * M_PI_2);
+  cairo_close_path(cr);
 
-    for (int i = 0; i < card->routing_snks->len; i++) {
-      struct routing_snk *r_snk = &g_array_index(
-        card->routing_snks, struct routing_snk, i
-      );
+  // #801010 colour
+  cairo_set_source_rgb(cr, 0.5, 0.063, 0.063);
+  cairo_fill(cr);
+}
 
-      if (!r_snk->box_widget)
-        continue;
+// Get combined bounds of socket + label (or socket + talkback) relative to a widget
+static int get_src_bounds_relative(
+  struct routing_src *src,
+  GtkWidget          *relative_to,
+  graphene_rect_t    *bounds
+) {
+  if (!src->widget2)
+    return 0;
 
-      if (r_snk->effective_source_idx == r_src->id)
-        gtk_widget_add_css_class(r_snk->box_widget, "route-label-hover");
+  graphene_rect_t socket_bounds;
+  if (!gtk_widget_compute_bounds(src->widget2, relative_to, &socket_bounds))
+    return 0;
+
+  // For talkback sources, union socket and talkback bounds, extend to cell top
+  if (src->talkback_widget) {
+    graphene_rect_t talkback_bounds;
+    if (!gtk_widget_compute_bounds(
+          src->talkback_widget, relative_to, &talkback_bounds))
+      return 0;
+
+    graphene_rect_union(&socket_bounds, &talkback_bounds, bounds);
+
+    // Extend to cell top: compute how far socket is from grid top
+    GtkWidget *grid = gtk_widget_get_parent(src->widget2);
+    if (grid) {
+      graphene_rect_t socket_in_grid;
+      if (gtk_widget_compute_bounds(src->widget2, grid, &socket_in_grid)) {
+        float extend = graphene_rect_get_y(&socket_in_grid);
+        if (extend > 0) {
+          graphene_rect_init(
+            bounds,
+            graphene_rect_get_x(bounds),
+            graphene_rect_get_y(bounds) - extend,
+            graphene_rect_get_width(bounds),
+            graphene_rect_get_height(bounds) + extend
+          );
+        }
+      }
     }
+    return 1;
+  }
 
-  } else if (r_snk) {
-    struct alsa_card *card = r_snk->elem->card;
+  // Normal case: socket + label
+  if (!src->label_widget)
+    return 0;
 
-    int r_src_idx = r_snk->effective_source_idx;
+  graphene_rect_t label_bounds;
+  if (!gtk_widget_compute_bounds(src->label_widget, relative_to, &label_bounds))
+    return 0;
 
-    for (int i = 0; i < card->routing_srcs->len; i++) {
-      struct routing_src *r_src = &g_array_index(
-        card->routing_srcs, struct routing_src, i
-      );
+  graphene_rect_union(&socket_bounds, &label_bounds, bounds);
+  return 1;
+}
 
-      if (!r_src->widget)
-        continue;
+static int get_snk_bounds_relative(
+  struct routing_snk *snk,
+  GtkWidget          *relative_to,
+  graphene_rect_t    *bounds
+) {
+  if (!snk->socket_widget || !snk->label_widget)
+    return 0;
 
-      if (r_src->id == r_src_idx)
-        gtk_widget_add_css_class(r_src->widget, "route-label-hover");
+  graphene_rect_t socket_bounds, label_bounds;
+  if (!gtk_widget_compute_bounds(snk->socket_widget, relative_to, &socket_bounds))
+    return 0;
+  if (!gtk_widget_compute_bounds(snk->label_widget, relative_to, &label_bounds))
+    return 0;
+
+  graphene_rect_union(&socket_bounds, &label_bounds, bounds);
+  return 1;
+}
+
+// Draw highlights for hovered sources/sinks in a group's overlay
+static void draw_group_highlights(
+  GtkDrawingArea *drawing_area,
+  cairo_t        *cr,
+  int             width,
+  int             height,
+  void           *user_data
+) {
+  struct alsa_card *card = user_data;
+  GtkWidget *highlight_widget = GTK_WIDGET(drawing_area);
+
+  // Get the grid (sibling in the overlay)
+  GtkWidget *overlay = gtk_widget_get_parent(highlight_widget);
+  if (!overlay)
+    return;
+
+  // Check hovered source
+  if (card->hovered_src) {
+    struct routing_src *src = card->hovered_src;
+
+    // Check if this source's widget is in this group's grid
+    GtkWidget *src_parent = src->widget2
+      ? gtk_widget_get_parent(src->widget2) : NULL;
+    if (src_parent && gtk_widget_get_parent(src_parent) == overlay) {
+      graphene_rect_t bounds;
+      if (get_src_bounds_relative(src, highlight_widget, &bounds))
+        draw_highlight_rect(cr, &bounds);
+
+      // Also draw partner if stereo-linked
+      if (is_src_linked(src)) {
+        struct routing_src *partner = get_src_partner(src);
+        if (partner && get_src_bounds_relative(partner, highlight_widget, &bounds))
+          draw_highlight_rect(cr, &bounds);
+      }
+    }
+  }
+
+  // Check hovered sink
+  if (card->hovered_snk) {
+    struct routing_snk *snk = card->hovered_snk;
+
+    // Check if this sink's widget is in this group's grid
+    GtkWidget *snk_parent = snk->socket_widget
+      ? gtk_widget_get_parent(snk->socket_widget) : NULL;
+    if (snk_parent && gtk_widget_get_parent(snk_parent) == overlay) {
+      graphene_rect_t bounds;
+      if (get_snk_bounds_relative(snk, highlight_widget, &bounds))
+        draw_highlight_rect(cr, &bounds);
+
+      // Also draw partner if stereo-linked
+      if (is_snk_linked(snk)) {
+        struct routing_snk *partner = get_snk_partner(snk);
+        if (partner && get_snk_bounds_relative(partner, highlight_widget, &bounds))
+          draw_highlight_rect(cr, &bounds);
+      }
     }
   }
 }
 
-static void routing_label_leave(
-  GtkEventControllerMotion *controller,
-  gpointer user_data
-) {
-  GtkWidget *widget = GTK_WIDGET(user_data);
+// Queue redraw on all group highlight areas
+static void queue_redraw_group_highlights(struct alsa_card *card) {
+  GtkWidget *grids[] = {
+    card->routing_hw_in_grid,
+    card->routing_hw_out_grid,
+    card->routing_pcm_in_grid,
+    card->routing_pcm_out_grid,
+    card->routing_dsp_in_grid,
+    card->routing_dsp_out_grid,
+    card->routing_mixer_in_grid,
+    card->routing_mixer_out_grid,
+  };
 
-  gtk_widget_remove_css_class(widget, "route-label-hover");
-
-  struct routing_src *r_src = g_object_get_data(G_OBJECT(widget), "routing_src");
-  struct routing_snk *r_snk = g_object_get_data(G_OBJECT(widget), "routing_snk");
-
-  if (r_src) {
-    struct alsa_card *card = r_src->card;
-
-    for (int i = 0; i < card->routing_snks->len; i++) {
-      struct routing_snk *r_snk = &g_array_index(
-        card->routing_snks, struct routing_snk, i
-      );
-
-      if (!r_snk->box_widget)
-        continue;
-
-      gtk_widget_remove_css_class(r_snk->box_widget, "route-label-hover");
-    }
-
-  } else if (r_snk) {
-    struct alsa_card *card = r_snk->elem->card;
-
-    for (int i = 0; i < card->routing_srcs->len; i++) {
-      struct routing_src *r_src = &g_array_index(
-        card->routing_srcs, struct routing_src, i
-      );
-
-      if (!r_src->widget)
-        continue;
-
-      gtk_widget_remove_css_class(r_src->widget, "route-label-hover");
+  for (int i = 0; i < 8; i++) {
+    if (!grids[i])
+      continue;
+    // Grid's parent is the overlay; overlay's child is the highlight area
+    GtkWidget *overlay = gtk_widget_get_parent(grids[i]);
+    if (overlay) {
+      GtkWidget *highlight_area = gtk_overlay_get_child(GTK_OVERLAY(overlay));
+      if (highlight_area)
+        gtk_widget_queue_draw(highlight_area);
     }
   }
 }
 
-static void add_routing_hover_controller(GtkWidget *widget) {
-  GtkEventController *motion = gtk_event_controller_motion_new();
+// Motion handler for overlay-based hover detection
+static void routing_overlay_motion(
+  GtkEventControllerMotion *controller,
+  double                    x,
+  double                    y,
+  gpointer                  user_data
+) {
+  struct alsa_card *card = user_data;
+  GtkWidget *overlay = gtk_event_controller_get_widget(
+    GTK_EVENT_CONTROLLER(controller)
+  );
 
-  g_signal_connect(motion, "enter", G_CALLBACK(routing_label_enter), widget);
-  g_signal_connect(motion, "leave", G_CALLBACK(routing_label_leave), widget);
-  gtk_widget_add_controller(widget, motion);
+  struct routing_src *new_hovered_src = NULL;
+  struct routing_snk *new_hovered_snk = NULL;
+  graphene_point_t point = GRAPHENE_POINT_INIT(x, y);
+
+  // Check sources (skip "Off" at index 0)
+  for (int i = 1; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (!is_routing_src_enabled(src) || !src->widget2)
+      continue;
+
+    // For linked pairs, only hit-test the left channel
+    if (is_src_linked(src) && !is_src_left_channel(src))
+      continue;
+
+    graphene_rect_t bounds;
+    if (!get_src_bounds_relative(src, overlay, &bounds))
+      continue;
+
+    if (graphene_rect_contains_point(&bounds, &point)) {
+      new_hovered_src = src;
+      break;
+    }
+  }
+
+  // Check sinks if no source was hit
+  if (!new_hovered_src) {
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+
+      if (!is_routing_snk_enabled(snk))
+        continue;
+
+      // For linked pairs, only hit-test the left channel
+      if (is_snk_linked(snk) && !is_snk_left_channel(snk))
+        continue;
+
+      graphene_rect_t bounds;
+      if (!get_snk_bounds_relative(snk, overlay, &bounds))
+        continue;
+
+      if (graphene_rect_contains_point(&bounds, &point)) {
+        new_hovered_snk = snk;
+        break;
+      }
+    }
+  }
+
+  // Update hover state if changed
+  if (new_hovered_src != card->hovered_src ||
+      new_hovered_snk != card->hovered_snk) {
+    card->hovered_src = new_hovered_src;
+    card->hovered_snk = new_hovered_snk;
+    queue_redraw_group_highlights(card);
+    gtk_widget_queue_draw(card->routing_lines);
+  }
+}
+
+// Leave handler for overlay-based hover detection
+static void routing_overlay_leave(
+  GtkEventControllerMotion *controller,
+  gpointer                  user_data
+) {
+  struct alsa_card *card = user_data;
+
+  if (card->hovered_src || card->hovered_snk) {
+    card->hovered_src = NULL;
+    card->hovered_snk = NULL;
+    queue_redraw_group_highlights(card);
+    gtk_widget_queue_draw(card->routing_lines);
+  }
+}
+
+// Forward declarations for functions used by unified handlers
+static struct alsa_elem *get_snk_routing_elem(struct routing_snk *r_snk);
+static void route_src_to_snk(
+  struct alsa_card   *card,
+  struct routing_snk *r_snk,
+  int                 src_id
+);
+
+// Find routing source at point (returns NULL if none)
+static struct routing_src *find_src_at_point(
+  struct alsa_card *card,
+  GtkWidget        *relative_to,
+  double            x,
+  double            y
+) {
+  graphene_point_t point = GRAPHENE_POINT_INIT(x, y);
+
+  for (int i = 1; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    if (!is_routing_src_enabled(src) || !src->widget2)
+      continue;
+
+    if (is_src_linked(src) && !is_src_left_channel(src))
+      continue;
+
+    graphene_rect_t bounds;
+    if (!get_src_bounds_relative(src, relative_to, &bounds))
+      continue;
+
+    if (graphene_rect_contains_point(&bounds, &point))
+      return src;
+  }
+
+  return NULL;
+}
+
+// Find routing sink at point (returns NULL if none)
+static struct routing_snk *find_snk_at_point(
+  struct alsa_card *card,
+  GtkWidget        *relative_to,
+  double            x,
+  double            y
+) {
+  graphene_point_t point = GRAPHENE_POINT_INIT(x, y);
+
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+
+    if (!is_routing_snk_enabled(snk))
+      continue;
+
+    if (is_snk_linked(snk) && !is_snk_left_channel(snk))
+      continue;
+
+    graphene_rect_t bounds;
+    if (!get_snk_bounds_relative(snk, relative_to, &bounds))
+      continue;
+
+    if (graphene_rect_contains_point(&bounds, &point))
+      return snk;
+  }
+
+  return NULL;
+}
+
+// Unified click handler using hit-testing
+static void routing_overlay_click(
+  GtkGestureClick *gesture,
+  int              n_press,
+  double           x,
+  double           y,
+  gpointer         user_data
+) {
+  struct alsa_card *card = user_data;
+  GtkWidget *widget = gtk_event_controller_get_widget(
+    GTK_EVENT_CONTROLLER(gesture)
+  );
+
+  struct routing_src *r_src = find_src_at_point(card, widget, x, y);
+  struct routing_snk *r_snk = find_snk_at_point(card, widget, x, y);
+
+  if (r_src) {
+    // Clear all sinks connected to this source
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+
+      int connected = snk->effective_source_idx == r_src->id;
+      if (!connected && is_src_linked(r_src)) {
+        struct routing_src *partner = get_src_partner(r_src);
+        if (partner)
+          connected = snk->effective_source_idx == partner->id;
+      }
+
+      if (!connected)
+        continue;
+
+      struct alsa_elem *target_elem = get_snk_routing_elem(snk);
+      if (target_elem && target_elem == snk->elem)
+        alsa_set_elem_value(target_elem, 0);
+    }
+  } else if (r_snk) {
+    struct alsa_elem *target_elem = get_snk_routing_elem(r_snk);
+
+    if (!target_elem || target_elem != r_snk->elem)
+      return;
+
+    if (is_snk_linked(r_snk)) {
+      struct routing_snk *partner = get_snk_partner(r_snk);
+      if (partner) {
+        route_src_to_snk(card, r_snk, 0);
+        route_src_to_snk(card, partner, 0);
+        return;
+      }
+    }
+
+    alsa_set_elem_value(target_elem, 0);
+  }
+}
+
+// Drag source prepare handler - hit-test to find drag origin
+static GdkContentProvider *routing_drag_prepare(
+  GtkDragSource *source,
+  double         x,
+  double         y,
+  gpointer       user_data
+) {
+  struct alsa_card *card = user_data;
+  GtkWidget *widget = gtk_event_controller_get_widget(
+    GTK_EVENT_CONTROLLER(source)
+  );
+
+  struct routing_src *r_src = find_src_at_point(card, widget, x, y);
+  struct routing_snk *r_snk = find_snk_at_point(card, widget, x, y);
+
+  if (r_src) {
+    card->drag_type = DRAG_TYPE_SRC;
+    card->src_drag = r_src;
+    return gdk_content_provider_new_typed(G_TYPE_INT, r_src->id);
+  } else if (r_snk) {
+    card->drag_type = DRAG_TYPE_SNK;
+    card->snk_drag = r_snk;
+    return gdk_content_provider_new_typed(G_TYPE_INT, 0x8000 | r_snk->idx);
+  }
+
+  return NULL;
+}
+
+// Check if a routing operation from source to sink is valid
+static int is_routing_valid(
+  struct alsa_card   *card,
+  struct routing_src *r_src,
+  struct routing_snk *r_snk
+) {
+  // Reject drops on muted sinks
+  if (is_snk_monitor_muted(r_snk))
+    return 0;
+
+  // Reject stereo source → mono sink
+  if (r_src && is_src_linked(r_src) && !is_snk_linked(r_snk))
+    return 0;
+
+  // Reject mixer → mixer routing if device doesn't support it
+  if (!card->mixer_has_mix_srcs &&
+      r_src && r_src->port_category == PC_MIX &&
+      r_snk->elem->port_category == PC_MIX)
+    return 0;
+
+  return 1;
+}
+
+// Drag source end handler
+static void routing_drag_end(
+  GtkDragSource *source,
+  GdkDrag       *drag,
+  gboolean       delete_data,
+  gpointer       user_data
+) {
+  struct alsa_card *card = user_data;
+
+  card->drag_type = DRAG_TYPE_NONE;
+  card->src_drag = NULL;
+  card->snk_drag = NULL;
+
+  // Recompute hover from last known position (coords are relative to routing_grid)
+  if (card->drag_x >= 0 && card->drag_y >= 0) {
+    card->hovered_src = find_src_at_point(
+      card, card->routing_grid, card->drag_x, card->drag_y
+    );
+    card->hovered_snk = find_snk_at_point(
+      card, card->routing_grid, card->drag_x, card->drag_y
+    );
+  }
+
+  // Clear drag coords now that we're done with them
+  card->drag_x = -1;
+  card->drag_y = -1;
+
+  queue_redraw_group_highlights(card);
+  gtk_widget_queue_draw(card->drag_line);
+  gtk_widget_queue_draw(card->routing_lines);
+}
+
+// Drop target motion handler - hit-test for drop feedback
+static GdkDragAction routing_drop_motion(
+  GtkDropTarget *target,
+  double         x,
+  double         y,
+  gpointer       user_data
+) {
+  struct alsa_card *card = user_data;
+  GtkWidget *widget = gtk_event_controller_get_widget(
+    GTK_EVENT_CONTROLLER(target)
+  );
+
+  struct routing_src *r_src = find_src_at_point(card, widget, x, y);
+  struct routing_snk *r_snk = find_snk_at_point(card, widget, x, y);
+
+  // Update drag target and hover state for visual feedback
+  if (card->drag_type == DRAG_TYPE_SRC && r_snk &&
+      is_routing_valid(card, card->src_drag, r_snk)) {
+    card->snk_drag = r_snk;
+    card->hovered_snk = r_snk;
+    card->hovered_src = NULL;
+    queue_redraw_group_highlights(card);
+    gtk_widget_queue_draw(card->drag_line);
+    gtk_widget_queue_draw(card->routing_lines);
+    return GDK_ACTION_COPY;
+  } else if (card->drag_type == DRAG_TYPE_SNK && r_src &&
+             is_routing_valid(card, r_src, card->snk_drag)) {
+    card->src_drag = r_src;
+    card->hovered_src = r_src;
+    card->hovered_snk = NULL;
+    queue_redraw_group_highlights(card);
+    gtk_widget_queue_draw(card->drag_line);
+    gtk_widget_queue_draw(card->routing_lines);
+    return GDK_ACTION_COPY;
+  }
+
+  // Clear any previous drop target and hover state
+  if (card->drag_type == DRAG_TYPE_SRC) {
+    card->snk_drag = NULL;
+    card->hovered_snk = NULL;
+  } else if (card->drag_type == DRAG_TYPE_SNK) {
+    card->src_drag = NULL;
+    card->hovered_src = NULL;
+  }
+
+  queue_redraw_group_highlights(card);
+  gtk_widget_queue_draw(card->drag_line);
+  gtk_widget_queue_draw(card->routing_lines);
+  return 0;
+}
+
+// Drop target leave handler
+static void routing_drop_leave(
+  GtkDropTarget *target,
+  gpointer       user_data
+) {
+  struct alsa_card *card = user_data;
+
+  if (card->drag_type == DRAG_TYPE_SRC) {
+    card->snk_drag = NULL;
+    card->hovered_snk = NULL;
+  } else if (card->drag_type == DRAG_TYPE_SNK) {
+    card->src_drag = NULL;
+    card->hovered_src = NULL;
+  }
+
+  queue_redraw_group_highlights(card);
+  gtk_widget_queue_draw(card->drag_line);
+  gtk_widget_queue_draw(card->routing_lines);
+}
+
+// Drop target drop handler - perform the routing connection
+static gboolean routing_drop(
+  GtkDropTarget *target,
+  const GValue  *value,
+  double         x,
+  double         y,
+  gpointer       user_data
+) {
+  struct alsa_card *card = user_data;
+  GtkWidget *widget = gtk_event_controller_get_widget(
+    GTK_EVENT_CONTROLLER(target)
+  );
+
+  struct routing_src *r_src = find_src_at_point(card, widget, x, y);
+  struct routing_snk *r_snk = find_snk_at_point(card, widget, x, y);
+
+  // Dropped on sink while dragging from source
+  if (card->drag_type == DRAG_TYPE_SRC && r_snk && card->src_drag) {
+    struct routing_src *drag_src = card->src_drag;
+
+    if (!is_routing_valid(card, drag_src, r_snk))
+      return FALSE;
+
+    if (is_snk_linked(r_snk)) {
+      struct routing_snk *snk_partner = get_snk_partner(r_snk);
+      if (snk_partner) {
+        if (is_src_linked(drag_src)) {
+          // Stereo → Stereo: route L→L, R→R
+          struct routing_src *src_partner = get_src_partner(drag_src);
+          if (src_partner) {
+            route_src_to_snk(card, r_snk, drag_src->id);
+            route_src_to_snk(card, snk_partner, src_partner->id);
+            return TRUE;
+          }
+        } else {
+          // Mono → Stereo: route same source to both
+          route_src_to_snk(card, r_snk, drag_src->id);
+          route_src_to_snk(card, snk_partner, drag_src->id);
+          return TRUE;
+        }
+      }
+    }
+
+    route_src_to_snk(card, r_snk, drag_src->id);
+    return TRUE;
+  }
+
+  // Dropped on source while dragging from sink
+  if (card->drag_type == DRAG_TYPE_SNK && r_src && card->snk_drag) {
+    struct routing_snk *drag_snk = card->snk_drag;
+
+    if (!is_routing_valid(card, r_src, drag_snk))
+      return FALSE;
+
+    if (is_snk_linked(drag_snk)) {
+      struct routing_snk *snk_partner = get_snk_partner(drag_snk);
+      if (snk_partner) {
+        if (is_src_linked(r_src)) {
+          // Stereo → Stereo: route L→L, R→R
+          struct routing_src *src_partner = get_src_partner(r_src);
+          if (src_partner) {
+            route_src_to_snk(card, drag_snk, r_src->id);
+            route_src_to_snk(card, snk_partner, src_partner->id);
+            return TRUE;
+          }
+        } else {
+          // Mono → Stereo: route same source to both
+          route_src_to_snk(card, drag_snk, r_src->id);
+          route_src_to_snk(card, snk_partner, r_src->id);
+          return TRUE;
+        }
+      }
+    }
+
+    route_src_to_snk(card, drag_snk, r_src->id);
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 // Speaker switching states
@@ -697,535 +1480,97 @@ static void route_src_to_snk(
   alsa_set_elem_value(target, src_id);
 }
 
-// something was dropped on a routing source
-static gboolean dropped_on_src(
-  GtkDropTarget *dest,
-  const GValue  *value,
-  double         x,
-  double         y,
-  gpointer       data
-) {
-  struct routing_src *r_src = data;
-  struct alsa_card *card = r_src->card;
-  int snk_id = g_value_get_int(value);
-
-  // don't accept src -> src drops
-  if (!(snk_id & 0x8000))
-    return FALSE;
-
-  // convert the int to a r_snk_idx
-  int r_snk_idx = snk_id & ~0x8000;
-
-  // check the index is in bounds
-  GArray *r_snks = card->routing_snks;
-  if (r_snk_idx < 0 || r_snk_idx >= r_snks->len)
-    return FALSE;
-
-  struct routing_snk *r_snk = &g_array_index(
-    r_snks, struct routing_snk, r_snk_idx
-  );
-
-  // Get appropriate element (routing or group source)
-  struct alsa_elem *target_elem = get_snk_routing_elem(r_snk);
-  if (!target_elem)
-    return FALSE;  // Sink is muted
-
-  // Handle stereo routing
-  if (is_snk_linked(r_snk)) {
-    struct routing_snk *snk_partner = get_snk_partner(r_snk);
-    if (!snk_partner)
-      return FALSE;
-
-    // Determine left/right sinks
-    struct routing_snk *snk_left =
-      is_snk_left_channel(r_snk) ? r_snk : snk_partner;
-    struct routing_snk *snk_right =
-      is_snk_left_channel(r_snk) ? snk_partner : r_snk;
-
-    if (is_src_linked(r_src)) {
-      // Stereo → Stereo: route L→L, R→R
-      struct routing_src *src_partner = get_src_partner(r_src);
-      if (!src_partner)
-        return FALSE;
-
-      struct routing_src *src_left =
-        is_src_left_channel(r_src) ? r_src : src_partner;
-      struct routing_src *src_right =
-        is_src_left_channel(r_src) ? src_partner : r_src;
-
-      route_src_to_snk(card, snk_left, src_left->id);
-      route_src_to_snk(card, snk_right, src_right->id);
-    } else {
-      // Mono → Stereo: route same source to both
-      route_src_to_snk(card, snk_left, r_src->id);
-      route_src_to_snk(card, snk_right, r_src->id);
-    }
-    return TRUE;
-  }
-
-  // Mono sink routing
-  int src_id = r_src->id;
-  if (target_elem != r_snk->elem)
-    src_id = routing_src_to_vg_src(card, src_id);
-
-  alsa_set_elem_value(target_elem, src_id);
-
-  return TRUE;
-}
-
-// something was dropped on a routing sink
-static gboolean dropped_on_snk(
-  GtkDropTarget *dest,
-  const GValue  *value,
-  double         x,
-  double         y,
-  gpointer       data
-) {
-  struct routing_snk *r_snk = data;
-  struct alsa_card *card = r_snk->elem->card;
-  int src_id = g_value_get_int(value);
-
-  // don't accept snk -> snk drops
-  if (src_id & 0x8000)
-    return FALSE;
-
-  // Get appropriate element (routing or group source)
-  struct alsa_elem *target_elem = get_snk_routing_elem(r_snk);
-  if (!target_elem)
-    return FALSE;  // Sink is muted
-
-  // Handle stereo routing
-  if (is_snk_linked(r_snk)) {
-    struct routing_snk *snk_partner = get_snk_partner(r_snk);
-    if (!snk_partner)
-      return FALSE;
-
-    // Determine left/right sinks
-    struct routing_snk *snk_left =
-      is_snk_left_channel(r_snk) ? r_snk : snk_partner;
-    struct routing_snk *snk_right =
-      is_snk_left_channel(r_snk) ? snk_partner : r_snk;
-
-    // Get dragged source for stereo check
-    struct routing_src *r_src = card->src_drag;
-
-    if (r_src && is_src_linked(r_src)) {
-      // Stereo → Stereo: route L→L, R→R
-      struct routing_src *src_partner = get_src_partner(r_src);
-      if (!src_partner)
-        return FALSE;
-
-      struct routing_src *src_left =
-        is_src_left_channel(r_src) ? r_src : src_partner;
-      struct routing_src *src_right =
-        is_src_left_channel(r_src) ? src_partner : r_src;
-
-      route_src_to_snk(card, snk_left, src_left->id);
-      route_src_to_snk(card, snk_right, src_right->id);
-    } else {
-      // Mono → Stereo: route same source to both
-      route_src_to_snk(card, snk_left, src_id);
-      route_src_to_snk(card, snk_right, src_id);
-    }
-    return TRUE;
-  }
-
-  // Mono sink routing
-  if (target_elem != r_snk->elem)
-    src_id = routing_src_to_vg_src(card, src_id);
-
-  alsa_set_elem_value(target_elem, src_id);
-  return TRUE;
-}
-
-// Check if a source ID should be cleared for the given clicked source
-static int should_clear_for_src(struct routing_src *r_src, int src_id) {
-  if (src_id == r_src->id)
-    return 1;
-
-  // If source is linked, also clear connections to partner
-  if (is_src_linked(r_src)) {
-    struct routing_src *partner = get_src_partner(r_src);
-    if (partner && src_id == partner->id)
-      return 1;
-  }
-
-  return 0;
-}
-
-static void src_routing_clicked(
-  GtkWidget          *widget,
-  int                 n_press,
-  double              x,
-  double              y,
-  struct routing_src *r_src
-) {
-  struct alsa_card *card = r_src->card;
-
-  // go through all the routing sinks
-  for (int i = 0; i < card->routing_snks->len; i++) {
-    struct routing_snk *r_snk = &g_array_index(
-      card->routing_snks, struct routing_snk, i
-    );
-
-    // Check effective source (accounts for speaker switching)
-    if (!should_clear_for_src(r_src, r_snk->effective_source_idx))
-      continue;
-
-    // Get appropriate element to clear - skip Main/Alt outputs
-    struct alsa_elem *target_elem = get_snk_routing_elem(r_snk);
-    if (target_elem && target_elem == r_snk->elem)
-      alsa_set_elem_value(target_elem, 0);
-  }
-}
-
-static void snk_routing_clicked(
-  GtkWidget          *widget,
-  int                 n_press,
-  double              x,
-  double              y,
-  struct routing_snk *r_snk
-) {
-  // Get appropriate element (routing or group source)
-  struct alsa_elem *target_elem = get_snk_routing_elem(r_snk);
-
-  // Do nothing if muted or using group source (Main/Alt outputs)
-  if (!target_elem || target_elem != r_snk->elem)
-    return;
-
-  struct alsa_card *card = r_snk->elem->card;
-
-  // Clear both channels if linked
-  if (is_snk_linked(r_snk)) {
-    struct routing_snk *partner = get_snk_partner(r_snk);
-    if (partner) {
-      route_src_to_snk(card, r_snk, 0);
-      route_src_to_snk(card, partner, 0);
-      return;
-    }
-  }
-
-  alsa_set_elem_value(target_elem, 0);
-}
-
-static void src_drag_begin(
-  GtkDragSource *source,
-  GdkDrag       *drag,
-  gpointer       user_data
-) {
-  struct routing_src *r_src = user_data;
-  struct alsa_card *card = r_src->card;
-
-  card->drag_type = DRAG_TYPE_SRC;
-  card->src_drag = r_src;
-}
-
-static void snk_drag_begin(
-  GtkDragSource *source,
-  GdkDrag       *drag,
-  gpointer       user_data
-) {
-  struct routing_snk *r_snk = user_data;
-  struct alsa_card *card = r_snk->elem->card;
-
-  card->drag_type = DRAG_TYPE_SNK;
-  card->snk_drag = r_snk;
-}
-
-static void src_drag_end(
-  GtkDragSource *source,
-  GdkDrag       *drag,
-  gboolean       delete_data,
-  gpointer       user_data
-) {
-  struct routing_src *r_src = user_data;
-  struct alsa_card *card = r_src->card;
-
-  card->drag_type = DRAG_TYPE_NONE;
-  card->src_drag = NULL;
-  gtk_widget_queue_draw(card->drag_line);
-  gtk_widget_queue_draw(card->routing_lines);
-}
-
-static void snk_drag_end(
-  GtkDragSource *source,
-  GdkDrag       *drag,
-  gboolean       delete_data,
-  gpointer       user_data
-) {
-  struct routing_snk *r_snk = user_data;
-  struct alsa_card *card = r_snk->elem->card;
-
-  card->drag_type = DRAG_TYPE_NONE;
-  card->snk_drag = NULL;
-  gtk_widget_queue_draw(card->drag_line);
-  gtk_widget_queue_draw(card->routing_lines);
-}
-
-static gboolean src_drop_accept(
-  GtkDropTarget *source,
-  GdkDrop       *drop,
-  gpointer       user_data
-) {
-  struct routing_src *r_src = user_data;
-  struct alsa_card *card = r_src->card;
-
-  // Reject if not dragging a sink
-  if (card->drag_type != DRAG_TYPE_SNK)
-    return FALSE;
-
-  // Reject if the sink being dragged is muted
-  if (card->snk_drag && is_snk_monitor_muted(card->snk_drag))
-    return FALSE;
-
-  // Reject stereo source → mono sink
-  if (card->snk_drag && is_src_linked(r_src) && !is_snk_linked(card->snk_drag))
-    return FALSE;
-
-  // Reject mixer → mixer routing if device doesn't support it
-  if (!card->mixer_has_mix_srcs &&
-      r_src->port_category == PC_MIX &&
-      card->snk_drag &&
-      card->snk_drag->elem->port_category == PC_MIX)
-    return FALSE;
-
-  return TRUE;
-}
-
-static gboolean snk_drop_accept(
-  GtkDropTarget *source,
-  GdkDrop       *drop,
-  gpointer       user_data
-) {
-  struct routing_snk *r_snk = user_data;
-  struct alsa_card *card = r_snk->elem->card;
-
-  // Reject if not dragging a source
-  if (card->drag_type != DRAG_TYPE_SRC)
-    return FALSE;
-
-  // Reject drops on muted sinks
-  if (is_snk_monitor_muted(r_snk))
-    return FALSE;
-
-  // Reject stereo source → mono sink
-  if (card->src_drag && is_src_linked(card->src_drag) && !is_snk_linked(r_snk))
-    return FALSE;
-
-  // Reject mixer → mixer routing if device doesn't support it
-  if (!card->mixer_has_mix_srcs &&
-      r_snk->elem->port_category == PC_MIX &&
-      card->src_drag &&
-      card->src_drag->port_category == PC_MIX)
-    return FALSE;
-
-  return TRUE;
-}
-
-static GdkDragAction src_drop_enter(
-  GtkDropTarget *dest,
-  gdouble        x,
-  gdouble        y,
-  gpointer       user_data
-) {
-  struct routing_src *r_src = user_data;
-  struct alsa_card *card = r_src->card;
-
-  if (card->drag_type != DRAG_TYPE_SNK)
-    return 0;
-
-  card->src_drag = r_src;
-
-  return GDK_ACTION_COPY;
-}
-
-static GdkDragAction snk_drop_enter(
-  GtkDropTarget *dest,
-  gdouble        x,
-  gdouble        y,
-  gpointer       user_data
-) {
-  struct routing_snk *r_snk = user_data;
-  struct alsa_card *card = r_snk->elem->card;
-
-  if (card->drag_type != DRAG_TYPE_SRC)
-    return 0;
-
-  card->snk_drag = r_snk;
-
-  return GDK_ACTION_COPY;
-}
-
-static void src_drop_leave(
-  GtkDropTarget *dest,
-  gpointer       user_data
-) {
-  struct routing_src *r_src = user_data;
-  struct alsa_card *card = r_src->card;
-
-  if (card->drag_type != DRAG_TYPE_SNK)
-    return;
-
-  card->src_drag = NULL;
-}
-
-static void snk_drop_leave(
-  GtkDropTarget *dest,
-  gpointer       user_data
-) {
-  struct routing_snk *r_snk = user_data;
-  struct alsa_card *card = r_snk->elem->card;
-
-  if (card->drag_type != DRAG_TYPE_SRC)
-    return;
-
-  card->snk_drag = NULL;
-}
-
-static void setup_src_drag(struct routing_src *r_src) {
-  GtkWidget *box = r_src->widget;
-
-  // handle drags on the box
-  GtkDragSource *source = gtk_drag_source_new();
-  g_signal_connect(source, "drag-begin", G_CALLBACK(src_drag_begin), r_src);
-  g_signal_connect(source, "drag-end", G_CALLBACK(src_drag_end), r_src);
-
-  // set the box as a drag source
-  gtk_drag_source_set_actions(source, GDK_ACTION_COPY);
-  gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(source));
-
-  // set the content
-  GdkContentProvider *content = gdk_content_provider_new_typed(
-    G_TYPE_INT, r_src->id
-  );
-  gtk_drag_source_set_content(source, content);
-  g_object_unref(content);
-
-  // set a blank icon
-  GdkPaintable *paintable = gdk_paintable_new_empty(1, 1);
-  gtk_drag_source_set_icon(source, paintable, 0, 0);
-  g_object_unref(paintable);
-
-  // set the box as a drop target
-  GtkDropTarget *dest = gtk_drop_target_new(G_TYPE_INT, GDK_ACTION_COPY);
-  gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(dest));
-  g_signal_connect(dest, "drop", G_CALLBACK(dropped_on_src), r_src);
-  g_signal_connect(dest, "accept", G_CALLBACK(src_drop_accept), r_src);
-  g_signal_connect(dest, "enter", G_CALLBACK(src_drop_enter), r_src);
-  g_signal_connect(dest, "leave", G_CALLBACK(src_drop_leave), r_src);
-}
-
-static void setup_snk_drag(struct routing_snk *r_snk) {
-  GtkWidget *box = r_snk->box_widget;
-
-  // handle drags on the box
-  GtkDragSource *source = gtk_drag_source_new();
-  g_signal_connect(source, "drag-begin", G_CALLBACK(snk_drag_begin), r_snk);
-  g_signal_connect(source, "drag-end", G_CALLBACK(snk_drag_end), r_snk);
-
-  // set the box as a drag source
-  gtk_drag_source_set_actions(source, GDK_ACTION_COPY);
-  gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(source));
-
-  // set the content
-  // 0x8000 flag indicates alsa_elem numid value
-  GdkContentProvider *content = gdk_content_provider_new_typed(
-    G_TYPE_INT, 0x8000 | r_snk->idx
-  );
-  gtk_drag_source_set_content(source, content);
-  g_object_unref(content);
-
-  // set a blank icon
-  GdkPaintable *paintable = gdk_paintable_new_empty(1, 1);
-  gtk_drag_source_set_icon(source, paintable, 0, 0);
-  g_object_unref(paintable);
-
-  // set the box as a drop target
-  GtkDropTarget *dest = gtk_drop_target_new(G_TYPE_INT, GDK_ACTION_COPY);
-  gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(dest));
-  g_signal_connect(dest, "drop", G_CALLBACK(dropped_on_snk), r_snk);
-  g_signal_connect(dest, "accept", G_CALLBACK(snk_drop_accept), r_snk);
-  g_signal_connect(dest, "enter", G_CALLBACK(snk_drop_enter), r_snk);
-  g_signal_connect(dest, "leave", G_CALLBACK(snk_drop_leave), r_snk);
-}
-
-static void make_src_routing_widget(
-  struct alsa_card   *card,
-  struct routing_src *r_src,
-  char               *name,
-  GtkOrientation      orientation
-) {
-
-  // create a box, a "socket", and a label
-  GtkWidget *box = r_src->widget = gtk_box_new(orientation, 5);
-  GtkWidget *socket = r_src->widget2 = make_socket_widget();
-
-  g_object_set_data(G_OBJECT(box), "routing_src", r_src);
-
-  // create label inside the box, except for mixer outputs when
-  // talkback is available (the talkback button serves as the label)
-  int is_mixer_output_with_talkback =
-    r_src->port_category == PC_MIX && card->has_talkback;
-
-  if (!is_mixer_output_with_talkback) {
-    GtkWidget *label = gtk_label_new(name);
-    r_src->label_widget = label;
-    gtk_box_append(GTK_BOX(box), label);
-    gtk_widget_add_css_class(box, "route-label");
-
-    if (orientation == GTK_ORIENTATION_HORIZONTAL) {
-      gtk_widget_set_halign(label, GTK_ALIGN_END);
-      gtk_widget_set_hexpand(label, TRUE);
-    } else {
-      // for vertical orientation (mixer outputs), constrain label width
-      gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-      gtk_label_set_max_width_chars(GTK_LABEL(label), 8);
-      gtk_widget_set_tooltip_text(label, name);
-    }
-  }
-
-  if (orientation == GTK_ORIENTATION_HORIZONTAL) {
-    gtk_box_append(GTK_BOX(box), socket);
-    gtk_widget_set_halign(box, GTK_ALIGN_FILL);
-    gtk_widget_set_hexpand(box, TRUE);
-  } else {
-    gtk_box_prepend(GTK_BOX(box), socket);
-    gtk_widget_set_margin_start(box, 5);
-    gtk_widget_set_margin_end(box, 5);
-  }
-
-  // handle clicks on the box
-  GtkGesture *gesture = gtk_gesture_click_new();
-  g_signal_connect(
-    gesture, "released", G_CALLBACK(src_routing_clicked), r_src
-  );
-  gtk_widget_add_controller(
-    GTK_WIDGET(box), GTK_EVENT_CONTROLLER(gesture)
-  );
-
-  // handle hovering
-  add_routing_hover_controller(box);
-
-  // handle dragging to or from the box
-  setup_src_drag(r_src);
-
-  // set up stereo socket handling
+// Set up a source socket widget (stereo handling only - click/drag at overlay level)
+static void setup_src_socket(struct routing_src *r_src) {
+  GtkWidget *socket = make_socket_widget();
+  r_src->widget = g_object_ref(socket);
+  r_src->widget2 = socket;
+
+  g_object_set_data(G_OBJECT(socket), "routing_src", r_src);
+  gtk_widget_add_css_class(socket, "route-label");
+
+  // Stereo link handling
   struct alsa_elem *link_elem = get_src_link_elem(r_src);
   if (link_elem) {
-    // register callback to update socket and label when link state changes
     alsa_elem_add_callback(link_elem, src_socket_link_changed, r_src, NULL);
-
-    // set initial socket state (label updated later in create_routing_controls)
     if (is_src_linked(r_src)) {
       GtkOrientation orient = get_socket_orientation(r_src->port_category);
       update_socket_widget(socket, 1, orient);
     }
   }
 
-  // register callback to update label when pair name changes
+  // Pair name change handling
   struct alsa_elem *pair_name_elem = get_src_pair_name_elem(r_src);
   if (pair_name_elem)
     alsa_elem_add_callback(pair_name_elem, src_socket_link_changed, r_src, NULL);
+}
+
+// Create and configure a routing label widget
+// Returns a ref'd widget; caller should store the pointer
+static GtkWidget *make_routing_label(
+  const char *name,
+  const char *data_key,
+  void       *data_value,
+  int         port_category,
+  int         is_linked,
+  float       vert_xalign
+) {
+  GtkWidget *label = gtk_label_new(name);
+  g_object_ref(label);
+
+  gtk_widget_add_css_class(label, "route-label");
+  g_object_set_data(G_OBJECT(label), data_key, data_value);
+
+  if (is_horiz_port_category(port_category)) {
+    int width = is_linked ? LABEL_WIDTH_STEREO : LABEL_WIDTH_MONO;
+    gtk_label_set_width_chars(GTK_LABEL(label), width);
+  } else {
+    gtk_widget_set_hexpand(label, TRUE);
+    gtk_widget_set_halign(label, GTK_ALIGN_FILL);
+    gtk_label_set_xalign(GTK_LABEL(label), vert_xalign);
+  }
+
+  return label;
+}
+
+// Set up a source label widget
+static void setup_src_label(struct routing_src *r_src, const char *name) {
+  r_src->label_widget = make_routing_label(
+    name, "routing_src", r_src,
+    r_src->port_category, is_src_linked(r_src), 1.0
+  );
+}
+
+// Set up a sink socket widget (stereo handling only - click/drag at overlay level)
+static void setup_snk_socket(struct routing_snk *r_snk) {
+  GtkWidget *socket = make_socket_widget();
+  r_snk->socket_widget = g_object_ref(socket);
+
+  g_object_set_data(G_OBJECT(socket), "routing_snk", r_snk);
+  gtk_widget_add_css_class(socket, "route-label");
+
+  // Stereo link handling
+  struct alsa_elem *link_elem = get_snk_link_elem(r_snk);
+  if (link_elem) {
+    alsa_elem_add_callback(link_elem, snk_socket_link_changed, r_snk, NULL);
+    if (is_snk_linked(r_snk)) {
+      GtkOrientation orient = get_socket_orientation(r_snk->elem->port_category);
+      update_socket_widget(socket, 1, orient);
+    }
+  }
+
+  // Pair name change handling
+  struct alsa_elem *pair_name_elem = get_snk_pair_name_elem(r_snk);
+  if (pair_name_elem)
+    alsa_elem_add_callback(pair_name_elem, snk_socket_link_changed, r_snk, NULL);
+}
+
+// Set up a sink label widget
+static void setup_snk_label(struct routing_snk *r_snk, const char *name) {
+  r_snk->label_widget = make_routing_label(
+    name, "routing_snk", r_snk,
+    r_snk->elem->port_category, is_snk_linked(r_snk), 0.0
+  );
 }
 
 static GtkWidget *make_talkback_mix_widget(
@@ -1516,6 +1861,12 @@ void update_routing_src_label(struct routing_src *r_src) {
 
   set_availability_label(r_src->label_widget, name, available, tooltip);
 
+  // For horizontal grids, set width based on mono/stereo
+  if (is_horiz_port_category(r_src->port_category)) {
+    int width = is_src_linked(r_src) ? LABEL_WIDTH_STEREO : LABEL_WIDTH_MONO;
+    gtk_label_set_width_chars(GTK_LABEL(r_src->label_widget), width);
+  }
+
   // Preserve tooltip for ellipsised labels (vertical orientation)
   if (available &&
       gtk_label_get_ellipsize(
@@ -1571,7 +1922,7 @@ void update_all_pcm_labels(struct alsa_card *card) {
 
 // Update all HW I/O and mixer labels when availability changes
 void update_all_hw_io_labels(struct alsa_card *card) {
-  if (!card->routing_snks || !card->routing_srcs)
+  if (!card->window_routing || !card->routing_snks || !card->routing_srcs)
     return;
 
   update_hw_io_limits(card);
@@ -1617,66 +1968,6 @@ static void digital_io_mode_changed(struct alsa_elem *elem, void *data) {
   update_all_hw_io_labels(elem->card);
 }
 
-static void make_snk_routing_widget(
-  struct routing_snk *r_snk,
-  char               *name,
-  GtkOrientation      orientation
-) {
-  // create a box, a "socket", and a label
-  GtkWidget *box = r_snk->box_widget = gtk_box_new(orientation, 5);
-  gtk_widget_add_css_class(box, "route-label");
-  GtkWidget *label = r_snk->label_widget = gtk_label_new(name);
-  gtk_box_append(GTK_BOX(box), label);
-  GtkWidget *socket = r_snk->socket_widget = make_socket_widget();
-
-  g_object_set_data(G_OBJECT(box), "routing_snk", r_snk);
-
-  if (orientation == GTK_ORIENTATION_VERTICAL) {
-    gtk_box_append(GTK_BOX(box), socket);
-    gtk_widget_set_margin_start(box, 5);
-    gtk_widget_set_margin_end(box, 5);
-  } else {
-    gtk_box_prepend(GTK_BOX(box), socket);
-    gtk_widget_set_halign(box, GTK_ALIGN_FILL);
-    gtk_widget_set_hexpand(box, TRUE);
-    gtk_widget_set_hexpand(label, TRUE);
-    gtk_widget_set_halign(label, GTK_ALIGN_START);
-  }
-
-  // handle clicks on the box
-  GtkGesture *gesture = gtk_gesture_click_new();
-  g_signal_connect(
-    gesture, "released", G_CALLBACK(snk_routing_clicked), r_snk
-  );
-  gtk_widget_add_controller(
-    GTK_WIDGET(box), GTK_EVENT_CONTROLLER(gesture)
-  );
-
-  // handle hovering
-  add_routing_hover_controller(box);
-
-  // handle dragging to or from the box
-  setup_snk_drag(r_snk);
-
-  // set up stereo socket handling
-  struct alsa_elem *link_elem = get_snk_link_elem(r_snk);
-  if (link_elem) {
-    // register callback to update socket and label when link state changes
-    alsa_elem_add_callback(link_elem, snk_socket_link_changed, r_snk, NULL);
-
-    // set initial socket state (label updated later in create_routing_controls)
-    if (is_snk_linked(r_snk)) {
-      GtkOrientation orient = get_socket_orientation(r_snk->elem->port_category);
-      update_socket_widget(socket, 1, orient);
-    }
-  }
-
-  // register callback to update label when pair name changes
-  struct alsa_elem *pair_name_elem = get_snk_pair_name_elem(r_snk);
-  if (pair_name_elem)
-    alsa_elem_add_callback(pair_name_elem, snk_socket_link_changed, r_snk, NULL);
-}
-
 static void routing_updated(struct alsa_elem *elem, void *data) {
   struct alsa_card *card = elem->card;
   struct routing_snk *r_snk = data;
@@ -1688,62 +1979,22 @@ static void routing_updated(struct alsa_elem *elem, void *data) {
   gtk_widget_queue_draw(card->routing_lines);
 }
 
+// Create sink widgets (socket and label). Grid attachment handled by arrange functions.
 static void make_routing_alsa_elem(struct routing_snk *r_snk) {
   struct alsa_elem *elem = r_snk->elem;
   struct alsa_card *card = elem->card;
 
-  // "DSP Input X Capture Enum" controls (DSP Inputs) go along
-  // the top, in card->routing_mixer_in_grid
-  if (elem->port_category == PC_DSP) {
+  // Skip fixed mixer inputs (no routing widgets)
+  if (elem->port_category == PC_MIX && card->has_fixed_mixer_inputs)
+    return;
 
-    char *name = get_snk_display_name_formatted(r_snk);
-    make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
-    g_free(name);
-    gtk_grid_attach(
-      GTK_GRID(card->routing_dsp_in_grid), r_snk->box_widget,
-      elem->port_num + 1, 0, 1, 1
-    );
+  char *name = get_snk_display_name_formatted(r_snk);
+  setup_snk_socket(r_snk);
+  setup_snk_label(r_snk, name);
+  g_free(name);
 
-  // "Mixer Input X Capture Enum" controls (Mixer Inputs) go along
-  // the top, in card->routing_mixer_in_grid after the DSP Inputs
-  } else if (elem->port_category == PC_MIX) {
-
-    if (card->has_fixed_mixer_inputs)
-      return;
-
-    char *name = get_snk_display_name_formatted(r_snk);
-    make_snk_routing_widget(r_snk, name, GTK_ORIENTATION_VERTICAL);
-    g_free(name);
-    gtk_grid_attach(
-      GTK_GRID(card->routing_mixer_in_grid), r_snk->box_widget,
-      elem->port_num + 1, 0, 1, 1
-    );
-
-  // "PCM X Capture Enum" controls (PCM Inputs) go along the right,
-  // in card->routing_pcm_out_grid
-  } else if (elem->port_category == PC_PCM) {
-    make_snk_routing_widget(r_snk, "", GTK_ORIENTATION_HORIZONTAL);
-    update_hw_output_label(r_snk);
-
-    gtk_grid_attach(
-      GTK_GRID(card->routing_pcm_out_grid), r_snk->box_widget,
-      0, elem->port_num + 1, 1, 1
-    );
-
-  // "* X Playback Enum" controls go along the right, in
-  // card->routing_hw_out_grid
-  } else if (elem->port_category == PC_HW) {
-
-    make_snk_routing_widget(r_snk, "", GTK_ORIENTATION_HORIZONTAL);
-    update_hw_output_label(r_snk);
-
-    gtk_grid_attach(
-      GTK_GRID(card->routing_hw_out_grid), r_snk->box_widget,
-      0, elem->port_num + 1, 1, 1
-    );
-  } else {
-    printf("invalid port category %d\n", elem->port_category);
-  }
+  // Initialise Main/Alt and availability label state
+  update_hw_output_label(r_snk);
 
   alsa_elem_add_callback(elem, routing_updated, r_snk, NULL);
 }
@@ -1754,96 +2005,62 @@ static void add_routing_widgets(
 ) {
   GArray *r_snks = card->routing_snks;
 
-  // go through each routing sink and create its control
+  // Clear widget pointers (handles window reopen after close)
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    r_src->widget = NULL;
+    r_src->widget2 = NULL;
+    r_src->label_widget = NULL;
+    r_src->talkback_widget = NULL;
+  }
   for (int i = 0; i < r_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(r_snks, struct routing_snk, i);
+    r_snk->socket_widget = NULL;
+    r_snk->label_widget = NULL;
+  }
 
+  // Create sink widgets (grid attachment handled by arrange functions)
+  for (int i = 0; i < r_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(r_snks, struct routing_snk, i);
     make_routing_alsa_elem(r_snk);
-
-    // set initial visibility based on enable AND link state
-    if (r_snk->box_widget) {
-      int enabled = is_routing_snk_enabled(r_snk);
-      int visible = enabled && should_display_snk(r_snk);
-      gtk_widget_set_visible(r_snk->box_widget, visible);
-    }
   }
 
-  if (!card->routing_out_count[PC_MIX]) {
-    printf("no mixer inputs??\n");
+  if (!card->routing_out_count[PC_MIX])
     return;
-  }
 
-  // start at 1 to skip the "Off" input
+  // Create source widgets (grid attachment handled by arrange functions)
+  // Start at 1 to skip the "Off" input
   for (int i = 1; i < card->routing_srcs->len; i++) {
     struct routing_src *r_src = &g_array_index(
       card->routing_srcs, struct routing_src, i
     );
 
     char *name = get_src_display_name_formatted(r_src);
-
-    if (r_src->port_category == PC_DSP) {
-      make_src_routing_widget(
-        card, r_src, name, GTK_ORIENTATION_VERTICAL
-      );
-      gtk_grid_attach(
-        GTK_GRID(card->routing_dsp_out_grid), r_src->widget,
-        r_src->port_num + 1, 0, 1, 1
-      );
-
-    } else if (r_src->port_category == PC_MIX) {
-      make_src_routing_widget(
-        card, r_src, name, GTK_ORIENTATION_VERTICAL
-      );
-      gtk_grid_attach(
-        GTK_GRID(card->routing_mixer_out_grid), r_src->widget,
-        r_src->port_num + 1, 0, 1, 1
-      );
-
-      if (card->has_talkback) {
-        GtkWidget *w = make_talkback_mix_widget(card, r_src);
-        if (!w)
-          continue;
-
-        r_src->talkback_widget = w;
-        gtk_grid_attach(
-          GTK_GRID(card->routing_mixer_out_grid), w,
-          r_src->port_num + 1, 1, 1, 1
-        );
-      }
-    } else if (r_src->port_category == PC_PCM) {
-      make_src_routing_widget(
-        card, r_src, name, GTK_ORIENTATION_HORIZONTAL
-      );
-      gtk_grid_attach(
-        GTK_GRID(card->routing_pcm_in_grid), r_src->widget,
-        0, r_src->port_num + 1, 1, 1
-      );
-    } else if (r_src->port_category == PC_HW) {
-      make_src_routing_widget(
-        card, r_src, name, GTK_ORIENTATION_HORIZONTAL
-      );
-      gtk_grid_attach(
-        GTK_GRID(card->routing_hw_in_grid), r_src->widget,
-        0, r_src->port_num + 1, 1, 1
-      );
-    } else {
-      printf("invalid port category %d\n", r_src->port_category);
-    }
-
+    setup_src_socket(r_src);
+    setup_src_label(r_src, name);
     g_free(name);
 
-    // set initial visibility based on enable AND link state
-    if (r_src->widget) {
-      int enabled = is_routing_src_enabled(r_src);
-      int visible = enabled && should_display_src(r_src);
-      gtk_widget_set_visible(r_src->widget, visible);
-
-      // talkback widget visibility mirrors routing widget visibility
-      if (r_src->talkback_widget)
-        gtk_widget_set_visible(r_src->talkback_widget, visible);
+    // Create talkback widget for mixer outputs if device has talkback
+    if (r_src->port_category == PC_MIX && card->has_talkback) {
+      GtkWidget *w = make_talkback_mix_widget(card, r_src);
+      if (w)
+        r_src->talkback_widget = g_object_ref(w);
     }
   }
 
+  // Arrange all grids (handles visibility and removes empty rows/columns)
+  arrange_src_grid(card, PC_DSP);
+  arrange_src_grid(card, PC_MIX);
+  arrange_src_grid(card, PC_HW);
+  arrange_src_grid(card, PC_PCM);
+  arrange_snk_grid(card, PC_DSP);
+  arrange_snk_grid(card, PC_MIX);
+  arrange_snk_grid(card, PC_HW);
+  arrange_snk_grid(card, PC_PCM);
+
+  // Add talkback label after mixer outputs heading
   if (card->has_talkback) {
     GtkWidget *l_talkback = gtk_label_new("Talkback");
     gtk_widget_set_tooltip_text(
@@ -1852,10 +2069,8 @@ static void add_routing_widgets(
       "Mixer Input 25 internally raised and lowered when the "
       "Talkback control is turned On and Off."
     );
-    gtk_grid_attach(
-      GTK_GRID(card->routing_mixer_out_grid), l_talkback,
-      0, 1, 1, 1
-    );
+    GtkWidget *container = gtk_widget_get_parent(card->routing_mixer_out_heading);
+    gtk_box_append(GTK_BOX(container), l_talkback);
   }
 
   card->routing_lines = gtk_drawing_area_new();
@@ -1926,11 +2141,8 @@ static void add_routing_widgets(
 }
 
 GtkWidget *create_routing_controls(struct alsa_card *card) {
-
-  if (!card->sample_capture_elem) {
-    printf("couldn't find sample capture control; can't create GUI\n");
+  if (!card->sample_capture_elem)
     return NULL;
-  }
 
   create_routing_grid(card);
 
@@ -1981,6 +2193,34 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
     );
 
   add_drop_controller_motion(card, routing_overlay);
+
+  // Add hover detection via motion controller on overlay
+  GtkEventController *motion = gtk_event_controller_motion_new();
+  g_signal_connect(motion, "motion", G_CALLBACK(routing_overlay_motion), card);
+  g_signal_connect(motion, "leave", G_CALLBACK(routing_overlay_leave), card);
+  gtk_widget_add_controller(routing_overlay, motion);
+
+  // Add unified click handler (hit-tests against combined socket+label bounds)
+  GtkGesture *click = gtk_gesture_click_new();
+  g_signal_connect(click, "released", G_CALLBACK(routing_overlay_click), card);
+  gtk_widget_add_controller(routing_overlay, GTK_EVENT_CONTROLLER(click));
+
+  // Add unified drag source (hit-tests on prepare)
+  GtkDragSource *drag_source = gtk_drag_source_new();
+  gtk_drag_source_set_actions(drag_source, GDK_ACTION_COPY);
+  g_signal_connect(drag_source, "prepare", G_CALLBACK(routing_drag_prepare), card);
+  g_signal_connect(drag_source, "drag-end", G_CALLBACK(routing_drag_end), card);
+  GdkPaintable *paintable = gdk_paintable_new_empty(1, 1);
+  gtk_drag_source_set_icon(drag_source, paintable, 0, 0);
+  g_object_unref(paintable);
+  gtk_widget_add_controller(routing_overlay, GTK_EVENT_CONTROLLER(drag_source));
+
+  // Add unified drop target (hit-tests on motion/drop)
+  GtkDropTarget *drop_target = gtk_drop_target_new(G_TYPE_INT, GDK_ACTION_COPY);
+  g_signal_connect(drop_target, "motion", G_CALLBACK(routing_drop_motion), card);
+  g_signal_connect(drop_target, "leave", G_CALLBACK(routing_drop_leave), card);
+  g_signal_connect(drop_target, "drop", G_CALLBACK(routing_drop), card);
+  gtk_widget_add_controller(routing_overlay, GTK_EVENT_CONTROLLER(drop_target));
 
   return top;
 }
