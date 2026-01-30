@@ -32,6 +32,7 @@ enum {
 
 // names for the port categories
 extern const char *port_category_names[PC_COUNT];
+extern const char *port_category_short_names[PC_COUNT];
 
 // hardware types
 enum {

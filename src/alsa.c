@@ -38,6 +38,15 @@ const char *port_category_names[PC_COUNT] = {
   "PCM Inputs"
 };
 
+// short names for the port categories (for debug output)
+const char *port_category_short_names[PC_COUNT] = {
+  "OFF",
+  "HW",
+  "MIX",
+  "DSP",
+  "PCM"
+};
+
 // names for the hardware types
 const char *hw_type_names[HW_TYPE_COUNT] = {
   "Analogue",
