@@ -126,6 +126,7 @@ static gboolean on_key_press(
 
     switch (keyval) {
       case GDK_KEY_q: action = "quit";     break;
+      case GDK_KEY_w:
       case GDK_KEY_h: action = "hardware"; break;
     }
 

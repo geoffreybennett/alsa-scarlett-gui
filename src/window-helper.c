@@ -26,7 +26,8 @@ static gboolean on_key_press(
     GTK_EVENT_CONTROLLER(controller)
   );
 
-  if (keyval == GDK_KEY_Escape) {
+  if (keyval == GDK_KEY_Escape ||
+      (keyval == GDK_KEY_w && (state & GDK_CONTROL_MASK))) {
     gtk_window_close(GTK_WINDOW(widget));
     return 1;
   }

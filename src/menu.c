@@ -125,8 +125,9 @@ static const struct menu_data menus[] = {
     (struct menu_item[]){
       { "_Load Configuration",   "win.load", { "<Control>O", NULL } },
       { "_Save Configuration",   "win.save", { "<Control>S", NULL } },
-      { "_Interface Simulation", "win.sim",  { "<Control>I", NULL } },
-      { "E_xit",                 "app.quit", { "<Control>Q", NULL } },
+      { "_Interface Simulation", "win.sim",      { "<Control>I", NULL } },
+      { "_Close",                "window.close", { "<Control>W", NULL } },
+      { "E_xit",                 "app.quit",     { "<Control>Q", NULL } },
       {}
     }
   },
