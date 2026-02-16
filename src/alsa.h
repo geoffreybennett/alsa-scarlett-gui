@@ -300,6 +300,7 @@ struct alsa_card {
   GList              *monitor_group_gains;
   GtkWidget          *mixer_overlay;
   GtkWidget          *mixer_glow;
+  GtkWidget          *mixer_label_overlay;
   GtkWidget          *mixer_unavailable_label;
   GtkWidget          *mixer_corner_label;
   GList              *mixer_gain_widgets;
