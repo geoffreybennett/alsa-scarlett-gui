@@ -143,6 +143,10 @@ struct _GtkDial {
   const double *level_colours;
   int level_breakpoints_count;
 
+  // cached static layer (background, value arc, knob, focus ring)
+  cairo_surface_t *static_cache;
+  int static_cache_valid;
+
   // variables derived from the widget's dynamic properties (size and
   // configuration, excluding the value)
   int    dim;
@@ -521,6 +525,7 @@ static void gtk_dial_state_flags_changed(
   GtkWidget    *widget,
   GtkStateFlags previous_flags
 ) {
+  GTK_DIAL(widget)->static_cache_valid = 0;
   gtk_widget_queue_draw(widget);
 }
 
@@ -748,6 +753,7 @@ static void gtk_dial_class_init(GtkDialClass *klass) {
 static void gtk_dial_focus_change_cb(
   GtkEventControllerFocus *controller, GtkDial *dial
 ) {
+  dial->static_cache_valid = 0;
   gtk_widget_queue_draw(GTK_WIDGET(dial));
 }
 
@@ -1040,35 +1046,32 @@ static void draw_arc_tick(
   cairo_stroke(cr);
 }
 
-static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
-  GtkDial *dial = GTK_DIAL(widget);
+// draw the static parts of the dial to the cache surface
+static void dial_draw_static(GtkDial *dial) {
+  int w = (int)dial->w;
+  int h = (int)dial->h;
 
-  if (update_dial_properties(dial)) {
-    update_dial_values(dial);
-    update_dial_level_values(dial);
-  }
+  if (dial->static_cache)
+    cairo_surface_destroy(dial->static_cache);
 
-  cairo_t *cr = gtk_snapshot_append_cairo(
-    snapshot,
-    &GRAPHENE_RECT_INIT(0, 0, dial->w, dial->h)
+  dial->static_cache = cairo_image_surface_create(
+    CAIRO_FORMAT_ARGB32, w, h
   );
 
+  cairo_t *cr = cairo_create(dial->static_cache);
   cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
   cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 
   // 1. background line (thin grey arc showing full range)
   cairo_arc(
-    cr, dial->cx, dial->cy, dial->slider_radius, ANGLE_START, ANGLE_END
+    cr, dial->cx, dial->cy,
+    dial->slider_radius, ANGLE_START, ANGLE_END
   );
   cairo_set_line_width(cr, 2);
   cairo_set_source_rgba_dim(cr, 1, 1, 1, 0.17, dial->dim);
   cairo_stroke(cr);
 
-  // 2. peak hold indicator on outer arc (for level-only dials)
-  if (dial->peak_hold && dial->show_level && !dial->show_value)
-    draw_peak(dial, cr, dial->slider_radius);
-
-  // 3. dim tick at zero dB
+  // 2. dim tick at zero dB
   double zero_db = gtk_dial_get_zero_db(dial);
   double tick_large = dial->slider_thickness / 4;
   double tick_small = dial->slider_thickness / 6;
@@ -1081,13 +1084,8 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
     );
   }
 
-  // 4. level arc on outer ring (for level-only dials: show_level && !show_value)
-  if (dial->show_level && !dial->show_value)
-    draw_level_indicator(dial, cr, dial->slider_radius, dial->background_radius);
-
-  // 5. value arc (for dials with show_value)
+  // 3. value arc (for dials with show_value)
   if (dial->show_value) {
-    // bold tick when at min, max, or zero dB
     double value = gtk_dial_get_value(dial);
     int at_min = value == gtk_adjustment_get_lower(dial->adj);
     if (at_min ||
@@ -1101,45 +1099,93 @@ static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
       );
     }
 
-    // value arc (white)
     draw_value_arc(dial, cr, dial->slider_radius, 4, 0.5);
     draw_value_arc(dial, cr, dial->slider_radius, 2, 1);
   }
 
-  // 6. fill the knob circle
+  // 4. fill the knob circle
   int has_focus = gtk_widget_has_focus(GTK_WIDGET(dial));
-  cairo_set_source(cr, dial->fill_pattern[has_focus][dial->dim]);
-  cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI);
+  cairo_set_source(
+    cr, dial->fill_pattern[has_focus][dial->dim]
+  );
+  cairo_arc(
+    cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI
+  );
   cairo_fill(cr);
 
-  // 7. draw the knob outline
+  // 5. draw the knob outline
   cairo_set_source(cr, dial->outline_pattern[dial->dim]);
-  cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI);
+  cairo_arc(
+    cr, dial->cx, dial->cy, dial->knob_radius, 0, 2 * M_PI
+  );
   cairo_set_line_width(cr, 2);
   cairo_stroke(cr);
 
-  // 8. level arc inside knob (for dual-purpose dials: show_level && show_value)
-  if (dial->show_level && dial->show_value) {
-    // peak hold indicator (drawn first, behind level)
-    if (dial->peak_hold)
-      draw_peak(dial, cr, dial->knob_radius);
-
-    // level indicator at knob radius
-    draw_level_indicator(dial, cr, dial->knob_radius, dial->knob_radius);
-  }
-
-  // 9. show the peak level value in centre (for any dial with show_level)
-  if (dial->peak_hold && dial->show_level)
-    show_peak_value(dial, cr);
-
-  // if focussed
+  // 6. focus ring
   if (has_focus) {
     cairo_new_path(cr);
     cairo_set_source_rgba(cr, 1, 0.125, 0.125, 0.5);
     cairo_set_line_width(cr, 2);
-    cairo_arc(cr, dial->cx, dial->cy, dial->knob_radius + 2, 0, 2 * M_PI);
+    cairo_arc(
+      cr, dial->cx, dial->cy,
+      dial->knob_radius + 2, 0, 2 * M_PI
+    );
     cairo_stroke(cr);
   }
+
+  cairo_destroy(cr);
+  dial->static_cache_valid = 1;
+}
+
+static void dial_snapshot(GtkWidget *widget, GtkSnapshot *snapshot) {
+  GtkDial *dial = GTK_DIAL(widget);
+
+  if (update_dial_properties(dial)) {
+    dial->static_cache_valid = 0;
+    update_dial_values(dial);
+    update_dial_level_values(dial);
+  }
+
+  if (!dial->static_cache_valid)
+    dial_draw_static(dial);
+
+  cairo_t *cr = gtk_snapshot_append_cairo(
+    snapshot,
+    &GRAPHENE_RECT_INIT(0, 0, dial->w, dial->h)
+  );
+
+  // paint cached static layer
+  cairo_set_source_surface(cr, dial->static_cache, 0, 0);
+  cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+  cairo_paint(cr);
+
+  // 7. peak hold indicator on outer arc (level-only dials)
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+  cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+
+  if (dial->peak_hold && dial->show_level && !dial->show_value)
+    draw_peak(dial, cr, dial->slider_radius);
+
+  // 8. level arc on outer ring (level-only dials)
+  if (dial->show_level && !dial->show_value)
+    draw_level_indicator(
+      dial, cr,
+      dial->slider_radius, dial->background_radius
+    );
+
+  // 9. level arc inside knob (dual-purpose dials)
+  if (dial->show_level && dial->show_value) {
+    if (dial->peak_hold)
+      draw_peak(dial, cr, dial->knob_radius);
+
+    draw_level_indicator(
+      dial, cr, dial->knob_radius, dial->knob_radius
+    );
+  }
+
+  // 10. peak value text
+  if (dial->peak_hold && dial->show_level)
+    show_peak_value(dial, cr);
 
   cairo_destroy(cr);
 }
@@ -1305,6 +1351,7 @@ int gtk_dial_get_round_digits(GtkDial *dial) {
 void gtk_dial_set_zero_db(GtkDial *dial, double zero_db) {
   dial->zero_db = zero_db;
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
 }
 
 double gtk_dial_get_zero_db(GtkDial *dial) {
@@ -1314,6 +1361,7 @@ double gtk_dial_get_zero_db(GtkDial *dial) {
 void gtk_dial_set_off_db(GtkDial *dial, double off_db) {
   dial->off_db = off_db;
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
 }
 
 double gtk_dial_get_off_db(GtkDial *dial) {
@@ -1323,6 +1371,7 @@ double gtk_dial_get_off_db(GtkDial *dial) {
 void gtk_dial_set_is_linear(GtkDial *dial, gboolean is_linear) {
   dial->is_linear = is_linear;
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
 }
 
 gboolean gtk_dial_get_is_linear(GtkDial *dial) {
@@ -1332,6 +1381,7 @@ gboolean gtk_dial_get_is_linear(GtkDial *dial) {
 void gtk_dial_set_taper(GtkDial *dial, int taper) {
   dial->taper = taper;
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
 }
 
 int gtk_dial_get_taper(GtkDial *dial) {
@@ -1345,6 +1395,7 @@ void gtk_dial_set_taper_linear_breakpoints(
   int           count
 ) {
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
 
   free(dial->taper_breakpoints);
   free(dial->taper_outputs);
@@ -1377,6 +1428,7 @@ void gtk_dial_set_taper_linear_breakpoints(
 void gtk_dial_set_can_control(GtkDial *dial, gboolean can_control) {
   dial->can_control = can_control;
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
 }
 
 gboolean gtk_dial_get_can_control(GtkDial *dial) {
@@ -1393,6 +1445,7 @@ void gtk_dial_set_level_meter_colours(
   dial->level_colours = colours;
   dial->level_breakpoints_count = count;
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
 }
 
 void gtk_dial_set_peak_hold(GtkDial *dial, int peak_hold) {
@@ -1415,6 +1468,7 @@ double gtk_dial_get_level(GtkDial *dial) {
 void gtk_dial_set_show_level(GtkDial *dial, gboolean show_level) {
   dial->show_level = show_level;
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
   gtk_widget_queue_draw(GTK_WIDGET(dial));
 }
 
@@ -1425,6 +1479,7 @@ gboolean gtk_dial_get_show_level(GtkDial *dial) {
 void gtk_dial_set_show_value(GtkDial *dial, gboolean show_value) {
   dial->show_value = show_value;
   dial->properties_updated = 1;
+  dial->static_cache_valid = 0;
   gtk_widget_queue_draw(GTK_WIDGET(dial));
 }
 
@@ -1440,6 +1495,7 @@ void gtk_dial_set_adjustment(GtkDial *dial, GtkAdjustment *adj) {
   dial->adj = adj;
   g_object_ref_sink(dial->adj);
   g_signal_emit(dial, signals[VALUE_CHANGED], 0);
+  dial->static_cache_valid = 0;
   gtk_widget_queue_draw(GTK_WIDGET(dial));
 }
 
@@ -1516,7 +1572,12 @@ static int set_value(GtkDial *dial, double newval) {
   double old_valp = dial->valp;
   update_dial_values(dial);
 
-  return old_valp != dial->valp;
+  if (old_valp != dial->valp) {
+    dial->static_cache_valid = 0;
+    return 1;
+  }
+
+  return 0;
 }
 
 // set the level value for metering (this tracks peaks)
@@ -1836,6 +1897,10 @@ void gtk_dial_dispose(GObject *o) {
   dial->taper_breakpoints_count = 0;
   free(dial->level_breakpoint_angles);
   dial->level_breakpoint_angles = NULL;
+
+  if (dial->static_cache)
+    cairo_surface_destroy(dial->static_cache);
+  dial->static_cache = NULL;
 
   for (int focus = 0; focus <= 1; focus++)
     for (int dim = 0; dim <= 1; dim++)
