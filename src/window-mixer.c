@@ -354,16 +354,18 @@ static void draw_mixer_glow(
       draw_stereo_label_glow(
         cr, r_src->mixer_label_left, parent, level_l, level_r
       );
-      draw_stereo_label_glow(
-        cr, r_src->mixer_label_right, parent, level_l, level_r
-      );
+      if (card->pref_show_bottom_right_labels)
+        draw_stereo_label_glow(
+          cr, r_src->mixer_label_right, parent, level_l, level_r
+        );
     } else {
       draw_label_glow(
         cr, r_src->mixer_label_left, parent, level_l
       );
-      draw_label_glow(
-        cr, r_src->mixer_label_right, parent, level_l
-      );
+      if (card->pref_show_bottom_right_labels)
+        draw_label_glow(
+          cr, r_src->mixer_label_right, parent, level_l
+        );
     }
   }
 
@@ -408,19 +410,21 @@ static void draw_mixer_glow(
         cr, r_snk->mixer_label_top, parent,
         FALSE, level_l, level_r
       );
-      draw_rotated_stereo_label_glow(
-        cr, r_snk->mixer_label_bottom, parent,
-        TRUE, level_l, level_r
-      );
+      if (card->pref_show_bottom_right_labels)
+        draw_rotated_stereo_label_glow(
+          cr, r_snk->mixer_label_bottom, parent,
+          TRUE, level_l, level_r
+        );
     } else {
       draw_rotated_label_glow(
         cr, r_snk->mixer_label_top, parent,
         FALSE, level_l
       );
-      draw_rotated_label_glow(
-        cr, r_snk->mixer_label_bottom, parent,
-        TRUE, level_l
-      );
+      if (card->pref_show_bottom_right_labels)
+        draw_rotated_label_glow(
+          cr, r_snk->mixer_label_bottom, parent,
+          TRUE, level_l
+        );
     }
   }
 }
@@ -731,7 +735,7 @@ static void draw_mixer_labels(
     if (r_snk->mixer_label_top)
       draw_snk_label(cr, r_snk->mixer_label_top, overlay, FALSE);
 
-    if (r_snk->mixer_label_bottom)
+    if (r_snk->mixer_label_bottom && card->pref_show_bottom_right_labels)
       draw_snk_label(cr, r_snk->mixer_label_bottom, overlay, TRUE);
   }
 }
@@ -1152,6 +1156,12 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   gtk_widget_add_css_class(card->mixer_corner_label, "mixer-corner-label");
   g_object_ref(card->mixer_corner_label);
 
+  // spacer to reserve width for the rightmost top label overflow
+  card->mixer_right_spacer = gtk_box_new(
+    GTK_ORIENTATION_HORIZONTAL, 0
+  );
+  g_object_ref(card->mixer_right_spacer);
+
   // Create all mixer input labels upfront (top and bottom)
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
@@ -1369,7 +1379,7 @@ void rebuild_mixer_grid(struct alsa_card *card) {
       );
     }
 
-    if (src->mixer_label_right) {
+    if (src->mixer_label_right && card->pref_show_bottom_right_labels) {
       gtk_grid_attach(
         grid, src->mixer_label_right,
         visible_input_count + 1, row + row_offset, 1, 1
@@ -1408,7 +1418,7 @@ void rebuild_mixer_grid(struct alsa_card *card) {
       );
     }
 
-    if (snk->mixer_label_bottom) {
+    if (snk->mixer_label_bottom && card->pref_show_bottom_right_labels) {
       gtk_grid_attach(
         grid, snk->mixer_label_bottom,
         col + 1, visible_mix_count + row_offset, 1, 1
@@ -1436,6 +1446,56 @@ void rebuild_mixer_grid(struct alsa_card *card) {
       );
     }
   }
+
+  // when bottom/right labels are hidden, add a spacer to the right
+  // so the rightmost top rotated label has room to extend
+  if (!card->pref_show_bottom_right_labels && card->mixer_right_spacer) {
+    // find the rightmost visible top label's text width
+    int last_text_w = 0;
+    int last_col = -1;
+
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      if (!snk->elem || snk->elem->port_category != PC_MIX)
+        continue;
+      int input_num = snk->elem->lr_num - 1;
+      if (input_num < 0 || input_num >= max_mixer_inputs)
+        continue;
+      int col = input_num_to_col[input_num];
+      if (col < 0 || !snk->mixer_label_top)
+        continue;
+      struct rotated_label_info *info = g_object_get_data(
+        G_OBJECT(snk->mixer_label_top), "label_info"
+      );
+      if (info && col > last_col) {
+        last_col = col;
+        last_text_w = info->text_w;
+      }
+    }
+
+    int spacer_w = (int)ceil(
+      last_text_w * LABEL_COS - 37  // 75% of 50, the minimum dial width
+    );
+    if (spacer_w < 0)
+      spacer_w = 0;
+    gtk_widget_set_size_request(
+      card->mixer_right_spacer, spacer_w, 1
+    );
+    gtk_grid_attach(
+      grid, card->mixer_right_spacer,
+      visible_input_count + 1, 0, 1, 1
+    );
+  }
+
+  // force full relayout and redraw of overlay drawing areas
+  if (card->mixer_overlay)
+    gtk_widget_queue_resize(card->mixer_overlay);
+  if (card->mixer_label_overlay)
+    gtk_widget_queue_draw(card->mixer_label_overlay);
+  if (card->mixer_glow)
+    gtk_widget_queue_draw(card->mixer_glow);
 }
 
 // Update mixer window availability indication

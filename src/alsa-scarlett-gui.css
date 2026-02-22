@@ -435,6 +435,26 @@ button.toggle {
   padding: 5px;
 }
 
+/* Switches */
+.window-frame switch {
+  background: #303030;
+  border: 1px solid #404040;
+}
+
+.window-frame switch:checked {
+  background: #a00000;
+  border-color: #c00000;
+}
+
+.window-frame switch slider {
+  background: #d0d0d0;
+  border: 1px solid #801010;
+}
+
+.window-frame switch:focus:focus-visible {
+  outline: 2px solid #801010;
+}
+
 /* Separators */
 .window-frame separator {
   background: #800000;

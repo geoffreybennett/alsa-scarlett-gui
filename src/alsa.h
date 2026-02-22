@@ -298,6 +298,7 @@ struct alsa_card {
   GtkWidget          *window_startup;
   GtkWidget          *window_modal;
   GtkWidget          *window_dsp;
+  GtkWidget          *window_preferences;
   GtkWidget          *window_main_contents;
   GtkWidget          *routing_grid;
   GtkWidget          *mixer_grid;
@@ -307,6 +308,7 @@ struct alsa_card {
   GtkWidget          *mixer_overlay;
   GtkWidget          *mixer_glow;
   GtkWidget          *mixer_label_overlay;
+  GtkWidget          *mixer_right_spacer;
   GtkWidget          *mixer_unavailable_label;
   GtkWidget          *mixer_corner_label;
   GList              *mixer_gain_widgets;
@@ -362,6 +364,16 @@ struct alsa_card {
   int                 max_adat_out;          // max ADAT output ports
 
   struct alsa_elem   *mixer_gains[MAX_MIX_OUT][MAX_MUX_IN];
+
+  // level meter support (set at init, not persisted)
+  int                 has_levels;
+
+  // per-card preferences (persisted via optional-state [ui] section)
+  int                 pref_show_bottom_right_labels;
+  int                 pref_levels_interval_ms;
+
+  // levels timer callback data (for restart_levels_timer)
+  void               *levels_data;
 };
 
 // flags for pending_ui_updates

@@ -43,6 +43,7 @@ static gboolean on_key_press(
       case GDK_KEY_d: action = "win.dsp";           break;
       case GDK_KEY_g: action = "win.configuration"; break;
       case GDK_KEY_t: action = "win.startup";       break;
+      case GDK_KEY_p: action = "win.preferences";   break;
       case GDK_KEY_o: action = "win.load";          break;
       case GDK_KEY_s: action = "win.save";          break;
       case GDK_KEY_i: action = "win.sim";           break;

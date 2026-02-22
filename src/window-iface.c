@@ -18,6 +18,7 @@
 #include "window-routing.h"
 #include "window-startup.h"
 #include "optional-controls.h"
+#include "window-preferences.h"
 
 static GtkWidget *no_cards_window;
 static int window_count;
@@ -261,6 +262,11 @@ void create_card_window(struct alsa_card *card) {
     }
   }
 
+  // set has_levels flag and load preferences before building UI
+  card->has_levels =
+    !!get_elem_by_name(card->elems, "Firmware Version");
+  load_preferences(card);
+
   // Firmware update required
   // or firmware version available and in MSD mode
   // (updating will disable MSD mode)
@@ -319,6 +325,8 @@ void create_card_window(struct alsa_card *card) {
     add_startup_action_map(card);
   if (has_mixer)
     add_mixer_action_map(card);
+  if (has_mixer)
+    add_preferences_action_map(card);
   if (card->window_dsp)
     add_dsp_action_map(card);
   if (card->device)

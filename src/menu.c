@@ -21,6 +21,7 @@ static const struct window_action window_actions[] = {
   { "configuration", offsetof(struct alsa_card, window_configuration) },
   { "startup",       offsetof(struct alsa_card, window_startup)       },
   { "dsp",           offsetof(struct alsa_card, window_dsp)           },
+  { "preferences",   offsetof(struct alsa_card, window_preferences)   },
   { NULL, 0 }
 };
 
@@ -140,6 +141,7 @@ static const struct menu_data menus[] = {
       { "_DSP",           "win.dsp",           { "<Control>D", NULL } },
       { "_Configuration", "win.configuration", { "<Control>G", NULL } },
       { "_Startup",       "win.startup",       { "<Control>T", NULL } },
+      { "_Preferences",   "win.preferences",   { "<Control>P", NULL } },
       {}
     }
   },
@@ -245,10 +247,8 @@ void add_mixer_action_map(struct alsa_card *card) {
     card
   );
 
-  // Hide the levels menu item if there is no "Firmware Version"
-  // control (working kernel support for level meters was added in the
-  // same version as the "Firmware Version" control)
-  if (get_elem_by_name(card->elems, "Firmware Version")) {
+  // Hide the levels menu item if there is no level meter support
+  if (card->has_levels) {
     g_action_map_add_action_entries(
       G_ACTION_MAP(card->window_main),
       levels_entries,
@@ -262,6 +262,19 @@ void add_mixer_action_map(struct alsa_card *card) {
     G_ACTION_MAP(card->window_main),
     configuration_entries,
     G_N_ELEMENTS(configuration_entries),
+    card
+  );
+}
+
+static const GActionEntry preferences_entry[] = {
+  {"preferences", activate_window, NULL, "false"}
+};
+
+void add_preferences_action_map(struct alsa_card *card) {
+  g_action_map_add_action_entries(
+    G_ACTION_MAP(card->window_main),
+    preferences_entry,
+    G_N_ELEMENTS(preferences_entry),
     card
   );
 }

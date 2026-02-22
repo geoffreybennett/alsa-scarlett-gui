@@ -330,7 +330,10 @@ static GtkWidget *create_levels_controls_with_labels(
     gtk_grid_attach(GTK_GRID(data->grid), l, col, 0, 1, 1);
   }
 
-  card->levels_timer = g_timeout_add(50, update_levels_controls, data);
+  card->levels_data = data;
+  card->levels_timer = g_timeout_add(
+    card->pref_levels_interval_ms, update_levels_controls, data
+  );
   g_object_weak_ref(G_OBJECT(data->grid), (GWeakNotify)on_destroy, data);
 
   return data->top;
@@ -419,8 +422,27 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
   if (meter_num != elem_count)
     printf("meter_num is %d but elem count is %d\n", meter_num, elem_count);
 
-  card->levels_timer = g_timeout_add(50, update_levels_controls, data);
+  card->levels_data = data;
+  card->levels_timer = g_timeout_add(
+    card->pref_levels_interval_ms, update_levels_controls, data
+  );
   g_object_weak_ref(G_OBJECT(grid), (GWeakNotify)on_destroy, data);
 
   return top;
+}
+
+void restart_levels_timer(struct alsa_card *card) {
+  if (!card->levels_data)
+    return;
+
+  if (card->levels_timer) {
+    g_source_remove(card->levels_timer);
+    card->levels_timer = 0;
+  }
+
+  card->levels_timer = g_timeout_add(
+    card->pref_levels_interval_ms,
+    update_levels_controls,
+    card->levels_data
+  );
 }
