@@ -59,12 +59,12 @@ static void button_set_text(
 
 // Parse the max rate from a "Rates:" line like "Rates: 44100, 48000"
 static int parse_max_rate(const char *line) {
-  char *rates_str = strstr(line, "Rates: ");
+  const char *rates_str = strstr(line, "Rates: ");
   if (!rates_str)
     return 0;
 
   int max_rate = 0;
-  char *p = rates_str + 7;
+  const char *p = rates_str + 7;
 
   while (*p) {
     // skip non-digits
