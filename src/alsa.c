@@ -1563,7 +1563,7 @@ static int alsa_get_usbbus(struct alsa_card *card, int *bus, int *dev) {
   snprintf(path, 256, "/proc/asound/card%d/usbbus", card->num);
   FILE *f = fopen(path, "r");
   if (!f) {
-    fprintf(stderr, "can't open %s\n", path);
+    fprintf(stderr, "can't open %s: %s\n", path, strerror(errno));
     return 0;
   }
 
@@ -1680,7 +1680,7 @@ static void alsa_get_serial_number(struct alsa_card *card) {
   snprintf(serial_path, 520, "%s/serial", port_path);
   FILE *f = fopen(serial_path, "r");
   if (!f) {
-    fprintf(stderr, "can't open %s\n", serial_path);
+    fprintf(stderr, "can't open %s: %s\n", serial_path, strerror(errno));
     return;
   }
 
