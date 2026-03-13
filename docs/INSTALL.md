@@ -98,87 +98,89 @@ https://github.com/geoffreybennett/scarlett4-firmware and place it in
 
 ## Building and Running
 
-On Fedora, these packages need to be installed:
-
+### 1. Install required packages
+#### Fedora
+Install packages:
+```bash
+sudo dnf -y install git make gcc alsa-lib-devel gtk4-devel openssl-devel
 ```
-sudo dnf -y install alsa-lib-devel gtk4-devel openssl-devel
-```
 
-On OpenSUSE:
-
-```
+#### OpenSUSE
+Install packages:
+```bash
 sudo zypper in git alsa-devel gtk4-devel libopenssl-devel
 ```
 
-On Ubuntu:
-
-```
+#### Ubuntu
+Install packages:
+```bash
 sudo apt -y install git make gcc libgtk-4-dev libasound2-dev libssl-dev
 ```
 
-On Arch:
-
-```
+#### Arch
+Install packages:
+```bash
 sudo pacman -S gtk4
 ```
 
-To download from github:
-
-```
+### 2. Build
+1. Download from GitHub
+Using Git:
+```bash
 git clone https://github.com/geoffreybennett/alsa-scarlett-gui
 cd alsa-scarlett-gui
 ```
 
-To build:
-
-```
+2. Build
+```bash
 cd src
 make -j$(nproc)
 ```
 
-To run:
-
-```
+3. Run `alsa-scarlett-gui`
+```bash
 ./alsa-scarlett-gui
 ```
 
-You can install it into `/usr/local` (binary, desktop file, and icon)
-with:
+### 3. Installation
+You have 2 options:
+1. **System installation** (in `/usr/local`, with binary, desktop file, and icon)
+2. **Flatpak**
 
-```
+#### 1. System installation
+**Install:**
+```bash
 sudo make install
 ```
 
-And uninstall with:
-
-```
+**Uninstall with:**
+```bash
 sudo make uninstall
 ```
 
-Continue on to reading [USAGE.md](USAGE.md) for how to use the GUI.
-
-## Flatpak
+#### 2. Flatpak installation
 
 With Flatpak, in any distro:
 
-```
+```bash
 flatpak-builder --user --install --force-clean flatpak-build \
     vu.b4.alsa-scarlett-gui.yml
 ```
 
+##### Common issues with Flatpak
 Be sure to use `flatpak-build` as the directory where the flatpak is
 built or hence you risk bundling the artifacts when committing!
 
 If you get messages like these:
 
-```
+```bash
 Failed to init: Unable to find sdk org.gnome.Sdk version 45
 Failed to init: Unable to find runtime org.gnome.Platform version 45
 ```
 
 Then install them:
 
-```
+```bash
 flatpak install org.gnome.Sdk
 flatpak install org.gnome.Platform
 ```
@@ -195,3 +197,7 @@ Then:
 ```
 flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 ```
+
+---
+
+> Continue on to reading [USAGE.md](USAGE.md) for how to use the GUI.
