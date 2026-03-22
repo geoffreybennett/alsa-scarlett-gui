@@ -6,6 +6,7 @@
 #include "alsa.h"
 #include "custom-names.h"
 #include "device-port-names.h"
+#include "pipewire-export.h"
 #include "stereo-link.h"
 #include "widget-text-entry.h"
 #include "window-configuration.h"
@@ -2070,6 +2071,45 @@ void update_config_io_mixer_labels(struct alsa_card *card) {
   }
 }
 
+// Callback for "Export Names to PipeWire" button
+static void on_export_pipewire_clicked(
+  GtkButton *button,
+  gpointer   user_data
+) {
+  struct alsa_card *card = user_data;
+
+  int ret = pipewire_export_names(card);
+
+  GtkWidget *dialog;
+  GtkWindow *window = GTK_WINDOW(
+    gtk_widget_get_ancestor(GTK_WIDGET(button), GTK_TYPE_WINDOW)
+  );
+
+  if (ret == 0) {
+    dialog = gtk_message_dialog_new(
+      window,
+      GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+      GTK_MESSAGE_INFO,
+      GTK_BUTTONS_OK,
+      "Channel names exported to PipeWire.\n"
+      "WirePlumber has been restarted."
+    );
+  } else {
+    dialog = gtk_message_dialog_new(
+      window,
+      GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+      GTK_MESSAGE_WARNING,
+      GTK_BUTTONS_OK,
+      "Channel names config file was written, but\n"
+      "WirePlumber could not be restarted.\n"
+      "Run: systemctl --user restart wireplumber"
+    );
+  }
+
+  g_signal_connect(dialog, "response", G_CALLBACK(gtk_window_destroy), NULL);
+  gtk_widget_set_visible(dialog, TRUE);
+}
+
 void add_io_tab(GtkWidget *top_notebook, struct alsa_card *card) {
   // Create the sub-notebook for I/O Configuration
   GtkWidget *notebook = gtk_notebook_new();
@@ -2105,6 +2145,25 @@ void add_io_tab(GtkWidget *top_notebook, struct alsa_card *card) {
     setup_notebook_tab_persistence(
       GTK_NOTEBOOK(notebook), card, CONFIG_IO_TAB_KEY
     );
+
+    // Export Names to PipeWire button
+    if (card->serial && *card->serial &&
+        card->routing_srcs && card->routing_snks) {
+      GtkWidget *button_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+      gtk_widget_set_halign(button_box, GTK_ALIGN_CENTER);
+      gtk_widget_set_margin_top(button_box, 10);
+      gtk_widget_set_margin_bottom(button_box, 10);
+
+      GtkWidget *button = gtk_button_new_with_label(
+        "Export Names to PipeWire"
+      );
+      g_signal_connect(
+        button, "clicked",
+        G_CALLBACK(on_export_pipewire_clicked), card
+      );
+      gtk_box_append(GTK_BOX(button_box), button);
+      gtk_box_append(GTK_BOX(io_tab_content), button_box);
+    }
 
     GtkWidget *io_tab_label = gtk_label_new("I/O Configuration");
     g_object_set_data(
