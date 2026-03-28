@@ -20,7 +20,7 @@ modules:
   - name: alsa-utils
     sources:
       - type: archive
-        # Use the same version as the one in the base runtime
+        # Use the same version as the one included in the gnome runtime
         url: https://www.alsa-project.org/files/pub/utils/alsa-utils-1.2.14.tar.bz2
         sha256: 0794c74d33fed943e7c50609c13089e409312b6c403d6ae8984fc429c0960741
     buildsystem: autotools
