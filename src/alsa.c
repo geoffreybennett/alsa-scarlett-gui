@@ -1441,24 +1441,25 @@ static gboolean alsa_card_callback(
     struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
     if (elem->numid == numid) {
-      // Only fire callback if value actually changed
+      // Update cached value
+      int value_changed = 0;
+
       if (elem->count == 1) {
         long new_value = alsa_get_elem_value(elem);
-        if (new_value == elem->value)
-          break;
+        value_changed = new_value != elem->value;
         elem->value = new_value;
       } else if (elem->count > 1) {
         long *new_values = alsa_get_elem_int_values(elem);
-        int changed = !elem->values ||
+        value_changed = !elem->values ||
           memcmp(new_values, elem->values, elem->count * sizeof(long)) != 0;
-        if (!changed) {
-          free(new_values);
-          break;
-        }
         free(elem->values);
         elem->values = new_values;
       }
-      alsa_elem_change(elem);
+
+      // Info events (writable/range changes) always need a
+      // callback; value-only events only when the value changed.
+      if (value_changed || (mask & SND_CTL_EVENT_MASK_INFO))
+        alsa_elem_change(elem);
     }
   }
 
