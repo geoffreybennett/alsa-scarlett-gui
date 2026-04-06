@@ -1007,6 +1007,73 @@ static struct routing_snk *find_snk_at_point(
   return NULL;
 }
 
+// Callback for stereo link toggle button inside context menu popover
+static void link_popover_clicked(GtkButton *button, gpointer user_data) {
+  struct alsa_elem *link_elem = user_data;
+  int current = alsa_get_elem_value(link_elem);
+  alsa_set_elem_value(link_elem, !current);
+
+  // Close the popover
+  GtkWidget *popover = gtk_widget_get_ancestor(
+    GTK_WIDGET(button), GTK_TYPE_POPOVER
+  );
+  if (popover)
+    gtk_popover_popdown(GTK_POPOVER(popover));
+}
+
+// Right-click handler for stereo link context menu
+static void routing_overlay_right_click(
+  GtkGestureClick *gesture,
+  int              n_press,
+  double           x,
+  double           y,
+  gpointer         user_data
+) {
+  struct alsa_card *card = user_data;
+  GtkWidget *widget = gtk_event_controller_get_widget(
+    GTK_EVENT_CONTROLLER(gesture)
+  );
+
+  struct routing_src *r_src = find_src_at_point(card, widget, x, y);
+  struct routing_snk *r_snk = find_snk_at_point(card, widget, x, y);
+
+  // Get the link element for the clicked source or sink
+  struct alsa_elem *link_elem = NULL;
+  int is_linked = 0;
+
+  if (r_src && src_has_valid_partner(r_src)) {
+    link_elem = get_src_link_elem(r_src);
+    is_linked = is_src_linked(r_src);
+  } else if (r_snk && snk_has_valid_partner(r_snk)) {
+    link_elem = get_snk_link_elem(r_snk);
+    is_linked = is_snk_linked(r_snk);
+  }
+
+  if (!link_elem)
+    return;
+
+  // Create popover with a button
+  GtkWidget *popover = gtk_popover_new();
+  gtk_popover_set_has_arrow(GTK_POPOVER(popover), FALSE);
+  gtk_widget_set_parent(popover, widget);
+
+  GdkRectangle rect = { .x = x, .y = y, .width = 1, .height = 1 };
+  gtk_popover_set_pointing_to(GTK_POPOVER(popover), &rect);
+
+  GtkWidget *button = gtk_button_new_with_label(
+    is_linked ? "Unlink Stereo Pair" : "Link as Stereo Pair"
+  );
+  gtk_widget_add_css_class(button, "flat");
+  g_signal_connect(button, "clicked",
+    G_CALLBACK(link_popover_clicked), link_elem);
+  gtk_popover_set_child(GTK_POPOVER(popover), button);
+
+  g_signal_connect(popover, "closed",
+    G_CALLBACK(gtk_widget_unparent), NULL);
+
+  gtk_popover_popup(GTK_POPOVER(popover));
+}
+
 // Unified click handler using hit-testing
 static void routing_overlay_click(
   GtkGestureClick *gesture,
@@ -2204,6 +2271,17 @@ GtkWidget *create_routing_controls(struct alsa_card *card) {
   GtkGesture *click = gtk_gesture_click_new();
   g_signal_connect(click, "released", G_CALLBACK(routing_overlay_click), card);
   gtk_widget_add_controller(routing_overlay, GTK_EVENT_CONTROLLER(click));
+
+  // Add right-click handler for stereo link context menu
+  GtkGesture *right_click = gtk_gesture_click_new();
+  gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(right_click), 3);
+  g_signal_connect(
+    right_click, "released",
+    G_CALLBACK(routing_overlay_right_click), card
+  );
+  gtk_widget_add_controller(
+    routing_overlay, GTK_EVENT_CONTROLLER(right_click)
+  );
 
   // Add unified drag source (hit-tests on prepare)
   GtkDragSource *drag_source = gtk_drag_source_new();
