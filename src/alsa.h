@@ -334,7 +334,6 @@ struct alsa_card {
   int                 mixer_has_mix_srcs;
   int                 routing_out_count[PC_COUNT];
   int                 routing_in_count[PC_COUNT];
-  GMenu              *routing_src_menu;
   GtkWidget          *drag_line;
   int                 drag_type;
   struct routing_src *src_drag;
