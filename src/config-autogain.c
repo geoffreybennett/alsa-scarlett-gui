@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 
 #include "alsa.h"
+#include "config-helpers.h"
 #include "widget-gain.h"
 #include "window-configuration.h"
 
@@ -36,10 +37,7 @@ void add_autogain_tab(GtkWidget *notebook, struct alsa_card *card) {
       "This setting controls what signal level Autogain aims for."
     : "Configure the target levels for the Autogain feature.\n"
       "These settings control what signal levels Autogain aims for.";
-  GtkWidget *help = gtk_label_new(help_text);
-  gtk_widget_set_halign(help, GTK_ALIGN_START);
-  gtk_widget_add_css_class(help, "dim-label");
-  gtk_box_append(GTK_BOX(content), help);
+  gtk_box_append(GTK_BOX(content), config_help_label(help_text));
 
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid), 10);

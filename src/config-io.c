@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 
 #include "alsa.h"
+#include "config-helpers.h"
 #include "custom-names.h"
 #include "device-port-names.h"
 #include "stereo-link.h"
@@ -1473,12 +1474,7 @@ static struct column_checkbox_data *create_mixer_input_column(
   gtk_box_append(GTK_BOX(header), col_data->column_checkbox);
 
   // Label
-  GtkWidget *label = gtk_label_new(NULL);
-  char *markup = g_strdup_printf("<b>%s</b>", label_text);
-  gtk_label_set_markup(GTK_LABEL(label), markup);
-  g_free(markup);
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_box_append(GTK_BOX(header), label);
+  gtk_box_append(GTK_BOX(header), config_bold_label(label_text));
 
   gtk_widget_set_halign(header, GTK_ALIGN_START);
   gtk_box_append(GTK_BOX(vbox), header);
@@ -1559,12 +1555,7 @@ static GtkWidget *create_two_column_layout(
     gtk_box_append(GTK_BOX(left_header), col_data->column_checkbox);
 
     // Label
-    GtkWidget *left_label = gtk_label_new(NULL);
-    char *left_markup = g_strdup_printf("<b>%s</b>", left_label_text);
-    gtk_label_set_markup(GTK_LABEL(left_label), left_markup);
-    g_free(left_markup);
-    gtk_widget_set_halign(left_label, GTK_ALIGN_START);
-    gtk_box_append(GTK_BOX(left_header), left_label);
+    gtk_box_append(GTK_BOX(left_header), config_bold_label(left_label_text));
 
     gtk_widget_set_halign(left_header, GTK_ALIGN_START);
     gtk_box_append(GTK_BOX(left_vbox), left_header);
@@ -1614,12 +1605,7 @@ static GtkWidget *create_two_column_layout(
     gtk_box_append(GTK_BOX(right_header), col_data->column_checkbox);
 
     // Label
-    GtkWidget *right_label = gtk_label_new(NULL);
-    char *right_markup = g_strdup_printf("<b>%s</b>", right_label_text);
-    gtk_label_set_markup(GTK_LABEL(right_label), right_markup);
-    g_free(right_markup);
-    gtk_widget_set_halign(right_label, GTK_ALIGN_START);
-    gtk_box_append(GTK_BOX(right_header), right_label);
+    gtk_box_append(GTK_BOX(right_header), config_bold_label(right_label_text));
 
     gtk_widget_set_halign(right_header, GTK_ALIGN_START);
     gtk_box_append(GTK_BOX(right_vbox), right_header);
@@ -2089,14 +2075,11 @@ void add_io_tab(GtkWidget *top_notebook, struct alsa_card *card) {
     GtkWidget *io_tab_content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_widget_set_margin_top(io_tab_content, 20);
 
-    GtkWidget *io_help = gtk_label_new(
+    gtk_box_append(GTK_BOX(io_tab_content), config_help_label(
       "Use the checkboxes to hide unused inputs and outputs from the display.\n"
       "You can also give each port a custom name to help identify it.\n"
       "Use the link buttons to pair adjacent channels as stereo."
-    );
-    gtk_widget_set_halign(io_help, GTK_ALIGN_START);
-    gtk_widget_add_css_class(io_help, "dim-label");
-    gtk_box_append(GTK_BOX(io_tab_content), io_help);
+    ));
 
     gtk_widget_set_vexpand(notebook, TRUE);
     gtk_box_append(GTK_BOX(io_tab_content), notebook);

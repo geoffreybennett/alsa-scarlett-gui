@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 
 #include "alsa.h"
+#include "config-helpers.h"
 #include "custom-names.h"
 #include "port-enable.h"
 #include "stereo-link.h"
@@ -523,7 +524,7 @@ void add_monitor_groups_tab(GtkWidget *notebook, struct alsa_card *card) {
   gtk_widget_set_margin_top(content, 20);
   gtk_widget_set_margin_bottom(content, 20);
 
-  GtkWidget *help = gtk_label_new(
+  gtk_box_append(GTK_BOX(content), config_help_label(
     "Monitor groups let you organise your outputs into Main and "
     "Alt sets.\n"
     "Switch between them using the Alt button on your interface "
@@ -537,10 +538,7 @@ void add_monitor_groups_tab(GtkWidget *notebook, struct alsa_card *card) {
     "group\n"
     "  \xe2\x80\xa2 Quick DAW/Direct monitoring switch by assigning "
     "same output to both groups with different sources"
-  );
-  gtk_widget_set_halign(help, GTK_ALIGN_START);
-  gtk_widget_add_css_class(help, "dim-label");
-  gtk_box_append(GTK_BOX(content), help);
+  ));
 
   GtkWidget *grid = create_main_alt_group_grid(card);
   gtk_box_append(GTK_BOX(content), grid);
