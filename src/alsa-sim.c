@@ -463,18 +463,14 @@ static void alsa_config_to_new_card(
 // return the basename of fn (no path, no extension)
 // e.g. "/home/user/file.ext" -> "file"
 static char *sim_card_name(const char *fn) {
+  /* strdup fn and remove path (if any) */
+  const char *s = strrchr(fn, '/');
+  char *name = s ? strdup(s + 1) : strdup(fn);
+  if (!name) return NULL;
 
-  // strdup fn and remove path (if any)
-  char *name = strrchr(fn, '/');
-  if (name)
-    name = strdup(name + 1);
-  else
-    name = strdup(fn);
-
-  // remove extension
+  /* remove extension */
   char *dot = strrchr(name, '.');
-  if (dot)
-    *dot = '\0';
+  if (dot) *dot = '\0';
 
   return name;
 }
