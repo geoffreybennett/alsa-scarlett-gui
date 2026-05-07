@@ -128,7 +128,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
         strncmp(elem->name, "Matrix ", 7))
       continue;
 
-    char *mix_str = strstr(elem->name, "Mix ");
+    const char *mix_str = strstr(elem->name, "Mix ");
     if (!mix_str)
       continue;
 
