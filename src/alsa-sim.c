@@ -465,7 +465,7 @@ static void alsa_config_to_new_card(
 static char *sim_card_name(const char *fn) {
 
   // strdup fn and remove path (if any)
-  char *name = strrchr(fn, '/');
+  char *name = (char *)strrchr(fn, '/');
   if (name)
     name = strdup(name + 1);
   else
