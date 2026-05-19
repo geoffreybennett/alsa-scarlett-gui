@@ -29,45 +29,72 @@ static char *get_today(void) {
   return today;
 }
 
-static gboolean is_snoozed_today(void) {
+static gboolean should_suppress(void) {
   char *path = get_welcome_path();
   GKeyFile *key_file = g_key_file_new();
-  gboolean snoozed = FALSE;
+  gboolean suppress = FALSE;
 
   if (g_key_file_load_from_file(key_file, path, G_KEY_FILE_NONE, NULL)) {
-    char *snooze_date = g_key_file_get_string(
-      key_file, BETA_VERSION, "snooze_date", NULL
-    );
-    if (snooze_date) {
-      char *today = get_today();
-      snoozed = strcmp(snooze_date, today) == 0;
-      g_free(today);
-      g_free(snooze_date);
+    if (g_key_file_get_boolean(
+      key_file, BETA_VERSION, "dismissed", NULL
+    )) {
+      suppress = TRUE;
+    } else {
+      char *snooze_date = g_key_file_get_string(
+        key_file, BETA_VERSION, "snooze_date", NULL
+      );
+      if (snooze_date) {
+        char *today = get_today();
+        suppress = strcmp(snooze_date, today) == 0;
+        g_free(today);
+        g_free(snooze_date);
+      }
     }
   }
 
   g_key_file_free(key_file);
   g_free(path);
-  return snoozed;
+  return suppress;
 }
 
-static void set_snooze_date(void) {
+static GKeyFile *load_welcome_keyfile(char **out_path) {
   char *config_dir = get_config_dir();
 
   if (g_mkdir_with_parents(config_dir, 0755) < 0) {
     g_warning("Failed to create config directory: %s", config_dir);
     g_free(config_dir);
-    return;
+    return NULL;
   }
   g_free(config_dir);
 
-  char *path = get_welcome_path();
+  *out_path = get_welcome_path();
   GKeyFile *key_file = g_key_file_new();
+  g_key_file_load_from_file(key_file, *out_path, G_KEY_FILE_NONE, NULL);
+  return key_file;
+}
 
-  g_key_file_load_from_file(key_file, path, G_KEY_FILE_NONE, NULL);
+static void set_snooze_date(void) {
+  char *path;
+  GKeyFile *key_file = load_welcome_keyfile(&path);
+  if (!key_file)
+    return;
+
   char *today = get_today();
   g_key_file_set_string(key_file, BETA_VERSION, "snooze_date", today);
   g_free(today);
+  g_key_file_save_to_file(key_file, path, NULL);
+
+  g_key_file_free(key_file);
+  g_free(path);
+}
+
+static void set_dismissed(void) {
+  char *path;
+  GKeyFile *key_file = load_welcome_keyfile(&path);
+  if (!key_file)
+    return;
+
+  g_key_file_set_boolean(key_file, BETA_VERSION, "dismissed", TRUE);
   g_key_file_save_to_file(key_file, path, NULL);
 
   g_key_file_free(key_file);
@@ -88,7 +115,8 @@ static gboolean on_key_pressed(
   return FALSE;
 }
 
-static void on_dismiss(GtkWidget *button, GtkWindow *window) {
+static void on_acknowledge(GtkWidget *button, GtkWindow *window) {
+  set_dismissed();
   gtk_window_destroy(window);
 }
 
@@ -98,7 +126,7 @@ static void on_remind_later(GtkWidget *button, GtkWindow *window) {
 }
 
 void show_welcome(GtkApplication *app) {
-  if (is_snoozed_today())
+  if (should_suppress())
     return;
 
   GtkWidget *window = gtk_window_new();
@@ -163,17 +191,17 @@ void show_welcome(GtkApplication *app) {
   gtk_widget_set_halign(button_box, GTK_ALIGN_CENTER);
   gtk_box_append(GTK_BOX(content), button_box);
 
-  GtkWidget *dismiss_button = gtk_button_new_with_label("Dismiss");
-  g_signal_connect(
-    dismiss_button, "clicked", G_CALLBACK(on_dismiss), window
-  );
-  gtk_box_append(GTK_BOX(button_box), dismiss_button);
-
   GtkWidget *remind_button = gtk_button_new_with_label("Remind Me Later");
   g_signal_connect(
     remind_button, "clicked", G_CALLBACK(on_remind_later), window
   );
   gtk_box_append(GTK_BOX(button_box), remind_button);
+
+  GtkWidget *ack_button = gtk_button_new_with_label("Got it, thanks");
+  g_signal_connect(
+    ack_button, "clicked", G_CALLBACK(on_acknowledge), window
+  );
+  gtk_box_append(GTK_BOX(button_box), ack_button);
 
   GtkEventController *key_controller = gtk_event_controller_key_new();
   g_signal_connect(
