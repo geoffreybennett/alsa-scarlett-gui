@@ -1,4 +1,4 @@
-# ALSA Scarlett Control Panel (`alsa-scarlett-gui`) v1.0
+# ALSA Scarlett Control Panel (`alsa-scarlett-gui`) v1.0 beta
 
 <img src="img/alsa-scarlett-gui.png" align="right">
 
@@ -8,6 +8,9 @@ Scarlett MixControl / Vocaster Hub on Linux.
 
 Configure routing, mixing, input/output levels, DSP processing,
 and firmware updates through a graphical interface.
+
+This is a beta release — better than 0.5 but not quite 1.0. The
+docs still need some updating.
 
 ## Supported Interfaces
 
