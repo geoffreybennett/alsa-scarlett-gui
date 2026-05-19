@@ -539,3 +539,5 @@ with implicit level maps.
 
 - The scarlett2 kernel driver reports incorrect level meter values at
   dual-band and quad-band sample rates.
+- Main window controls are not affected by the I/O Configuration
+  settings.
