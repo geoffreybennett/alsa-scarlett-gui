@@ -19,13 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
+      - name: Install git for checkout
+        run: dnf install -y git
+
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
+      - name: Trust workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install build dependencies
         run: >
-          dnf install -y rpm-build make gcc git
+          dnf install -y rpm-build make gcc
           gtk4-devel alsa-lib-devel openssl-devel
 
       - name: Build RPM
@@ -54,7 +60,7 @@ jobs:
           files: ${{ steps.find-rpm.outputs.rpm_path }}
 
   build-deb:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
