@@ -1,6 +1,6 @@
 app-id: vu.b4.alsa-scarlett-gui
 runtime: org.gnome.Platform
-runtime-version: "47"
+runtime-version: "50"
 sdk: org.gnome.Sdk
 command: alsa-scarlett-gui
 build-options:
@@ -20,12 +20,9 @@ modules:
   - name: alsa-utils
     sources:
       - type: archive
-        url: https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
-        sha256: 4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
-        dest: .deps/alsa-lib
-      - type: archive
-        url: https://www.alsa-project.org/files/pub/utils/alsa-utils-1.2.12.tar.bz2
-        sha256: 98bc6677d0c0074006679051822324a0ab0879aea558a8f68b511780d30cd924
+        # Use the same version as the one included in the gnome runtime
+        url: https://www.alsa-project.org/files/pub/utils/alsa-utils-1.2.14.tar.bz2
+        sha256: 0794c74d33fed943e7c50609c13089e409312b6c403d6ae8984fc429c0960741
     buildsystem: autotools
     config-opts:
       # We are only interested in alsactl
@@ -42,7 +39,6 @@ modules:
       - --disable-nhlt
       - --disable-xmlto
       - --disable-rst2man
-      - --with-alsa-inc-prefix=.deps/alsa-lib/include
     post-install:
       - install -Dm755 /app/sbin/alsactl /app/bin/alsactl
     cleanup:
