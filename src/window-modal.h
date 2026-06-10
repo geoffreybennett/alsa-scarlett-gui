@@ -23,6 +23,9 @@ struct modal_data {
   GtkWidget        *progress_bar;
   guint             timeout_id;
   modal_callback    callback;
+  GtkWidget        *parent_label;
+  int               had_error;
+  int               in_progress;
 };
 
 void create_modal_window(
@@ -32,6 +35,18 @@ void create_modal_window(
   const char       *title_active,
   const char       *message,
   modal_callback    callback
+);
+
+// Same as create_modal_window but starts immediately without yes/no confirmation
+// If parent_label is provided, it will be updated on error when the modal closes
+void create_modal_window_autostart(
+  GtkWidget        *w,
+  struct alsa_card *card,
+  const char       *title,
+  const char       *title_active,
+  const char       *message,
+  modal_callback    callback,
+  GtkWidget        *parent_label
 );
 
 // update the progress bar in a modal window

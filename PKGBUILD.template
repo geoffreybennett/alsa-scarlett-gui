@@ -1,0 +1,22 @@
+# Maintainer: Geoffrey D. Bennett <g@b4.vu>
+pkgname=alsa-scarlett-gui
+pkgver=VERSION
+pkgrel=1
+pkgdesc='GTK4 GUI for Focusrite Scarlett/Clarett/Vocaster audio interfaces'
+arch=('x86_64')
+url="https://github.com/geoffreybennett/$pkgname"
+license=('GPL3' 'LGPL3')
+depends=('gtk4' 'alsa-lib' 'openssl')
+makedepends=('make' 'gcc')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver/src"
+  make PREFIX=/usr
+}
+
+package() {
+  cd "$pkgname-$pkgver/src"
+  make PREFIX=/usr DESTDIR="$pkgdir" install
+}

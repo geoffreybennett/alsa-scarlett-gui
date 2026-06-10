@@ -2,8 +2,9 @@
 *.o
 .deps
 .gdb_history
-alsa-scarlett-gui
-alsa-scarlett-gui-resources.c
-vu.b4.alsa-scarlett-gui.desktop
-.flatpak-builder/
-flatpak-build/
+/src/alsa-scarlett-gui
+/src/alsa-scarlett-gui-resources.c
+/src/tests/test-biquad
+/src/vu.b4.alsa-scarlett-gui.desktop
+/.flatpak-builder
+/flatpak-build

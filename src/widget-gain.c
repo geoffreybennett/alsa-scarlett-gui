@@ -6,6 +6,17 @@
 #include "widget-gain.h"
 #include "db.h"
 
+// level meter colours for gain dials with level display
+static const int level_breakpoints[] = { -80, -18, -12, -6, -3, -1 };
+static const double level_colours[] = {
+  0.00, 1.00, 0.00, // -80
+  0.75, 1.00, 0.00, // -18
+  1.00, 1.00, 0.00, // -12
+  1.00, 0.75, 0.00, //  -6
+  1.00, 0.50, 0.00, //  -3
+  1.00, 0.00, 0.00  //  -1
+};
+
 struct gain {
   struct alsa_elem *elem;
   struct alsa_elem *direct_monitor_elem;
@@ -15,10 +26,26 @@ struct gain {
   GtkWidget        *label;
   int               zero_is_off;
   float             scale;
+
+  // Stereo support: additional elements controlled in sync
+  struct alsa_elem *elems[MAX_STEREO_GAIN_ELEMS];
+  int               elem_count;
+  int               syncing;  // flag to prevent infinite callback loops
 };
 
 static void gain_changed(GtkWidget *widget, struct gain *data) {
   int value = gtk_dial_get_value(GTK_DIAL(data->dial));
+
+  // Stereo widget: set all controlled elements
+  if (data->elem_count > 1) {
+    data->syncing = 1;
+    for (int i = 0; i < data->elem_count; i++)
+      alsa_set_elem_value(data->elems[i], value);
+    data->syncing = 0;
+    return;
+  }
+
+  // Single element widget
   alsa_set_elem_value(data->elem, value);
 
   // check if there is a corresponding Direct Monitor Mix control to
@@ -49,10 +76,28 @@ static void gain_updated(
 ) {
   struct gain *data = private;
 
+  // Skip if we're syncing (to prevent infinite callback loops)
+  if (data->syncing)
+    return;
+
   int is_writable = alsa_get_elem_writable(elem);
   gtk_widget_set_sensitive(data->dial, is_writable);
 
   int alsa_value = alsa_get_elem_value(elem);
+
+  // Stereo widget: sync all other elements to match this one
+  if (data->elem_count > 1) {
+    data->syncing = 1;
+    for (int i = 0; i < data->elem_count; i++) {
+      if (data->elems[i] != elem) {
+        int other_val = alsa_get_elem_value(data->elems[i]);
+        if (other_val != alsa_value)
+          alsa_set_elem_value(data->elems[i], alsa_value);
+      }
+    }
+    data->syncing = 0;
+  }
+
   gtk_dial_set_value(GTK_DIAL(data->dial), alsa_value);
 
   char s[20];
@@ -104,7 +149,7 @@ static void gain_updated(
 // later enabled again.
 static void find_direct_monitor_controls(struct gain *data) {
   struct alsa_elem *elem = data->elem;
-  GArray *elems = elem->card->elems;
+  GPtrArray *elems = elem->card->elems;
 
   // Card has no direct monitor control?
   struct alsa_elem *direct_monitor_elem = get_elem_by_prefix(
@@ -161,14 +206,16 @@ static void find_direct_monitor_controls(struct gain *data) {
   }
 }
 
-//GList *make_gain_alsa_elem(struct alsa_elem *elem) {
-GtkWidget *make_gain_alsa_elem(
+// Shared initialisation for gain widgets: creates vbox, dial, label,
+// configures taper and level display from the primary element.
+static void init_gain_widget(
+  struct gain      *data,
   struct alsa_elem *elem,
   int               zero_is_off,
   int               widget_taper,
-  int               can_control
+  int               can_control,
+  gboolean          show_level
 ) {
-  struct gain *data = calloc(1, sizeof(struct gain));
   data->elem = elem;
   data->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_hexpand(data->vbox, TRUE);
@@ -187,32 +234,23 @@ GtkWidget *make_gain_alsa_elem(
     step = 1;
   }
   data->dial = gtk_dial_new_with_range(
-    elem->min_val,
-    elem->max_val,
-    step,
-    3 / data->scale
+    elem->min_val, elem->max_val, step, 3 / data->scale
   );
 
-  // calculate 0dB value
   int zero_db_value;
-
   if (is_linear) {
     zero_db_value = cdb_to_linear_value(
-      0,
-      elem->min_val,
-      elem->max_val,
-      elem->min_cdB,
-      elem->max_cdB
+      0, elem->min_val, elem->max_val, elem->min_cdB, elem->max_cdB
     );
   } else {
-    zero_db_value =
-      (int)((0 - elem->min_cdB) / 100.0 / data->scale + elem->min_val);
+    zero_db_value = (int)(
+      (0 - elem->min_cdB) / 100.0 / data->scale + elem->min_val
+    );
   }
 
   gtk_dial_set_zero_db(GTK_DIAL(data->dial), zero_db_value);
   gtk_dial_set_is_linear(GTK_DIAL(data->dial), is_linear);
 
-  // convert from widget_taper to gtk_dial_taper
   int gtk_dial_taper;
   if (widget_taper == WIDGET_GAIN_TAPER_LINEAR)
     gtk_dial_taper = GTK_DIAL_TAPER_LINEAR;
@@ -232,24 +270,104 @@ GtkWidget *make_gain_alsa_elem(
 
   gtk_dial_set_can_control(GTK_DIAL(data->dial), can_control);
 
+  if (show_level) {
+    gtk_dial_set_show_level(GTK_DIAL(data->dial), TRUE);
+    gtk_dial_set_peak_hold(GTK_DIAL(data->dial), 1000);
+    gtk_dial_set_level_meter_colours(
+      GTK_DIAL(data->dial),
+      level_breakpoints,
+      level_colours,
+      sizeof(level_breakpoints) / sizeof(int)
+    );
+    gtk_dial_set_off_db(GTK_DIAL(data->dial), -45);
+  }
+
   data->label = gtk_label_new(NULL);
   gtk_widget_add_css_class(data->label, "gain");
   gtk_widget_set_vexpand(data->dial, TRUE);
-
   data->zero_is_off = zero_is_off;
+}
 
-  find_direct_monitor_controls(data);
-
+// Finish gain widget assembly: connect signal, trigger initial
+// update, pack widgets, store object data pointers.
+static GtkWidget *finish_gain_widget(struct gain *data) {
   g_signal_connect(
     data->dial, "value-changed", G_CALLBACK(gain_changed), data
   );
 
-  alsa_elem_add_callback(elem, gain_updated, data);
+  for (int i = 0; i < data->elem_count; i++)
+    alsa_elem_add_callback(data->elems[i], gain_updated, data, NULL);
 
-  gain_updated(elem, data);
+  gain_updated(data->elem, data);
 
   gtk_box_append(GTK_BOX(data->vbox), data->dial);
   gtk_box_append(GTK_BOX(data->vbox), data->label);
 
+  g_object_set_data(G_OBJECT(data->vbox), "dial", data->dial);
+  g_object_set_data(G_OBJECT(data->vbox), "gain_data", data);
+
   return data->vbox;
+}
+
+GtkWidget *make_gain_alsa_elem(
+  struct alsa_elem *elem,
+  int               zero_is_off,
+  int               widget_taper,
+  int               can_control,
+  gboolean          show_level
+) {
+  struct gain *data = calloc(1, sizeof(struct gain));
+  data->elem_count = 1;
+  data->elems[0] = elem;
+
+  init_gain_widget(data, elem, zero_is_off, widget_taper,
+                   can_control, show_level);
+  find_direct_monitor_controls(data);
+
+  return finish_gain_widget(data);
+}
+
+GtkWidget *get_gain_dial(GtkWidget *gain_widget) {
+  return g_object_get_data(G_OBJECT(gain_widget), "dial");
+}
+
+void cleanup_gain_widget(GtkWidget *gain_widget) {
+  if (!gain_widget)
+    return;
+
+  struct gain *data = g_object_get_data(
+    G_OBJECT(gain_widget), "gain_data"
+  );
+  if (!data)
+    return;
+
+  for (int i = 0; i < data->elem_count; i++) {
+    if (data->elems[i])
+      alsa_elem_remove_callbacks_by_data(data->elems[i], data);
+  }
+
+  g_object_set_data(G_OBJECT(gain_widget), "gain_data", NULL);
+  free(data);
+}
+
+GtkWidget *make_stereo_gain_alsa_elem(
+  struct alsa_elem **elems,
+  int               elem_count,
+  int               zero_is_off,
+  int               widget_taper,
+  int               can_control,
+  gboolean          show_level
+) {
+  if (elem_count < 1 || elem_count > MAX_STEREO_GAIN_ELEMS)
+    return NULL;
+
+  struct gain *data = calloc(1, sizeof(struct gain));
+  data->elem_count = elem_count;
+  for (int i = 0; i < elem_count; i++)
+    data->elems[i] = elems[i];
+
+  init_gain_widget(data, elems[0], zero_is_off, widget_taper,
+                   can_control, show_level);
+
+  return finish_gain_widget(data);
 }

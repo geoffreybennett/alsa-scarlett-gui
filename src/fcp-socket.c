@@ -203,17 +203,222 @@ int fcp_socket_wait_for_disconnect(int sock_fd) {
   }
 }
 
+// Reboot a device on an existing socket connection
+int fcp_socket_reboot_device_fd(int sock_fd) {
+  // Send reboot command and wait for server to disconnect
+  if (fcp_socket_send_command(sock_fd, FCP_SOCKET_REQUEST_REBOOT) < 0)
+    return -1;
+
+  return fcp_socket_wait_for_disconnect(sock_fd);
+}
+
 // Reboot a device using the FCP socket interface
 int fcp_socket_reboot_device(struct alsa_card *card) {
+  int sock_fd = fcp_socket_connect(card);
+  if (sock_fd < 0)
+    return -1;
+
+  int ret = fcp_socket_reboot_device_fd(sock_fd);
+
+  close(sock_fd);
+  return ret;
+}
+
+// Handle server responses with progress callback
+static int handle_response_with_progress(
+  int   sock_fd,
+  void  (*progress_callback)(int percent, void *user_data),
+  void  *user_data
+) {
+  struct fcp_socket_msg_header header;
+  ssize_t bytes_read;
+
+  while (1) {
+    bytes_read = read(sock_fd, &header, sizeof(header));
+    if (bytes_read != sizeof(header)) {
+      if (bytes_read == 0)
+        return 0;
+      fprintf(stderr, "Error reading response header: %s", strerror(errno));
+      return -1;
+    }
+
+    if (header.magic != FCP_SOCKET_MAGIC_RESPONSE) {
+      fprintf(stderr, "Invalid response magic: 0x%02x", header.magic);
+      return -1;
+    }
+
+    switch (header.msg_type) {
+      case FCP_SOCKET_RESPONSE_VERSION: {
+        uint8_t version;
+        bytes_read = read(sock_fd, &version, sizeof(version));
+        if (bytes_read != sizeof(version)) {
+          fprintf(stderr, "Error reading version: %s", strerror(errno));
+          return -1;
+        }
+        if (version != FCP_SOCKET_PROTOCOL_VERSION) {
+          fprintf(stderr, "Protocol version mismatch: expected %d, got %d",
+                  FCP_SOCKET_PROTOCOL_VERSION, version);
+          return -1;
+        }
+        break;
+      }
+
+      case FCP_SOCKET_RESPONSE_SUCCESS:
+        return 0;
+
+      case FCP_SOCKET_RESPONSE_ERROR: {
+        int16_t error_code;
+        bytes_read = read(sock_fd, &error_code, sizeof(error_code));
+        if (bytes_read != sizeof(error_code)) {
+          fprintf(stderr, "Error reading error code: %s", strerror(errno));
+          return -1;
+        }
+        if (error_code > 0 && error_code <= FCP_SOCKET_ERR_MAX)
+          fprintf(stderr, "Server error: %s", fcp_socket_error_messages[error_code]);
+        else
+          fprintf(stderr, "Unknown server error code: %d", error_code);
+        return -1;
+      }
+
+      case FCP_SOCKET_RESPONSE_PROGRESS: {
+        uint8_t percent;
+        bytes_read = read(sock_fd, &percent, sizeof(percent));
+        if (bytes_read != sizeof(percent)) {
+          fprintf(stderr, "Error reading progress: %s", strerror(errno));
+          return -1;
+        }
+        if (progress_callback)
+          progress_callback(percent, user_data);
+        break;
+      }
+
+      default:
+        fprintf(stderr, "Unknown response type: 0x%02x", header.msg_type);
+        return -1;
+    }
+  }
+}
+
+// Reset config using FCP socket, with progress callback
+int fcp_socket_reset_config(
+  struct alsa_card *card,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+) {
   int sock_fd, ret = -1;
 
   sock_fd = fcp_socket_connect(card);
   if (sock_fd < 0)
     return -1;
 
-  // Send reboot command and wait for server to disconnect
-  if (fcp_socket_send_command(sock_fd, FCP_SOCKET_REQUEST_REBOOT) == 0)
-    ret = fcp_socket_wait_for_disconnect(sock_fd);
+  if (fcp_socket_send_command(sock_fd, FCP_SOCKET_REQUEST_CONFIG_ERASE) == 0)
+    ret = handle_response_with_progress(sock_fd, progress_callback, user_data);
+
+  close(sock_fd);
+  return ret;
+}
+
+// Erase app firmware on an existing socket connection
+int fcp_socket_erase_app_firmware_fd(
+  int   sock_fd,
+  void  (*progress_callback)(int percent, void *user_data),
+  void  *user_data
+) {
+  if (fcp_socket_send_command(sock_fd, FCP_SOCKET_REQUEST_APP_FIRMWARE_ERASE) < 0)
+    return -1;
+
+  return handle_response_with_progress(sock_fd, progress_callback, user_data);
+}
+
+// Erase app firmware using FCP socket, with progress callback
+int fcp_socket_erase_app_firmware(
+  struct alsa_card *card,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+) {
+  int sock_fd = fcp_socket_connect(card);
+  if (sock_fd < 0)
+    return -1;
+
+  int ret = fcp_socket_erase_app_firmware_fd(sock_fd, progress_callback, user_data);
+
+  close(sock_fd);
+  return ret;
+}
+
+// Upload firmware on an existing socket connection
+int fcp_socket_upload_firmware_fd(
+  int               sock_fd,
+  uint8_t           command,
+  const uint8_t    *firmware_data,
+  uint32_t          firmware_size,
+  uint16_t          usb_vid,
+  uint16_t          usb_pid,
+  const uint8_t    *sha256,
+  const uint8_t    *md5,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+) {
+  // Build and send header
+  // Payload = firmware_payload header (56 bytes) + firmware data
+  struct fcp_socket_msg_header header = {
+    .magic = FCP_SOCKET_MAGIC_REQUEST,
+    .msg_type = command,
+    .payload_length = sizeof(struct firmware_payload) + firmware_size
+  };
+
+  if (write(sock_fd, &header, sizeof(header)) != sizeof(header)) {
+    fprintf(stderr, "Error sending header: %s", strerror(errno));
+    return -1;
+  }
+
+  // Build and send firmware payload header
+  struct firmware_payload payload = {
+    .size = firmware_size,
+    .usb_vid = usb_vid,
+    .usb_pid = usb_pid
+  };
+  memcpy(payload.sha256, sha256, 32);
+  if (md5)
+    memcpy(payload.md5, md5, 16);
+
+  if (write(sock_fd, &payload, sizeof(payload)) != sizeof(payload)) {
+    fprintf(stderr, "Error sending payload header: %s", strerror(errno));
+    return -1;
+  }
+
+  // Send firmware data
+  ssize_t written = write(sock_fd, firmware_data, firmware_size);
+  if (written != firmware_size) {
+    fprintf(stderr, "Error sending firmware data: %s", strerror(errno));
+    return -1;
+  }
+
+  // Handle server responses
+  return handle_response_with_progress(sock_fd, progress_callback, user_data);
+}
+
+// Upload firmware using FCP socket, with progress callback
+int fcp_socket_upload_firmware(
+  struct alsa_card *card,
+  uint8_t           command,
+  const uint8_t    *firmware_data,
+  uint32_t          firmware_size,
+  uint16_t          usb_vid,
+  uint16_t          usb_pid,
+  const uint8_t    *sha256,
+  const uint8_t    *md5,
+  void (*progress_callback)(int percent, void *user_data),
+  void *user_data
+) {
+  int sock_fd = fcp_socket_connect(card);
+  if (sock_fd < 0)
+    return -1;
+
+  int ret = fcp_socket_upload_firmware_fd(
+    sock_fd, command, firmware_data, firmware_size,
+    usb_vid, usb_pid, sha256, md5, progress_callback, user_data
+  );
 
   close(sock_fd);
   return ret;

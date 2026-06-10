@@ -71,7 +71,7 @@ GtkWidget *make_input_select_alsa_elem(
   g_signal_connect(
     data->button, "clicked", G_CALLBACK(input_select_clicked), data
   );
-  alsa_elem_add_callback(elem, input_select_updated, data);
+  alsa_elem_add_callback(elem, input_select_updated, data, NULL);
 
   input_select_updated(elem, data);
 

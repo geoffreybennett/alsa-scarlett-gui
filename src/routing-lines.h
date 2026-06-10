@@ -4,6 +4,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
+#include "alsa.h"
 
 void draw_routing_lines(
   GtkDrawingArea *drawing_area,
@@ -20,3 +21,7 @@ void draw_drag_line(
   int             height,
   void           *user_data
 );
+
+// level indication for routing lines
+void routing_levels_init(struct alsa_card *card);
+void routing_levels_cleanup(struct alsa_card *card);

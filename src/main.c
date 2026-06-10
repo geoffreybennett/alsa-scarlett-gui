@@ -3,9 +3,12 @@
 
 #include "alsa.h"
 #include "alsa-sim.h"
+#include "welcome.h"
+#include "debug.h"
 #include "main.h"
 #include "menu.h"
 #include "scarlett2-firmware.h"
+#include "scarlett4-firmware.h"
 #include "window-hardware.h"
 #include "window-iface.h"
 
@@ -31,15 +34,20 @@ static void load_css(void) {
 // gtk init
 
 static void startup(GtkApplication *app, gpointer user_data) {
+  debug_init();
+
   gtk_application_set_menubar(app, G_MENU_MODEL(create_app_menu(app)));
 
   load_css();
 
   scarlett2_enum_firmware();
+  scarlett4_enum_firmware();
   alsa_init();
 
   create_no_card_window();
   create_hardware_window(app);
+
+  show_welcome(app);
 }
 
 // not called when any files are opened from the command-line so we do

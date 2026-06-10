@@ -4,11 +4,17 @@
 #include <ctype.h>
 #include <gtk/gtk.h>
 
+#include "db.h"
 #include "gtkdial.h"
 #include "gtkhelper.h"
+#include "glow.h"
+#include "iface-mixer.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
+#include "window-dsp.h"
 #include "window-levels.h"
+#include "window-mixer.h"
+#include "window-routing.h"
 
 static const int level_breakpoints_out[] = { -80, -18, -12, -6, -3, -1 };
 
@@ -29,22 +35,179 @@ struct levels {
   struct alsa_elem *level_meter_elem;
   GtkWidget        *top;
   GtkGrid          *grid;
-  GtkWidget        *meters[MAX_METERS];
-  guint             timer;
+  GtkWidget       **meters;
 };
 
 static int update_levels_controls(void *user_data) {
   struct levels *data = user_data;
+  struct alsa_card *card = data->card;
+
+  // main window was closed, stop the timer
+  if (!card->window_main)
+    return G_SOURCE_REMOVE;
 
   struct alsa_elem *level_meter_elem = data->level_meter_elem;
 
+  // check which windows need updates
+  int levels_visible = gtk_widget_get_visible(GTK_WIDGET(card->window_levels));
+  int routing_visible = card->window_routing &&
+                        gtk_widget_get_visible(GTK_WIDGET(card->window_routing));
+  int mixer_visible = card->window_mixer &&
+                      gtk_widget_get_visible(GTK_WIDGET(card->window_mixer));
+
   long *values = alsa_get_elem_int_values(level_meter_elem);
 
+  // update peak tick for all dials with level display
   gtk_dial_peak_tick();
 
-  for (int i = 0; i < level_meter_elem->count; i++) {
-    double value = 20 * log10(values[i] / 4095.0);
-    gtk_dial_set_value(GTK_DIAL(data->meters[i]), value);
+  // update level meters if levels window is visible
+  if (levels_visible) {
+    for (int i = 0; i < level_meter_elem->count; i++) {
+      double value = 20 * log10(values[i] / 4095.0);
+      gtk_dial_set_level(GTK_DIAL(data->meters[i]), value);
+    }
+  }
+
+  // update routing levels array (needed for routing, mixer, and main window gains)
+  if (card->routing_levels) {
+    for (int i = 0; i < level_meter_elem->count; i++) {
+      if (i < card->routing_levels_count) {
+        double value = 20 * log10(values[i] / 4095.0);
+        card->routing_levels[i] = value;
+      }
+    }
+
+    if (routing_visible)
+      gtk_widget_queue_draw(card->routing_lines);
+
+    if (mixer_visible && card->mixer_glow)
+      gtk_widget_queue_draw(card->mixer_glow);
+  }
+
+  // update mixer gain dial levels if mixer window is visible
+  if (mixer_visible && card->mixer_gain_widgets) {
+    for (GList *l = card->mixer_gain_widgets; l; l = l->next) {
+      struct mixer_gain_widget *mg = l->data;
+
+      // get the routing source connected to this mixer input
+      if (!mg->r_snk || !mg->r_snk->elem)
+        continue;
+
+      // For stereo widgets, use max level across all routing sinks
+      double level_db = -INFINITY;
+      int snk_count = mg->r_snk_count > 0 ? mg->r_snk_count : 1;
+
+      for (int snk_i = 0; snk_i < snk_count; snk_i++) {
+        struct routing_snk *r_snk = snk_i < mg->r_snk_count ?
+                                    mg->r_snks[snk_i] : mg->r_snk;
+        if (!r_snk || !r_snk->elem)
+          continue;
+
+        int r_src_idx = alsa_get_elem_value(r_snk->elem);
+        if (!r_src_idx)
+          continue;
+
+        struct routing_src *r_src = &g_array_index(
+          card->routing_srcs, struct routing_src, r_src_idx
+        );
+
+        double src_level = get_routing_src_level_db(card, r_src);
+        if (src_level > level_db)
+          level_db = src_level;
+      }
+
+      // apply gain value to get post-gain level (in dB, so we add)
+      if (mg->elem) {
+        int gain_val = alsa_get_elem_value(mg->elem);
+        double gain_db;
+
+        if (mg->elem->dB_type == SND_CTL_TLVT_DB_LINEAR) {
+          gain_db = linear_value_to_cdb(
+            gain_val,
+            mg->elem->min_val, mg->elem->max_val,
+            mg->elem->min_cdB, mg->elem->max_cdB
+          ) / 100.0;
+        } else {
+          double scale = (double)(mg->elem->max_cdB - mg->elem->min_cdB) / 100.0 /
+                         (mg->elem->max_val - mg->elem->min_val);
+          gain_db = (double)(gain_val - mg->elem->min_val) * scale +
+                    mg->elem->min_cdB / 100.0;
+        }
+
+        level_db += gain_db;
+      }
+
+      // get the dial from the gain widget container
+      GtkWidget *dial = get_gain_dial(mg->widget);
+      if (dial)
+        gtk_dial_set_level(GTK_DIAL(dial), level_db);
+    }
+  }
+
+  // update input gain dial levels (main window is always visible when timer runs)
+  if (card->input_gain_widgets) {
+    for (GList *l = card->input_gain_widgets; l; l = l->next) {
+      struct input_gain_widget *ig = l->data;
+
+      if (!ig->r_src)
+        continue;
+
+      double level_db = get_routing_src_level_db(card, ig->r_src);
+
+      GtkWidget *dial = get_gain_dial(ig->widget);
+      if (dial)
+        gtk_dial_set_level(GTK_DIAL(dial), level_db);
+    }
+  }
+
+  // update output gain dial levels
+  if (card->output_gain_widgets) {
+    for (GList *l = card->output_gain_widgets; l; l = l->next) {
+      struct output_gain_widget *og = l->data;
+
+      if (!og->r_snk)
+        continue;
+
+      // use the sink level directly
+      int index = get_routing_snk_level_index(og->r_snk);
+      if (index < 0)
+        continue;
+
+      double level_db = card->routing_levels[index];
+
+      // show -inf if muted by inactive monitor group
+      if (is_snk_monitor_muted(og->r_snk))
+        level_db = -INFINITY;
+
+      GtkWidget *dial = get_gain_dial(og->widget);
+      if (dial)
+        gtk_dial_set_level(GTK_DIAL(dial), level_db);
+    }
+  }
+
+  // update compressor curve levels if DSP window is visible
+  int dsp_visible = card->window_dsp &&
+                    gtk_widget_get_visible(GTK_WIDGET(card->window_dsp));
+  if (dsp_visible && card->dsp_comp_widgets) {
+    for (GList *l = card->dsp_comp_widgets; l; l = l->next) {
+      struct dsp_comp_widget *dcw = l->data;
+
+      double input_db = -80.0;
+      double output_db = -80.0;
+
+      // Get input level from DSP Input sink
+      if (dcw->input_snk) {
+        int idx = get_routing_snk_level_index(dcw->input_snk);
+        if (idx >= 0 && idx < card->routing_levels_count)
+          input_db = card->routing_levels[idx];
+      }
+
+      // Get output level from DSP Output source
+      if (dcw->output_src)
+        output_db = get_routing_src_level_db(card, dcw->output_src);
+
+      gtk_compressor_curve_set_levels(dcw->curve, input_db, output_db);
+    }
   }
 
   free(values);
@@ -64,9 +227,8 @@ static GtkWidget *add_count_label(GtkGrid *grid, int count) {
 }
 
 static void on_destroy(struct levels *data, GtkWidget *widget) {
-  if (data->timer)
-    g_source_remove(data->timer);
-
+  // timer is cancelled in card_destroy_callback before we get here
+  g_free(data->meters);
   g_free(data);
 }
 
@@ -76,6 +238,8 @@ static GtkWidget *create_levels_controls_with_labels(
 ) {
   struct alsa_elem *level_meter_elem = data->level_meter_elem;
   int count = level_meter_elem->count;
+
+  data->meters = g_malloc0(count * sizeof(GtkWidget *));
 
   int row = 1;
   int max_count = 0;
@@ -149,6 +313,8 @@ static GtkWidget *create_levels_controls_with_labels(
     );
     gtk_widget_set_sensitive(meter, FALSE);
     gtk_dial_set_off_db(GTK_DIAL(meter), -45);
+    gtk_dial_set_show_level(GTK_DIAL(meter), TRUE);
+    gtk_dial_set_show_value(GTK_DIAL(meter), FALSE);
     gtk_grid_attach(GTK_GRID(data->grid), meter, label_num, row, 1, 1);
     data->meters[meter_num] = meter;
 
@@ -164,7 +330,10 @@ static GtkWidget *create_levels_controls_with_labels(
     gtk_grid_attach(GTK_GRID(data->grid), l, col, 0, 1, 1);
   }
 
-  data->timer = g_timeout_add(50, update_levels_controls, data);
+  card->levels_data = data;
+  card->levels_timer = g_timeout_add(
+    card->pref_levels_interval_ms, update_levels_controls, data
+  );
   g_object_weak_ref(G_OBJECT(data->grid), (GWeakNotify)on_destroy, data);
 
   return data->top;
@@ -199,8 +368,11 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
   if (data->level_meter_elem->meter_labels)
     return create_levels_controls_with_labels(card, data);
 
+  int elem_count = data->level_meter_elem->count;
+  data->meters = g_malloc0(elem_count * sizeof(GtkWidget *));
+
   // go through the port categories
-  for (int i = 0, row = 1; i < PC_COUNT; i++) {
+  for (int i = 0, row = 1; i < PC_COUNT && meter_num < elem_count; i++) {
 
     if (card->routing_out_count[i] == 0)
       continue;
@@ -212,7 +384,9 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
     gtk_grid_attach(GTK_GRID(grid), l, 0, row, 1, 1);
 
     // go through the ports in that category
-    for (int j = 0; j < card->routing_out_count[i]; j++) {
+    for (int j = 0;
+         j < card->routing_out_count[i] && meter_num < elem_count;
+         j++) {
 
       // add a count label if that hasn't already been done
       if (!count_labels[j])
@@ -235,6 +409,8 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
 
       // HW Output off_db is -55db; otherwise -45db
       gtk_dial_set_off_db(GTK_DIAL(meter), i == PC_HW ? -55 : -45);
+      gtk_dial_set_show_level(GTK_DIAL(meter), TRUE);
+      gtk_dial_set_show_value(GTK_DIAL(meter), FALSE);
 
       data->meters[meter_num++] = meter;
       gtk_grid_attach(GTK_GRID(grid), meter, j + 1, row, 1, 1);
@@ -243,14 +419,30 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
     row++;
   }
 
-  int elem_count = data->level_meter_elem->count;
-  if (meter_num != elem_count) {
+  if (meter_num != elem_count)
     printf("meter_num is %d but elem count is %d\n", meter_num, elem_count);
-  }
-  data->level_meter_elem->count = elem_count;
 
-  data->timer = g_timeout_add(50, update_levels_controls, data);
+  card->levels_data = data;
+  card->levels_timer = g_timeout_add(
+    card->pref_levels_interval_ms, update_levels_controls, data
+  );
   g_object_weak_ref(G_OBJECT(grid), (GWeakNotify)on_destroy, data);
 
   return top;
+}
+
+void restart_levels_timer(struct alsa_card *card) {
+  if (!card->levels_data)
+    return;
+
+  if (card->levels_timer) {
+    g_source_remove(card->levels_timer);
+    card->levels_timer = 0;
+  }
+
+  card->levels_timer = g_timeout_add(
+    card->pref_levels_interval_ms,
+    update_levels_controls,
+    card->levels_data
+  );
 }

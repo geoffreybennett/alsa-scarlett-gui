@@ -1,8 +1,13 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <graphene.h>
+
 #include "alsa.h"
+#include "glow.h"
 #include "routing-lines.h"
+#include "port-enable.h"
+#include "stereo-link.h"
 
 // dotted dash when a sink is going to be removed by a drag
 static const double dash_dotted[] = { 1, 10 };
@@ -142,6 +147,109 @@ static void arrow(
   cairo_close_path(cr);
 }
 
+// draw a small arrow indicator pointing in a direction from a port
+// port_x, port_y: center of the port widget
+// direction: 0 = right (→), 1 = left (←), 2 = up (↑), 3 = down (↓)
+static void draw_arrow_indicator(
+  cairo_t *cr,
+  double   port_x,
+  double   port_y,
+  int      direction,
+  double   r,
+  double   g,
+  double   b,
+  double   level_db
+) {
+  double angle;
+  switch (direction) {
+    case 0: angle = 0;          break;  // right →
+    case 1: angle = M_PI;       break;  // left ←
+    case 2: angle = -M_PI_2;    break;  // up ↑
+    case 3: angle = M_PI_2;     break;  // down ↓
+    default: angle = 0;         break;
+  }
+
+  // arrow dimensions
+  double arrow_len = 12;
+  double arrow_width = 4;
+  double line_len = 24;
+
+  // calculate arrow base (end of line, start of triangle)
+  double bx = port_x + cos(angle) * line_len;
+  double by = port_y + sin(angle) * line_len;
+
+  // calculate arrow tip
+  double tx = bx + cos(angle) * arrow_len;
+  double ty = by + sin(angle) * arrow_len;
+
+  // calculate arrow base sides
+  double s1x = bx + cos(angle - M_PI_2) * arrow_width;
+  double s1y = by + sin(angle - M_PI_2) * arrow_width;
+  double s2x = bx + cos(angle + M_PI_2) * arrow_width;
+  double s2y = by + sin(angle + M_PI_2) * arrow_width;
+
+  // draw glow behind arrow if level is high enough
+  double intensity = get_glow_intensity(level_db);
+  if (intensity > 0) {
+    double gr, gg, gb;
+    level_to_colour(level_db, &gr, &gg, &gb);
+
+    cairo_set_dash(cr, NULL, 0, 0);
+    for (int layer = GLOW_LAYERS - 1; layer >= 0; layer--) {
+      double width, alpha;
+      get_glow_layer_params(layer, intensity, &width, &alpha);
+
+      cairo_set_source_rgba(cr, gr, gg, gb, alpha);
+      cairo_set_line_width(cr, width);
+      cairo_move_to(cr, port_x, port_y);
+      cairo_line_to(cr, tx, ty);
+      cairo_stroke(cr);
+    }
+  }
+
+  cairo_set_source_rgb(cr, r, g, b);
+
+  cairo_set_line_width(cr, 2);
+  cairo_move_to(cr, port_x, port_y);
+  cairo_line_to(cr, bx, by);
+  cairo_stroke(cr);
+
+  // draw filled triangle
+  cairo_move_to(cr, tx, ty);
+  cairo_line_to(cr, s1x, s1y);
+  cairo_line_to(cr, s2x, s2y);
+  cairo_close_path(cr);
+  cairo_fill(cr);
+}
+
+// draw a glow around a source port that isn't connected to anything
+static void draw_source_glow(
+  cairo_t *cr,
+  double   x,
+  double   y,
+  double   level_db
+) {
+  double intensity = get_glow_intensity(level_db);
+  if (intensity <= 0)
+    return;
+
+  double r, g, b;
+  level_to_colour(level_db, &r, &g, &b);
+
+  // draw concentric circles as glow layers, scaled up for visibility
+  cairo_set_dash(cr, NULL, 0, 0);
+  for (int layer = GLOW_LAYERS - 1; layer >= 0; layer--) {
+    double width, alpha;
+    get_glow_layer_params(layer, intensity, &width, &alpha);
+
+    // scale up for better visibility
+    double radius = width * 1.2;
+    cairo_set_source_rgba(cr, r, g, b, alpha * 0.7);
+    cairo_arc(cr, x, y, radius, 0, 2 * M_PI);
+    cairo_fill(cr);
+  }
+}
+
 // draw a nice curved line connecting a source at (x1, y1) and a sink
 // at (x2, y2)
 static void draw_connection(
@@ -205,6 +313,68 @@ static void draw_connection(
   cairo_stroke(cr);
 }
 
+// draw a level-based glow behind a routing line
+// level_db should be in dB (-80 to 0)
+static void draw_connection_glow(
+  cairo_t *cr,
+  double   x1,
+  double   y1,
+  int      src_port_category,
+  double   x2,
+  double   y2,
+  int      snk_port_category,
+  double   level_db
+) {
+  double intensity = get_glow_intensity(level_db);
+  if (intensity <= 0)
+    return;
+
+  double r, g, b;
+  level_to_colour(level_db, &r, &g, &b);
+
+  // calculate bezier control points (same logic as draw_connection)
+  double x3 = x1, y3 = y1, x4 = x2, y4 = y2;
+
+  int src_is_mixer = IS_MIXER(src_port_category);
+  int snk_is_mixer = IS_MIXER(snk_port_category);
+
+  if (src_is_mixer == snk_is_mixer) {
+    double f1 = 0.3;
+    double f2 = 1 - f1;
+
+    if (src_is_mixer) {
+      y3 = y1 * f2 + y2 * f1;
+      y4 = y1 * f1 + y2 * f2;
+    } else {
+      x3 = x1 * f2 + x2 * f1;
+      x4 = x1 * f1 + x2 * f2;
+    }
+  } else {
+    double a = fmod((atan2(y1 - y2, x2 - x1) * 180 / M_PI) + 360, 360);
+    double f1 = fabs(fmod(a, 90) - 45) / 90;
+    double f2 = 1 - f1;
+
+    if (src_is_mixer) {
+      y3 = y1 * f2 + y2 * f1;
+      x4 = x1 * f1 + x2 * f2;
+    } else {
+      x3 = x1 * f2 + x2 * f1;
+      y4 = y1 * f1 + y2 * f2;
+    }
+  }
+
+  cairo_set_dash(cr, NULL, 0, 0);
+  for (int layer = GLOW_LAYERS - 1; layer >= 0; layer--) {
+    double width, alpha;
+    get_glow_layer_params(layer, intensity, &width, &alpha);
+
+    cairo_set_source_rgba(cr, r, g, b, alpha);
+    cairo_set_line_width(cr, width);
+    curve(cr, x1, y1, x3, y3, x4, y4, x2, y2);
+    cairo_stroke(cr);
+  }
+}
+
 // locate the center of a widget in the parent coordinates
 // used for drawing lines to/from the "socket" widget of routing
 // sources and sinks
@@ -214,9 +384,38 @@ static void get_widget_center(
   double    *x,
   double    *y
 ) {
-  double src_x = gtk_widget_get_allocated_width(w) / 2;
-  double src_y = gtk_widget_get_allocated_height(w) / 2;
-  gtk_widget_translate_coordinates(w, parent, src_x, src_y, x, y);
+  graphene_point_t src = GRAPHENE_POINT_INIT(
+    gtk_widget_get_width(w) / 2.0,
+    gtk_widget_get_height(w) / 2.0
+  );
+  graphene_point_t dest;
+  if (gtk_widget_compute_point(w, parent, &src, &dest)) {
+    *x = dest.x;
+    *y = dest.y;
+  } else {
+    *x = 0;
+    *y = 0;
+  }
+}
+
+// Apply stereo offset to socket center coordinates
+// For stereo pairs, offset L/R within the stereo icon:
+// - Mixer/DSP: horizontal layout, offset X by ±25% of width
+// - HW/PCM: vertical layout, offset Y by ±25% of height
+static void apply_stereo_offset(
+  GtkWidget *socket,
+  int        port_category,
+  int        is_left,
+  double    *x,
+  double    *y
+) {
+  double w = gtk_widget_get_width(socket);
+  double h = gtk_widget_get_height(socket);
+
+  if (IS_MIXER(port_category))
+    *x += is_left ? -w * 0.25 : w * 0.25;
+  else
+    *y += is_left ? -h * 0.25 : h * 0.25;
 }
 
 static void get_src_center(
@@ -225,7 +424,24 @@ static void get_src_center(
   double             *x,
   double             *y
 ) {
-  get_widget_center(r_src->widget2, parent, x, y);
+  GtkWidget *socket = r_src->widget2;
+
+  // If linked, use the L channel's widget
+  if (is_src_linked(r_src)) {
+    struct routing_src *src_l = is_src_left_channel(r_src)
+      ? r_src : get_src_partner(r_src);
+
+    if (src_l && src_l->widget2)
+      socket = src_l->widget2;
+
+    get_widget_center(socket, parent, x, y);
+    apply_stereo_offset(
+      socket, r_src->port_category, is_src_left_channel(r_src), x, y
+    );
+  } else {
+    get_widget_center(socket, parent, x, y);
+  }
+
   if (IS_MIXER(r_src->port_category))
     (*y)++;
 }
@@ -236,7 +452,24 @@ static void get_snk_center(
   double             *x,
   double             *y
 ) {
-  get_widget_center(r_snk->socket_widget, parent, x, y);
+  GtkWidget *socket = r_snk->socket_widget;
+
+  // If linked, use the L channel's widget
+  if (is_snk_linked(r_snk)) {
+    struct routing_snk *snk_l = is_snk_left_channel(r_snk)
+      ? r_snk : get_snk_partner(r_snk);
+
+    if (snk_l && snk_l->socket_widget)
+      socket = snk_l->socket_widget;
+
+    get_widget_center(socket, parent, x, y);
+    apply_stereo_offset(
+      socket, r_snk->elem->port_category, is_snk_left_channel(r_snk), x, y
+    );
+  } else {
+    get_widget_center(socket, parent, x, y);
+  }
+
   if (IS_MIXER(r_snk->elem->port_category))
     (*y)++;
 }
@@ -256,7 +489,120 @@ void draw_routing_lines(
 
   int dragging = card->drag_type != DRAG_TYPE_NONE;
 
-  // go through all the routing sinks
+  // first pass: draw level glows behind all lines
+  if (card->routing_levels) {
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      struct alsa_elem *elem = r_snk->elem;
+
+      // skip read-only mixer sinks
+      if (elem->port_category == PC_MIX && card->has_fixed_mixer_inputs)
+        continue;
+
+      // skip disabled sinks
+      if (!is_routing_snk_enabled(r_snk))
+        continue;
+
+      // skip if being dragged (include partner for stereo pairs)
+      if (dragging && card->snk_drag &&
+          (card->snk_drag == r_snk ||
+           (is_snk_linked(card->snk_drag) &&
+            get_snk_partner(card->snk_drag) == r_snk)))
+        continue;
+
+      // get the source and skip if it's "Off"
+      int r_src_idx = r_snk->effective_source_idx;
+      if (!r_src_idx)
+        continue;
+
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, r_src_idx
+      );
+
+      // skip disabled sources
+      if (!is_routing_src_enabled(r_src))
+        continue;
+
+      // get source level and skip if too low
+      double level_db = get_routing_src_level_db(card, r_src);
+      if (level_db < GLOW_MIN_DB)
+        continue;
+
+      // locate the source and sink coordinates
+      double x1, y1, x2, y2;
+      get_src_center(r_src, parent, &x1, &y1);
+      get_snk_center(r_snk, parent, &x2, &y2);
+
+      // draw the glow
+      draw_connection_glow(
+        cr,
+        x1, y1, r_src->port_category,
+        x2, y2, elem->port_category,
+        level_db
+      );
+    }
+
+    // draw glows for unconnected sources that have level meters
+    // first, track which sources have at least one enabled connection
+    int *src_connected = g_malloc0(card->routing_srcs->len * sizeof(int));
+
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *r_snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      struct alsa_elem *elem = r_snk->elem;
+
+      // skip read-only mixer sinks
+      if (elem->port_category == PC_MIX && card->has_fixed_mixer_inputs)
+        continue;
+
+      // skip disabled sinks
+      if (!is_routing_snk_enabled(r_snk))
+        continue;
+
+      int r_src_idx = r_snk->effective_source_idx;
+      if (r_src_idx > 0 && r_src_idx < card->routing_srcs->len) {
+        struct routing_src *r_src = &g_array_index(
+          card->routing_srcs, struct routing_src, r_src_idx
+        );
+        // only mark as connected if source is enabled
+        if (is_routing_src_enabled(r_src))
+          src_connected[r_src_idx] = 1;
+      }
+    }
+
+    // now draw glows for unconnected sources
+    for (int i = 1; i < card->routing_srcs->len; i++) {
+      if (src_connected[i])
+        continue;
+
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+
+      // skip disabled sources
+      if (!is_routing_src_enabled(r_src))
+        continue;
+
+      // skip if no widget
+      if (!r_src->widget2)
+        continue;
+
+      double level_db = get_routing_src_level_db(card, r_src);
+      if (level_db < GLOW_MIN_DB)
+        continue;
+
+      double x, y;
+      get_src_center(r_src, parent, &x, &y);
+      draw_source_glow(cr, x, y, level_db);
+    }
+
+    g_free(src_connected);
+  }
+
+  // second pass: draw the routing lines on top
   for (int i = 0; i < card->routing_snks->len; i++) {
     struct routing_snk *r_snk = &g_array_index(
       card->routing_snks, struct routing_snk, i
@@ -268,16 +614,23 @@ void draw_routing_lines(
         card->has_fixed_mixer_inputs)
       continue;
 
+    // don't draw lines to disabled sinks
+    if (!is_routing_snk_enabled(r_snk))
+      continue;
+
     // if dragging and a routing sink is being reconnected then draw
-    // it with dots
-    int dragging_this = dragging && card->snk_drag == r_snk;
+    // it with dots (include partner for stereo pairs)
+    int dragging_this = dragging && card->snk_drag &&
+      (card->snk_drag == r_snk ||
+       (is_snk_linked(card->snk_drag) &&
+        get_snk_partner(card->snk_drag) == r_snk));
     if (dragging_this)
       cairo_set_dash(cr, dash_dotted, 2, 0);
     else
       cairo_set_dash(cr, NULL, 0, 0);
 
-    // get the sink and skip if it's "Off"
-    int r_src_idx = alsa_get_elem_value(elem);
+    // get the source and skip if it's "Off" or muted
+    int r_src_idx = r_snk->effective_source_idx;
     if (!r_src_idx)
       continue;
 
@@ -285,6 +638,10 @@ void draw_routing_lines(
     struct routing_src *r_src = &g_array_index(
       card->routing_srcs, struct routing_src, r_src_idx
     );
+
+    // don't draw lines from disabled sources
+    if (!is_routing_src_enabled(r_src))
+      continue;
 
     // locate the source and sink coordinates
     double x1, y1, x2, y2;
@@ -310,6 +667,156 @@ void draw_routing_lines(
       r, g, b, 2
     );
   }
+
+  // draw arrows for connections to/from disabled ports
+  // this shows the user that something is connected but hidden
+
+  // track which sources have connections to disabled sinks
+  // (use a simple array since source IDs are small integers)
+  int *src_has_disabled_snk = g_malloc0(card->routing_srcs->len * sizeof(int));
+
+  // first pass: find enabled sinks connected to disabled sources
+  // and disabled sinks (to mark their sources)
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *r_snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    struct alsa_elem *elem = r_snk->elem;
+
+    // skip read-only mixer sinks
+    if (elem->port_category == PC_MIX && card->has_fixed_mixer_inputs)
+      continue;
+
+    // get the source connected to this sink
+    int r_src_idx = r_snk->effective_source_idx;
+    if (!r_src_idx)
+      continue;
+
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, r_src_idx
+    );
+
+    int snk_enabled = is_routing_snk_enabled(r_snk);
+    int src_enabled = is_routing_src_enabled(r_src);
+
+    // case 1: enabled sink connected to disabled source → draw arrow to sink
+    if (snk_enabled && !src_enabled) {
+      double x, y;
+      get_snk_center(r_snk, parent, &x, &y);
+
+      // mixer/DSP sinks are at bottom, others are on right side
+      int direction = IS_MIXER(elem->port_category) ? 3 : 1;
+
+      double level_db = get_routing_src_level_db(card, r_src);
+      draw_arrow_indicator(cr, x, y, direction, 0.75, 0.25, 0.25, level_db);
+    }
+
+    // case 2: disabled sink → mark the source
+    if (!snk_enabled && src_enabled) {
+      src_has_disabled_snk[r_src_idx] = 1;
+    }
+  }
+
+  // second pass: draw arrows from sources that have disabled sinks
+  for (int i = 1; i < card->routing_srcs->len; i++) {
+    if (!src_has_disabled_snk[i])
+      continue;
+
+    struct routing_src *r_src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+
+    // skip if source itself is disabled
+    if (!is_routing_src_enabled(r_src))
+      continue;
+
+    double x, y;
+    get_src_center(r_src, parent, &x, &y);
+
+    // mixer/DSP sources are at top, others are on left side
+    int direction = IS_MIXER(r_src->port_category) ? 2 : 0;
+
+    double level_db = get_routing_src_level_db(card, r_src);
+    draw_arrow_indicator(cr, x, y, direction, 0.75, 0.25, 0.25, level_db);
+  }
+
+  g_free(src_has_disabled_snk);
+}
+
+// Get stereo source L and R positions
+// Returns 1 if stereo (positions in x_l/y_l and x_r/y_r), 0 if mono
+static int get_src_stereo_positions(
+  struct routing_src *r_src,
+  GtkWidget          *parent,
+  double             *x_l, double *y_l,
+  double             *x_r, double *y_r
+) {
+  if (!is_src_linked(r_src))
+    return 0;
+
+  struct routing_src *src_l = is_src_left_channel(r_src)
+    ? r_src : get_src_partner(r_src);
+  struct routing_src *src_r = is_src_left_channel(r_src)
+    ? get_src_partner(r_src) : r_src;
+
+  if (!src_l || !src_r)
+    return 0;
+
+  GtkWidget *socket = src_l->widget2;
+  if (!socket)
+    return 0;
+
+  get_widget_center(socket, parent, x_l, y_l);
+  *x_r = *x_l;
+  *y_r = *y_l;
+
+  apply_stereo_offset(socket, r_src->port_category, 1, x_l, y_l);
+  apply_stereo_offset(socket, r_src->port_category, 0, x_r, y_r);
+
+  if (IS_MIXER(r_src->port_category)) {
+    (*y_l)++;
+    (*y_r)++;
+  }
+
+  return 1;
+}
+
+// Get stereo sink L and R positions
+// Returns 1 if stereo (positions in x_l/y_l and x_r/y_r), 0 if mono
+static int get_snk_stereo_positions(
+  struct routing_snk *r_snk,
+  GtkWidget          *parent,
+  double             *x_l, double *y_l,
+  double             *x_r, double *y_r
+) {
+  if (!is_snk_linked(r_snk))
+    return 0;
+
+  struct routing_snk *snk_l = is_snk_left_channel(r_snk)
+    ? r_snk : get_snk_partner(r_snk);
+  struct routing_snk *snk_r = is_snk_left_channel(r_snk)
+    ? get_snk_partner(r_snk) : r_snk;
+
+  if (!snk_l || !snk_r)
+    return 0;
+
+  GtkWidget *socket = snk_l->socket_widget;
+  if (!socket)
+    return 0;
+
+  get_widget_center(socket, parent, x_l, y_l);
+  *x_r = *x_l;
+  *y_r = *y_l;
+
+  apply_stereo_offset(socket, r_snk->elem->port_category, 1, x_l, y_l);
+  apply_stereo_offset(socket, r_snk->elem->port_category, 0, x_r, y_r);
+
+  if (IS_MIXER(r_snk->elem->port_category)) {
+    (*y_l)++;
+    (*y_r)++;
+  }
+
+  return 1;
 }
 
 // draw the overlay dragging line
@@ -334,52 +841,138 @@ void draw_drag_line(
   // the drag mouse position is relative to card->routing_grid
   // translate it to the overlay card->drag_line
   // (don't need to do this if both src_drag and snk_drag are set)
-  double drag_x, drag_y;
-  if (!card->src_drag || !card->snk_drag)
-    gtk_widget_translate_coordinates(
-      card->routing_grid, parent,
-      card->drag_x, card->drag_y,
-      &drag_x, &drag_y
-    );
+  double drag_x = 0, drag_y = 0;
+  if (!card->src_drag || !card->snk_drag) {
+    graphene_point_t src =
+      GRAPHENE_POINT_INIT(card->drag_x, card->drag_y);
+    graphene_point_t dest;
+    if (gtk_widget_compute_point(
+          card->routing_grid, parent, &src, &dest)) {
+      drag_x = dest.x;
+      drag_y = dest.y;
+    }
+  }
 
-  // get the line start position; either a routing source socket
-  // widget or the drag mouse position
-  double x1, y1;
-  if (card->src_drag) {
+  // Check for stereo sources/sinks
+  double src_x_l = 0, src_y_l = 0, src_x_r = 0, src_y_r = 0;
+  double snk_x_l = 0, snk_y_l = 0, snk_x_r = 0, snk_y_r = 0;
+
+  int src_stereo = card->src_drag &&
+    get_src_stereo_positions(card->src_drag, parent,
+                             &src_x_l, &src_y_l, &src_x_r, &src_y_r);
+  int snk_stereo = card->snk_drag &&
+    get_snk_stereo_positions(card->snk_drag, parent,
+                             &snk_x_l, &snk_y_l, &snk_x_r, &snk_y_r);
+
+  // Mono source position (or mouse)
+  double x1 = 0, y1 = 0;
+  if (card->src_drag && !src_stereo) {
     get_src_center(card->src_drag, parent, &x1, &y1);
-  } else {
+  } else if (!card->src_drag) {
     x1 = drag_x;
     y1 = drag_y;
   }
 
-  // get the line end position; either a routing sink socket widget or
-  // the drag mouse position
-  double x2, y2;
-  if (card->snk_drag) {
+  // Mono sink position (or mouse)
+  double x2 = 0, y2 = 0;
+  if (card->snk_drag && !snk_stereo) {
     get_snk_center(card->snk_drag, parent, &x2, &y2);
-  } else {
+  } else if (!card->snk_drag) {
     x2 = drag_x;
     y2 = drag_y;
   }
 
-  // if routing src & snk both specified then draw a curved line as if
-  // it was connected (except black)
-  if (card->src_drag && card->snk_drag) {
-    draw_connection(
-      cr,
-      x1, y1, card->src_drag->port_category,
-      x2, y2, card->snk_drag->elem->port_category,
-      1, 1, 1, 2
-    );
+  // Determine line endpoints based on stereo state
+  int draw_two_lines = src_stereo || snk_stereo;
 
-  // otherwise draw a straight line
+  if (draw_two_lines) {
+    // L line endpoints
+    double l_x1 = src_stereo ? src_x_l : x1;
+    double l_y1 = src_stereo ? src_y_l : y1;
+    double l_x2 = snk_stereo ? snk_x_l : x2;
+    double l_y2 = snk_stereo ? snk_y_l : y2;
+
+    // R line endpoints
+    double r_x1 = src_stereo ? src_x_r : x1;
+    double r_y1 = src_stereo ? src_y_r : y1;
+    double r_x2 = snk_stereo ? snk_x_r : x2;
+    double r_y2 = snk_stereo ? snk_y_r : y2;
+
+    int src_cat = card->src_drag ? card->src_drag->port_category : PC_OFF;
+    int snk_cat = card->snk_drag ? card->snk_drag->elem->port_category : PC_OFF;
+
+    if (card->src_drag && card->snk_drag) {
+      // Both specified - draw curved lines
+      draw_connection(cr, l_x1, l_y1, src_cat, l_x2, l_y2, snk_cat, 1, 1, 1, 2);
+      draw_connection(cr, r_x1, r_y1, src_cat, r_x2, r_y2, snk_cat, 1, 1, 1, 2);
+    } else {
+      // One is mouse - draw straight dashed lines
+      cairo_set_dash(cr, dash, 1, 0);
+      cairo_set_source_rgb(cr, 1, 1, 1);
+      cairo_set_line_width(cr, 2);
+
+      cairo_move_to(cr, l_x1, l_y1);
+      cairo_line_to(cr, l_x2, l_y2);
+      cairo_stroke(cr);
+
+      cairo_move_to(cr, r_x1, r_y1);
+      cairo_line_to(cr, r_x2, r_y2);
+      cairo_stroke(cr);
+    }
+
   } else {
-    cairo_set_dash(cr, dash, 1, 0);
-
-    cairo_set_source_rgb(cr, 1, 1, 1);
-    cairo_set_line_width(cr, 2);
-    cairo_move_to(cr, x1, y1);
-    cairo_line_to(cr, x2, y2);
-    cairo_stroke(cr);
+    // Single line (original mono behavior)
+    if (card->src_drag && card->snk_drag) {
+      draw_connection(
+        cr,
+        x1, y1, card->src_drag->port_category,
+        x2, y2, card->snk_drag->elem->port_category,
+        1, 1, 1, 2
+      );
+    } else {
+      cairo_set_dash(cr, dash, 1, 0);
+      cairo_set_source_rgb(cr, 1, 1, 1);
+      cairo_set_line_width(cr, 2);
+      cairo_move_to(cr, x1, y1);
+      cairo_line_to(cr, x2, y2);
+      cairo_stroke(cr);
+    }
   }
+}
+
+// initialise level indication storage for routing lines
+// the actual level updates come from the levels window timer
+void routing_levels_init(struct alsa_card *card) {
+  // find the level meter element
+  card->level_meter_elem = get_elem_by_name(card->elems, "Level Meter");
+  if (!card->level_meter_elem) {
+    card->routing_levels = NULL;
+    card->routing_levels_count = 0;
+    return;
+  }
+
+  // allocate storage for level values (updated by levels window timer)
+  card->routing_levels_count = card->level_meter_elem->count;
+  card->routing_levels = g_malloc0(
+    card->routing_levels_count * sizeof(double)
+  );
+
+  // initialise all levels to minimum
+  for (int i = 0; i < card->routing_levels_count; i++)
+    card->routing_levels[i] = -80.0;
+
+  // cache level meter indices in routing src/snk structs
+  init_routing_level_indices(card);
+}
+
+// clean up level indication resources
+void routing_levels_cleanup(struct alsa_card *card) {
+  // free level storage
+  if (card->routing_levels) {
+    g_free(card->routing_levels);
+    card->routing_levels = NULL;
+  }
+
+  card->routing_levels_count = 0;
+  card->level_meter_elem = NULL;
 }

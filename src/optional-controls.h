@@ -11,9 +11,9 @@ typedef enum {
 } OptionalControlType;
 
 // Definition of an optional control
+// Config key uses alsa_name (ALSA-style naming)
 struct optional_control_def {
   const char          *alsa_name;     // ALSA element name (e.g., "Name")
-  const char          *config_key;    // Config file key (e.g., "name")
   int                  alsa_type;     // SND_CTL_ELEM_TYPE_*
   size_t               max_size;      // For BYTES: max string length
   const char          *default_value; // Default string value
@@ -34,6 +34,5 @@ void optional_controls_init(struct alsa_card *card);
 // Returns NULL if not available
 struct alsa_elem *optional_controls_get_name_elem(struct alsa_card *card);
 
-// Free optional control callback data
-// Called from card_destroy_callback for simulated elements only
+// Free optional control callback data (for use as GDestroyNotify)
 void optional_controls_free_callback_data(void *data);

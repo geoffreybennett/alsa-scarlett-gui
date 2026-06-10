@@ -6,3 +6,4 @@
 #include "alsa.h"
 
 GtkWidget *create_levels_controls(struct alsa_card *card);
+void restart_levels_timer(struct alsa_card *card);

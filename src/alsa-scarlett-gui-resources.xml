@@ -3,6 +3,8 @@
   <gresource prefix="/vu/b4/alsa-scarlett-gui/icons">
     <file alias="vu.b4.alsa-scarlett-gui.png">img/vu.b4.alsa-scarlett-gui.png</file>
     <file alias="socket.svg">img/socket.svg</file>
+    <file alias="socket-stereo-h.svg">img/socket-stereo-h.svg</file>
+    <file alias="socket-stereo-v.svg">img/socket-stereo-v.svg</file>
     <file alias="audio-volume-high.svg">img/audio-volume-high.svg</file>
     <file alias="audio-volume-low.svg">img/audio-volume-low.svg</file>
     <file alias="audio-volume-medium.svg">img/audio-volume-medium.svg</file>

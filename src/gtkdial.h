@@ -101,6 +101,13 @@ void gtk_dial_set_peak_hold(GtkDial *dial, int peak_hold);
 int gtk_dial_get_peak_hold(GtkDial *dial);
 void gtk_dial_peak_tick(void);
 
+void gtk_dial_set_level(GtkDial *dial, double level);
+double gtk_dial_get_level(GtkDial *dial);
+void gtk_dial_set_show_level(GtkDial *dial, gboolean show_level);
+gboolean gtk_dial_get_show_level(GtkDial *dial);
+void gtk_dial_set_show_value(GtkDial *dial, gboolean show_value);
+gboolean gtk_dial_get_show_value(GtkDial *dial);
+
 int cdb_to_linear_value(
   int db, int min_val, int max_val, int min_db, int max_db
 );

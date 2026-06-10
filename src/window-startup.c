@@ -11,6 +11,11 @@
 #include "widget-drop-down.h"
 #include "window-startup.h"
 
+// Wrapper for create_update_firmware_window (passes NULL for parent_label)
+static void update_firmware_clicked(GtkWidget *w, struct alsa_card *card) {
+  create_update_firmware_window(w, card, NULL);
+}
+
 static GtkWidget *small_label(const char *text) {
   GtkWidget *w = gtk_label_new(NULL);
 
@@ -49,7 +54,7 @@ static void add_sep(GtkWidget *grid, int *grid_y) {
 }
 
 static void add_standalone_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int       *grid_y
 ) {
@@ -83,7 +88,7 @@ static void add_standalone_control(
 }
 
 static void add_phantom_persistence_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int       *grid_y
 ) {
@@ -118,7 +123,7 @@ static void add_phantom_persistence_control(
 }
 
 static int add_msd_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int       *grid_y
 ) {
@@ -156,8 +161,23 @@ static int add_msd_control(
   return 1;
 }
 
+// Check if any enum item contains the given substring
+static int has_mode_option(struct alsa_elem *elem, const char *substring) {
+  int count = alsa_get_item_count(elem);
+
+  for (int i = 0; i < count; i++) {
+    char *name = alsa_get_item_name(elem, i);
+    if (name && strstr(name, substring)) {
+      free(name);
+      return 1;
+    }
+    free(name);
+  }
+  return 0;
+}
+
 static int add_spdif_mode_control(
-  GArray    *elems,
+  GPtrArray *elems,
   GtkWidget *grid,
   int       *grid_y
 ) {
@@ -191,18 +211,38 @@ static int add_spdif_mode_control(
   gtk_widget_set_valign(w, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(grid), w, 0, *grid_y + 1, 1, 1);
 
-  w = big_label(
-    i == 0 ? (
-      "The S/PDIF Mode selects whether the interface can receive "
-      "S/PDIF input from the coaxial (RCA) input or the optical "
-      "(TOSLINK) input. This requires a reboot to take effect."
-    ) : (
-      "The Digital I/O Mode selects whether the interface can "
-      "receive S/PDIF input from the coaxial (RCA) input, the "
-      "optical (TOSLINK) input, or whether dual-ADAT mode is "
-      "enabled. This requires a reboot to take effect."
-    )
-  );
+  // Generate description based on actual enum options
+  const char *description;
+
+  if (i == 0) {
+    // S/PDIF Mode (Gen 3 18i8): RCA vs Optical for S/PDIF input
+    description =
+      "S/PDIF Mode selects whether the interface receives S/PDIF "
+      "input from the coaxial (RCA) connector or the optical "
+      "(TOSLINK) connector. This requires a reboot to take effect.";
+  } else {
+    // Digital I/O Mode: check which options are available
+    int has_dual_adat = has_mode_option(spdif, "Dual ADAT");
+
+    if (has_dual_adat) {
+      // Gen 3 18i20, Gen 4 18i20: RCA, Optical, and Dual ADAT
+      description =
+        "Digital I/O Mode selects whether the interface receives "
+        "S/PDIF input from the coaxial (RCA) connector, the optical "
+        "connector, or whether Dual ADAT mode is enabled. This "
+        "requires a reboot to take effect.";
+    } else {
+      // Gen 4 16i16, 18i16: ADAT vs Optical S/PDIF only
+      description =
+        "Digital I/O Mode selects whether the optical ports are "
+        "used for ADAT or S/PDIF. In ADAT mode, S/PDIF is available "
+        "on the coaxial (RCA) connectors. In Optical S/PDIF mode, "
+        "the RCA S/PDIF input is disabled. This requires a reboot "
+        "to take effect.";
+    }
+  }
+
+  w = big_label(description);
   gtk_grid_attach(GTK_GRID(grid), w, 1, *grid_y, 1, 2);
 
   *grid_y += 2;
@@ -309,18 +349,55 @@ static void add_reset_actions(
   if (!firmware_elem)
     return;
 
-  int firmware_version = alsa_get_elem_value(firmware_elem);
+  char *s;
 
-  if (firmware_version >= card->best_firmware_version)
-    return;
+  // FCP/Scarlett4 devices use 4-valued firmware versions
+  if (card->driver_type == DRIVER_TYPE_SOCKET && card->best_firmware_version_4) {
+    long *current = alsa_get_elem_int_values(firmware_elem);
+    if (!current)
+      return;
 
-  char *s = g_strdup_printf(
-    "Updating the firmware will reset the interface to its "
-    "factory default settings and update the firmware from version "
-    "%d to %d.",
-    firmware_version,
-    card->best_firmware_version
-  );
+    // Compare 4-valued versions
+    int needs_update = 0;
+    for (int i = 0; i < 4; i++) {
+      if ((uint32_t)current[i] < card->best_firmware_version_4[i]) {
+        needs_update = 1;
+        break;
+      }
+      if ((uint32_t)current[i] > card->best_firmware_version_4[i])
+        break;
+    }
+
+    if (!needs_update) {
+      g_free(current);
+      return;
+    }
+
+    s = g_strdup_printf(
+      "Updating the firmware will reset the interface to its "
+      "factory default settings and update the firmware from version "
+      "%ld.%ld.%ld.%ld to %u.%u.%u.%u.",
+      current[0], current[1], current[2], current[3],
+      card->best_firmware_version_4[0], card->best_firmware_version_4[1],
+      card->best_firmware_version_4[2], card->best_firmware_version_4[3]
+    );
+    g_free(current);
+  } else {
+    // Scarlett2 devices use single-valued firmware versions
+    int firmware_version = alsa_get_elem_value(firmware_elem);
+
+    if (firmware_version >= card->best_firmware_version)
+      return;
+
+    s = g_strdup_printf(
+      "Updating the firmware will reset the interface to its "
+      "factory default settings and update the firmware from version "
+      "%d to %d.",
+      firmware_version,
+      card->best_firmware_version
+    );
+  }
+
   add_reset_action(
     card,
     grid,
@@ -328,7 +405,7 @@ static void add_reset_actions(
     "Update Firmware",
     "Update",
     s,
-    G_CALLBACK(create_update_firmware_window)
+    G_CALLBACK(update_firmware_clicked)
   );
 
   g_free(s);
@@ -342,7 +419,7 @@ static void add_no_startup_controls_msg(GtkWidget *grid) {
 }
 
 GtkWidget *create_startup_controls(struct alsa_card *card) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   GtkWidget *top = gtk_frame_new(NULL);
   gtk_widget_add_css_class(top, "window-frame");

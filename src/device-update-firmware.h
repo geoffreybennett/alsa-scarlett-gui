@@ -6,4 +6,8 @@
 #include <gtk/gtk.h>
 #include "alsa.h"
 
-void create_update_firmware_window(GtkWidget *w, struct alsa_card *card);
+void create_update_firmware_window(
+  GtkWidget        *w,
+  struct alsa_card *card,
+  GtkWidget        *parent_label
+);

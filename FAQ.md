@@ -136,6 +136,262 @@ If the setting on the device changes at step 4, then the `alsa-state`
 and `alsa-restore` services are the likely cause of your issues and
 you should disable them as above.
 
+## Why is there no stereo output? I only see surround options.
+
+By default, PulseAudio/PipeWire treats multi-channel interfaces as
+surround sound devices. To get proper stereo output and individual
+channel access, select the "Pro Audio" profile:
+
+1. Open `pavucontrol` (PulseAudio Volume Control)
+2. Go to the Configuration tab
+3. Find your Scarlett/Clarett/Vocaster
+4. Change the profile to "Pro Audio"
+
+This gives you access to all channels individually instead of
+mapping them to surround speaker positions.
+
+Note: Some desktop sound settings panels (notably GNOME Settings
+and Linux Mint's) don't handle multi-channel interfaces well. Use
+`pavucontrol` instead for reliable configuration.
+
+## My desktop audio is coming through my microphone input
+
+This typically happens because the default PulseAudio/PipeWire
+profile maps your interface's channels incorrectly. For example,
+the Scarlett Solo gets treated as a 4.0 surround device where the
+"Rear" channels are actually your loopback inputs (desktop audio
+routed back to recording applications).
+
+The fix is the same as above: select the "Pro Audio" profile in
+`pavucontrol`. This prevents PulseAudio/PipeWire from conflating
+hardware inputs with loopback channels.
+
+If you need loopback (recording desktop audio), use the Routing
+window in `alsa-scarlett-gui` to explicitly configure which PCM
+inputs receive which sources.
+
+## My mixer isn't working / no audio passes through
+
+The hardware mixer in Scarlett interfaces is disabled at higher
+sample rates. This is a hardware limitation:
+
+- At **single-band** rates (44.1/48 kHz): mixer fully functional
+- At **dual-band** rates (88.2/96 kHz): mixer available on most
+  models (some have reduced mix buses)
+- At **quad-band** rates (176.4/192 kHz): mixer entirely
+  unavailable
+
+If your sample rate is set high and no audio passes through the
+mixer, this is expected behaviour. Lower the sample rate, or
+route audio directly (bypassing the mixer) in the Routing window.
+
+The mixer window will show a dimmed overlay message when the
+mixer is unavailable at the current sample rate.
+
+## My interface shows limited controls or wrong channel count
+
+If your interface only shows a few inputs or missing controls,
+the most likely cause is a firmware version mismatch. This
+happens when:
+
+- You updated firmware on Windows/Mac to a version newer than
+  what the Linux tools support, or
+- You're running an older version of `alsa-scarlett-gui` or
+  `fcp-server` that doesn't match your firmware
+
+**Solution:** Update `alsa-scarlett-gui` (and `fcp-server` if
+using a Gen 4 large interface) to the latest version. If needed,
+the GUI will prompt you to update your firmware to a compatible
+version.
+
+For Gen 4 large interfaces, ensure your `fcp-server` version
+matches the firmware version — they must be from the same
+release.
+
+## What do I need for a Scarlett 4th Gen 16i16, 18i16, or 18i20?
+
+The "big" 4th Gen interfaces use a different driver architecture
+from all other supported models. You need:
+
+1. **Linux kernel 6.14+** — contains the FCP kernel driver
+2. **fcp-server** — the user-space daemon from the
+   [fcp-support](https://github.com/geoffreybennett/fcp-support)
+   repo
+3. **Firmware** — from the
+   [scarlett4-firmware](https://github.com/geoffreybennett/scarlett4-firmware)
+   repo, installed to `/usr/lib/firmware/scarlett4`
+4. **alsa-scarlett-gui** — version 1.0 or later
+
+Verify your setup by checking `dmesg` after plugging in. You
+should see:
+
+```
+Focusrite Control Protocol Driver v6.x.x ready
+```
+
+If that message is missing, your kernel doesn't have the FCP
+driver. Check that you're actually booted into the correct kernel
+with `uname -r`.
+
+## ALSA UCM errors after a distro update
+
+If you see errors mentioning "UCM" (Use Case Manager) after
+updating your distribution or PipeWire, the issue is likely
+outdated `alsa-ucm-conf` files shipped by your distro.
+
+**Solution:** Install the latest alsa-ucm-conf from
+https://github.com/geoffreybennett/alsa-ucm-conf — this fork
+contains the correct UCM2 profiles for Focusrite interfaces.
+
+This is not a bug in `alsa-scarlett-gui` or the kernel driver;
+it's a packaging issue in some distributions. The fix usually
+arrives in distro updates within a few days of being reported.
+
+## USB connection problems / intermittent failures
+
+If your interface intermittently fails to initialise, drops out,
+or shows errors like `usb_set_interface failed (-71)` in `dmesg`:
+
+1. **Try a different USB cable** — this is the most common cause.
+   On interfaces with a front-panel LED, the LED should turn
+   white during USB setup. If it stays red, the cable or port
+   isn't providing adequate connection.
+2. **Use a cable under 2 metres**
+3. **Connect directly** — avoid USB hubs where possible
+4. **Try a different USB port** — ideally one on its own USB bus
+5. **Check USB autosuspend** — some systems aggressively suspend
+   USB devices. Check if
+   `/sys/bus/usb/devices/*/power/control` is set to `auto` for
+   your interface and change it to `on` if so.
+
+## My input gain keeps decreasing by itself
+
+This is the Safe Mode feature working as intended. Safe Mode
+automatically reduces gain when the input signal clips, to
+prevent distortion in recordings.
+
+If you're using the interface for voice calls, streaming, or
+other non-recording purposes where occasional clipping isn't
+critical, disable Safe Mode in the main window of
+`alsa-scarlett-gui`.
+
+## PipeWire/JACK conflicts
+
+If you're running JACK alongside PipeWire (or starting JACK
+manually), it will take exclusive control of your interface,
+preventing other applications from using it.
+
+Modern PipeWire includes full JACK compatibility. The simplest
+solution is to not start JACK separately — PipeWire provides a
+JACK-compatible interface that applications can use
+transparently. Remove or disable any JACK autostart configuration
+and use PipeWire's built-in JACK support instead.
+
+## An application says it can't open my device
+
+Applications that try to open the ALSA device directly (using
+paths like `plughw:3,0` or `hw:2,0`) will fail if PipeWire
+already has the device open.
+
+**Solution:** Configure the application to use the default audio
+device (usually shown as "Default" or "PipeWire" in its settings)
+rather than a specific hardware path. In most applications, this
+means selecting "default" or "PipeWire" as the audio device.
+
+## Firefox/Wine/games crash or create excessive connections
+
+Some applications can't handle interfaces with more than 8
+channels, causing crashes or misbehaviour:
+
+- **Firefox**: may create a new PipeWire connection every second,
+  flooding your audio graph
+- **Wine/games**: may crash with channel mask errors when the
+  interface has more than 8 channels
+
+**Solution:** Create a virtual stereo device that applications
+can use instead of the raw multi-channel interface:
+
+```sh
+pactl load-module module-remap-sink \
+  sink_name=scarlett-stereo \
+  master=$(pactl list short sinks | grep -i scarlett | cut -f2) \
+  channels=2
+```
+
+Or select the "Pro Audio" profile in `pavucontrol` and use
+PipeWire's built-in routing to present a stereo device to
+applications.
+
+## The application won't start or shows rendering errors
+
+If `alsa-scarlett-gui` fails to start, shows a blank window, or
+crashes with Vulkan/rendering errors, try setting the GTK4
+renderer:
+
+```sh
+GSK_RENDERER=ngl alsa-scarlett-gui
+```
+
+If that works, make it permanent by adding
+`GSK_RENDERER=ngl` to your environment (e.g. in
+`~/.bashrc` or a systemd environment file).
+
+This is a GTK4/GPU driver issue, not specific to
+`alsa-scarlett-gui`.
+
+## Flatpak limitations
+
+The Flatpak version of `alsa-scarlett-gui` has some limitations
+due to sandboxing:
+
+- **Firmware updates** cannot be performed from the Flatpak
+  version because the sandbox prevents access to the firmware
+  directory. Use the native build for firmware updates.
+- **Configuration save/load** using `alsactl` format may not work
+  within the Flatpak sandbox. The native `.conf` format works
+  normally.
+
+If you only need basic device control (routing, mixer, levels),
+the Flatpak works fine. For firmware management, build and install
+natively.
+
+## How do I create virtual audio channels?
+
+If you want named stereo outputs (like a "Music" output and a
+"Voice" output routed to different physical channels), you can
+create virtual PulseAudio/PipeWire sinks:
+
+```sh
+# Create a virtual stereo sink mapped to outputs 3-4
+pactl load-module module-remap-sink \
+  sink_name=music-out \
+  master=alsa_output.usb-Focusrite_Scarlett_18i20-00.pro-output-0 \
+  channels=2 \
+  master_channel_map=front-left,front-right \
+  channel_map=front-left,front-right \
+  remix=no
+```
+
+These virtual sinks then appear in your application audio
+settings as separate output devices. Use `qpwgraph` or
+`pw-link` to route them to specific physical outputs on your
+interface.
+
+This is independent of the hardware routing in
+`alsa-scarlett-gui` — it's PipeWire/PulseAudio-level virtual
+routing on top of whatever hardware routing you've configured.
+
+## Why does phantom power turn on when I plug in my interface?
+
+This is the same `alsa-state`/`alsa-restore` issue described in
+"Why do my settings keep resetting?" above. The systemd services
+restore a previously-saved state that had phantom power enabled.
+
+This can be a safety concern if you have ribbon microphones or
+other equipment that can be damaged by unexpected phantom power.
+Disable the `alsa-state` and `alsa-restore` services as described
+above.
+
 ## Help?!
 
 Have you read the User Guide for your interface? It’s available

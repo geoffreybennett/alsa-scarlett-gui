@@ -3,8 +3,52 @@
   background: black;
   color: white;
   padding: 15px;
-  border-radius: 0px;
+  border-radius: 0;
   border: none;
+}
+
+/* Force headerbar styling for modal windows */
+.window-frame.modal headerbar,
+.window-frame.modal headerbar:backdrop {
+  background: transparent;
+  color: white;
+  border: none;
+  box-shadow: none;
+}
+
+/* Modal close button */
+.window-frame.modal headerbar windowcontrols button,
+.window-frame.modal headerbar windowcontrols button:hover,
+.window-frame.modal headerbar windowcontrols button:active {
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  border: none;
+  padding-right: 0;
+  border-radius: 0;
+}
+
+.window-frame.modal headerbar windowcontrols button > image {
+  background: transparent;
+  border-radius: 0;
+}
+
+.window-frame.modal headerbar windowcontrols button:hover > image {
+  background: #303030;
+  border-radius: 5px;
+}
+
+/* Modal window frame */
+.window-frame.modal {
+  padding-top: 0;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Modal content needs matching top border-radius */
+.window-frame.modal .window-content {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
 }
 
 /* Top-level window content */
@@ -65,12 +109,42 @@
   background: #801010;
 }
 
-.mixer-label {
+/* Suppress GTK default drop highlight on routing overlay */
+.window-routing:drop(active) {
+  box-shadow: none;
+  outline: none;
+  background: transparent;
+}
+
+.mixer-corner-label {
+  font-size: smaller;
+  color: #808080;
 }
 
 .mixer-label-hover {
   font-weight: bold;
   text-shadow: 0 0 5px #00c000, 0 0 15px #00c000;
+}
+
+.filter-stage-hover {
+  background: #282828;
+  border-radius: 5px;
+}
+
+.filter-stage checkbutton {
+  padding: 0;
+}
+
+.presets-button {
+  font-size: smaller;
+  padding: 0 6px;
+}
+
+.dsp-section-header {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #c0c0c0;
+  padding-left: 5px;
 }
 
 label.gain {
@@ -304,6 +378,10 @@ button.toggle {
   text-shadow: 0 0 5px #ff0000, 0 0 15px #c00000;
 }
 
+.window-frame button.sample-rate.inactive > label {
+  color: #808080;
+}
+
 /* Button controls where checked is dimmer */
 
 /* Mute button */
@@ -345,10 +423,9 @@ button.toggle {
 
 /* Textview used for long descriptions in the startup window */
 .window-frame textview {
-  color: #ffffff;
+  color: #fefefe;
   background: none;
 }
-
 .window-frame textview > text {
   background: none;
 }
@@ -356,6 +433,26 @@ button.toggle {
 /* Bigger buttons in the startup window */
 .window-frame .window-startup button {
   padding: 5px;
+}
+
+/* Switches */
+.window-frame switch {
+  background: #303030;
+  border: 1px solid #404040;
+}
+
+.window-frame switch:checked {
+  background: #a00000;
+  border-color: #c00000;
+}
+
+.window-frame switch slider {
+  background: #d0d0d0;
+  border: 1px solid #801010;
+}
+
+.window-frame switch:focus:focus-visible {
+  outline: 2px solid #801010;
 }
 
 /* Separators */
@@ -370,4 +467,182 @@ button.toggle {
 /* Bigger buttons in confirmation dialogs */
 .window-frame .big-padding button {
   padding: 5px 30px;
+}
+
+/* Notebook styling */
+.window-frame notebook {
+  border: none;
+}
+
+.window-frame notebook > header {
+  background: none;
+  border-bottom: 1px solid #a00000;
+}
+
+.window-frame notebook > header > tabs > tab {
+  background: #181818;
+  color: #808080;
+  border: 1px solid #404040;
+  border-bottom: none;
+  padding: 8px 16px;
+  margin: 2px;
+  border-radius: 5px 5px 0 0;
+}
+
+.window-frame notebook > header > tabs > tab:checked {
+  background: #141414;
+  color: #ffffff;
+  border: 1px solid #a00000;
+  border-bottom: 1px solid #141414;
+  outline: none;
+  box-shadow: inset 0px -3px #c00000;
+}
+
+.window-frame notebook > header > tabs > tab:hover {
+  background: #282828;
+  box-shadow: inset 0px -3px #ffffff;
+}
+
+.window-frame notebook > header > tabs > tab:focus {
+  outline: none;
+}
+
+.window-frame notebook > header > tabs > tab:focus-visible {
+  outline: none;
+}
+
+.window-frame notebook > stack {
+  background: #141414;
+  border: 1px solid #a00000;
+  border-radius: 5px;
+  color: #d0d0d0;
+}
+
+.window-frame notebook.outer-notebook > stack {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Popover styling */
+.window-frame popover.background {
+  background-color: transparent;
+}
+
+.window-frame popover > arrow,
+.window-frame popover > contents {
+  background-color: #282828;
+  color: #d0d0d0;
+  border: 1px solid #a00000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.window-frame popover > contents {
+  padding: 8px;
+  border-radius: 8px;
+}
+
+/* Popover list item styling */
+.window-frame popover row:hover {
+  background-color: #800000;
+  outline: none;
+}
+
+.window-frame popover row:focus {
+  background-color: #800000;
+  outline: none;
+}
+
+.window-frame popover row:selected {
+  background-color: #800000;
+  outline: none;
+}
+
+/* Popover checkmark images */
+.window-frame popover row image {
+  color: #d0d0d0;
+}
+
+.window-frame popover row:hover image {
+  color: #ffffff;
+}
+
+/* Configuration window checkboxes */
+.window-frame check {
+  min-width: 14px;
+  min-height: 14px;
+  background: #202020;
+  background-image: none;
+  border: 1px solid #505050;
+  box-shadow: none;
+  color: #d0d0d0;
+  -gtk-icon-source: none;
+}
+
+.window-frame check:checked {
+  background: #c00000;
+  border-color: #a00000;
+  color: #ffffff;
+  -gtk-icon-source: -gtk-icontheme("object-select-symbolic");
+}
+
+.window-frame check:indeterminate {
+  background: #404040;
+  border-color: #606060;
+  -gtk-icon-source: -gtk-icontheme("list-remove-symbolic");
+}
+
+.window-frame check:hover {
+  border-color: #a00000;
+  outline: none;
+}
+
+.window-frame check:checked:hover {
+  background: #e00000;
+  border-color: #c00000;
+}
+
+.window-frame checkbutton:focus:focus-visible {
+  outline: none;
+}
+
+.window-frame checkbutton:focus:focus-visible > check {
+  outline: 2px solid #a00000;
+  outline-offset: 1px;
+}
+
+/* Drop-down lists */
+.drop-down-list,
+.filter-type-list {
+  background: transparent;
+  color: #d0d0d0;
+}
+
+.drop-down-list > row,
+.filter-type-list > row {
+  padding: 4px 8px;
+  color: #d0d0d0;
+}
+
+.drop-down-list > row:hover,
+.filter-type-list > row:hover {
+  background: #800000;
+  color: #ffffff;
+}
+
+.drop-down-list > row:selected,
+.filter-type-list > row:selected {
+  background: #600000;
+  color: #ffffff;
+}
+
+/* Mixer unavailable overlay */
+.mixer-unavailable {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff4040;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 20px 40px;
+  border-radius: 10px;
+  border: 2px solid #ff0000;
 }

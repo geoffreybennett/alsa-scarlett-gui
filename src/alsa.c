@@ -7,10 +7,17 @@
 #include "alsa.h"
 #include "scarlett2.h"
 #include "scarlett2-firmware.h"
+#include "scarlett4-firmware.h"
 #include "scarlett2-ioctls.h"
 #include "stringhelper.h"
 #include "window-iface.h"
 #include "optional-controls.h"
+#include "custom-names.h"
+#include "port-enable.h"
+#include "stereo-link.h"
+#include "dsp-state.h"
+#include "hw-io-availability.h"
+#include "presets.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -29,6 +36,15 @@ const char *port_category_names[PC_COUNT] = {
   "Mixer Inputs",
   "DSP Inputs",
   "PCM Inputs"
+};
+
+// short names for the port categories (for debug output)
+const char *port_category_short_names[PC_COUNT] = {
+  "OFF",
+  "HW",
+  "MIX",
+  "DSP",
+  "PCM"
 };
 
 // names for the hardware types
@@ -53,7 +69,7 @@ struct reopen_callback {
 GHashTable *reopen_callbacks;
 
 // forward declaration
-static void alsa_elem_change(struct alsa_elem *elem);
+void alsa_elem_change(struct alsa_elem *elem);
 
 void fatal_alsa_error(const char *msg, int err) {
   fprintf(stderr, "%s: %s\n", msg, snd_strerror(err));
@@ -65,9 +81,9 @@ void fatal_alsa_error(const char *msg, int err) {
 //
 
 // return the element with the exact matching name
-struct alsa_elem *get_elem_by_name(GArray *elems, const char *name) {
+struct alsa_elem *get_elem_by_name(GPtrArray *elems, const char *name) {
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -80,11 +96,11 @@ struct alsa_elem *get_elem_by_name(GArray *elems, const char *name) {
 }
 
 // return the first element with a name starting with the given prefix
-struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix) {
+struct alsa_elem *get_elem_by_prefix(GPtrArray *elems, const char *prefix) {
   int prefix_len = strlen(prefix);
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -97,9 +113,9 @@ struct alsa_elem *get_elem_by_prefix(GArray *elems, const char *prefix) {
 }
 
 // return the first element with a name containing the given substring
-struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr) {
+struct alsa_elem *get_elem_by_substr(GPtrArray *elems, const char *substr) {
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -117,7 +133,7 @@ struct alsa_elem *get_elem_by_substr(GArray *elems, const char *substr) {
 // will return 8 when the last pad capture switch is
 // "Line In 8 Pad Capture Switch"
 int get_max_elem_by_name(
-  GArray *elems,
+  GPtrArray *elems,
   const char *prefix,
   const char *needle
 ) {
@@ -125,7 +141,7 @@ int get_max_elem_by_name(
   int l = strlen(prefix);
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
     int num;
 
     if (!elem->card)
@@ -149,14 +165,36 @@ int get_max_elem_by_name(
 void alsa_elem_add_callback(
   struct alsa_elem *elem,
   AlsaElemCallback *callback,
-  void             *data
+  void             *data,
+  GDestroyNotify    destroy
 ) {
   struct alsa_elem_callback *cb = calloc(1, sizeof(struct alsa_elem_callback));
 
   cb->callback = callback;
   cb->data = data;
+  cb->destroy = destroy;
 
   elem->callbacks = g_list_append(elem->callbacks, cb);
+}
+
+void alsa_elem_remove_callbacks_by_data(struct alsa_elem *elem, void *data) {
+  if (!elem || !elem->callbacks)
+    return;
+
+  GList *l = elem->callbacks;
+  while (l) {
+    GList *next = l->next;
+    struct alsa_elem_callback *cb = l->data;
+
+    if (cb && cb->data == data) {
+      if (cb->destroy)
+        cb->destroy(cb->data);
+      free(cb);
+      elem->callbacks = g_list_delete_link(elem->callbacks, l);
+    }
+
+    l = next;
+  }
 }
 
 //
@@ -191,7 +229,7 @@ char *alsa_get_elem_name(struct alsa_elem *elem) {
 // get the element value
 // boolean, enum, or int all returned as long ints
 long alsa_get_elem_value(struct alsa_elem *elem) {
-  if (elem->card->num == SIMULATED_CARD_NUM)
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
     return elem->value;
 
   snd_ctl_elem_value_t *elem_value;
@@ -219,14 +257,22 @@ long alsa_get_elem_value(struct alsa_elem *elem) {
   }
 }
 
+// idle callback to trigger element change
+static gboolean alsa_elem_change_idle(gpointer user_data) {
+  struct alsa_elem *elem = user_data;
+  elem->pending_idle = 0;
+  alsa_elem_change(elem);
+  return G_SOURCE_REMOVE;
+}
+
 // for elements with multiple int values, return all the values
 // the int array returned needs to be freed by the caller
 long *alsa_get_elem_int_values(struct alsa_elem *elem) {
   long *values = calloc(elem->count, sizeof(long));
 
-  if (elem->card->num == SIMULATED_CARD_NUM) {
-    for (int i = 0; i < elem->count; i++)
-      values[i] = 0;
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
+    if (elem->values)
+      memcpy(values, elem->values, elem->count * sizeof(long));
     return values;
   }
 
@@ -242,10 +288,46 @@ long *alsa_get_elem_int_values(struct alsa_elem *elem) {
   return values;
 }
 
+// set multiple int values for an element (e.g., biquad coefficients)
+void alsa_set_elem_int_values(
+  struct alsa_elem *elem, const long *values, int count
+) {
+  int n = count < elem->count ? count : elem->count;
+  size_t size = n * sizeof(long);
+
+  // Allocate cache on first use
+  if (!elem->values)
+    elem->values = calloc(elem->count, sizeof(long));
+
+  // Skip if unchanged
+  if (memcmp(elem->values, values, size) == 0)
+    return;
+
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
+    memcpy(elem->values, values, size);
+    if (!elem->pending_idle)
+      elem->pending_idle =
+        g_idle_add(alsa_elem_change_idle, elem);
+    return;
+  }
+
+  // Don't update cache here - let ALSA callback do it so callbacks fire
+
+  snd_ctl_elem_value_t *elem_value;
+
+  snd_ctl_elem_value_alloca(&elem_value);
+  snd_ctl_elem_value_set_numid(elem_value, elem->numid);
+
+  for (int i = 0; i < n; i++)
+    snd_ctl_elem_value_set_integer(elem_value, i, values[i]);
+
+  snd_ctl_elem_write(elem->card->handle, elem_value);
+}
+
 // set the element value
 // boolean, enum, or int all set from long ints
 void alsa_set_elem_value(struct alsa_elem *elem, long value) {
-  if (elem->card->num == SIMULATED_CARD_NUM) {
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated) {
     if (elem->value != value) {
       elem->value = value;
       alsa_elem_change(elem);
@@ -322,9 +404,21 @@ int alsa_get_elem_count(struct alsa_elem *elem) {
   return snd_ctl_elem_info_get_count(elem_info);
 }
 
+// get the integer element's min and max values
+static void alsa_get_elem_int_range(struct alsa_elem *elem) {
+  snd_ctl_elem_info_t *elem_info;
+
+  snd_ctl_elem_info_alloca(&elem_info);
+  snd_ctl_elem_info_set_numid(elem_info, elem->numid);
+  snd_ctl_elem_info(elem->card->handle, elem_info);
+
+  elem->min_val = snd_ctl_elem_info_get_min(elem_info);
+  elem->max_val = snd_ctl_elem_info_get_max(elem_info);
+}
+
 // get the number of items this enum element has
 int alsa_get_item_count(struct alsa_elem *elem) {
-  if (elem->card->num == SIMULATED_CARD_NUM)
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
     return elem->item_count;
 
   snd_ctl_elem_info_t *elem_info;
@@ -338,8 +432,8 @@ int alsa_get_item_count(struct alsa_elem *elem) {
 
 // get the name of an item of the given enum element
 char *alsa_get_item_name(struct alsa_elem *elem, int i) {
-  if (elem->card->num == SIMULATED_CARD_NUM)
-    return elem->item_names[i];
+  if (elem->card->num == SIMULATED_CARD_NUM || elem->is_simulated)
+    return strdup(elem->item_names[i]);
 
   snd_ctl_elem_info_t *elem_info;
 
@@ -384,13 +478,6 @@ const void *alsa_get_elem_bytes(struct alsa_elem *elem, size_t *size) {
   return elem->bytes_value;
 }
 
-// idle callback to trigger element change
-static gboolean alsa_elem_change_idle(gpointer user_data) {
-  struct alsa_elem *elem = user_data;
-  alsa_elem_change(elem);
-  return G_SOURCE_REMOVE;
-}
-
 // set the bytes data for a BYTES element
 // for simulated elements, stores in elem->bytes_value and triggers callbacks
 // for real elements, writes to ALSA
@@ -409,7 +496,8 @@ void alsa_set_elem_bytes(struct alsa_elem *elem, const void *data, size_t size) 
     elem->count = size;  // update actual length
 
     // schedule callback from idle to avoid GTK warnings
-    g_idle_add(alsa_elem_change_idle, elem);
+    if (!elem->pending_idle)
+      elem->pending_idle = g_idle_add(alsa_elem_change_idle, elem);
     return;
   }
 
@@ -429,35 +517,75 @@ struct alsa_elem *alsa_create_optional_elem(
   int               type,
   size_t            max_size
 ) {
-  // create a new element
-  struct alsa_elem new_elem = { 0 };
+  // allocate new element
+  struct alsa_elem *elem = calloc(1, sizeof(struct alsa_elem));
 
-  new_elem.card = card;
-  new_elem.numid = 0;  // simulated elements have no numid
-  new_elem.name = strdup(name);
-  new_elem.type = type;
-  new_elem.count = 1;
-  new_elem.index = 0;
+  elem->card = card;
+  elem->numid = 0;  // simulated elements have no numid
+  elem->name = strdup(name);
+  elem->type = type;
+  elem->count = 1;
+  elem->index = 0;
 
   // mark as simulated
-  new_elem.is_simulated = 1;
-  new_elem.is_writable = 1;
-  new_elem.is_volatile = 0;
+  elem->is_simulated = 1;
+  elem->is_writable = 1;
+  elem->is_volatile = 0;
 
   // for BYTES elements, allocate buffer at max size
   if (type == SND_CTL_ELEM_TYPE_BYTES) {
-    new_elem.bytes_value = malloc(max_size);
-    new_elem.count = 0;  // actual length, starts at 0
-    new_elem.bytes_size = max_size;  // max capacity
+    elem->bytes_value = malloc(max_size);
+    elem->count = 0;  // actual length, starts at 0
+    elem->bytes_size = max_size;  // max capacity
   }
 
   // add to card->elems array
-  int array_len = card->elems->len;
-  g_array_set_size(card->elems, array_len + 1);
-  g_array_index(card->elems, struct alsa_elem, array_len) = new_elem;
+  g_ptr_array_add(card->elems, elem);
 
-  // return pointer to the new element
-  return &g_array_index(card->elems, struct alsa_elem, array_len);
+  return elem;
+}
+
+// create a simulated optional enumerated element with item names
+struct alsa_elem *alsa_create_optional_enum_elem(
+  struct alsa_card *card,
+  const char       *name,
+  const char      **item_names,
+  int               item_count
+) {
+  // check if element already exists
+  struct alsa_elem *elem = get_elem_by_name(card->elems, name);
+  if (elem)
+    return elem;
+
+  // allocate new element
+  elem = calloc(1, sizeof(struct alsa_elem));
+
+  elem->card = card;
+  elem->numid = 0;  // simulated elements have no numid
+  elem->name = strdup(name);
+  elem->type = SND_CTL_ELEM_TYPE_ENUMERATED;
+  elem->count = 1;
+  elem->index = 0;
+
+  // mark as simulated
+  elem->is_simulated = 1;
+  elem->is_writable = 1;
+  elem->is_volatile = 0;
+
+  // set up enum items
+  elem->item_count = item_count;
+  elem->item_names = calloc(item_count, sizeof(char *));
+  for (int i = 0; i < item_count; i++)
+    elem->item_names[i] = strdup(item_names[i]);
+
+  elem->min_val = 0;
+  elem->max_val = item_count - 1;
+  elem->value = 0;
+
+  // add to card->elems array
+  g_ptr_array_add(card->elems, elem);
+
+  return elem;
 }
 
 //
@@ -601,6 +729,11 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
 
   alsa_get_elem_tlv(&alsa_elem);
 
+  // get integer range if not set by TLV
+  if (alsa_elem.type == SND_CTL_ELEM_TYPE_INTEGER &&
+      alsa_elem.min_val >= alsa_elem.max_val)
+    alsa_get_elem_int_range(&alsa_elem);
+
   // Scarlett 1st Gen driver puts two volume controls/mutes in the
   // same element, so split them out to match the other series
   int count = alsa_elem.count;
@@ -608,17 +741,23 @@ static void alsa_get_elem(struct alsa_card *card, int numid) {
   if (strcmp(alsa_elem.name, "Level Meter") == 0)
     count = 1;
 
-  if (count > 2) {
-    fprintf(stderr, "element %s has count %d\n", alsa_elem.name, count);
+  if (count > 2)
     count = 1;
-  }
 
   for (int i = 0; i < count; i++, alsa_elem.lr_num++) {
     alsa_elem.index = i;
 
-    int array_len = card->elems->len;
-    g_array_set_size(card->elems, array_len + 1);
-    g_array_index(card->elems, struct alsa_elem, array_len) = alsa_elem;
+    // allocate new element and copy data
+    struct alsa_elem *elem = malloc(sizeof(struct alsa_elem));
+    *elem = alsa_elem;
+
+    // Initialise value cache for change detection
+    if (elem->count == 1)
+      elem->value = alsa_get_elem_value(elem);
+    else if (elem->count > 1)
+      elem->values = alsa_get_elem_int_values(elem);
+
+    g_ptr_array_add(card->elems, elem);
   }
 }
 
@@ -668,7 +807,7 @@ static void alsa_set_elem_lr_num(struct alsa_elem *elem) {
 
 void alsa_set_lr_nums(struct alsa_card *card) {
   for (int i = 0; i < card->elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
     alsa_set_elem_lr_num(elem);
   }
@@ -691,6 +830,7 @@ static void get_routing_srcs(struct alsa_card *card) {
     );
     r->card = card;
     r->id = i;
+    r->level_index = -1;
 
     if (strcmp(name, "Off") == 0)
       r->port_category = PC_OFF;
@@ -742,7 +882,8 @@ static void get_routing_srcs(struct alsa_card *card) {
 static int is_elem_routing_snk(struct alsa_elem *elem) {
   if (strstr(elem->name, "Capture Route") ||
       strstr(elem->name, "Input Playback Route") ||
-      strstr(elem->name, "Source Playback Enu"))
+      (strncmp(elem->name, "Master ", 7) == 0 &&
+       strstr(elem->name, "Source Playback Enu")))
     return 1;
 
   if (strstr(elem->name, "Capture Enum") && (
@@ -763,13 +904,14 @@ static int is_elem_routing_snk(struct alsa_elem *elem) {
 }
 
 static void get_routing_snks(struct alsa_card *card) {
-  GArray *elems = card->elems;
+  GPtrArray *elems = card->elems;
 
   int count = 0;
+  struct alsa_elem *first_mix_snk = NULL;
 
   // count and label routing snks
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->card)
       continue;
@@ -783,8 +925,8 @@ static void get_routing_snks(struct alsa_card *card) {
         strncmp(elem->name, "Matrix", 6) == 0) {
       elem->port_category = PC_MIX;
 
-      if (!alsa_get_elem_writable(elem))
-        card->has_fixed_mixer_inputs = 1;
+      if (!first_mix_snk)
+        first_mix_snk = elem;
 
     } else if (strncmp(elem->name, "DSP", 3) == 0) {
       elem->port_category = PC_DSP;
@@ -814,6 +956,21 @@ static void get_routing_snks(struct alsa_card *card) {
     count++;
   }
 
+  // Check mixer input capabilities from first PC_MIX sink
+  if (first_mix_snk) {
+    if (!alsa_get_elem_writable(first_mix_snk))
+      card->has_fixed_mixer_inputs = 1;
+
+    int item_count = alsa_get_item_count(first_mix_snk);
+    for (int i = 0; i < item_count; i++) {
+      char *item_name = alsa_get_item_name(first_mix_snk, i);
+      if (strncmp(item_name, "Mix", 3) == 0) {
+        card->mixer_has_mix_srcs = 1;
+        break;
+      }
+    }
+  }
+
   // create an array of routing snks pointing to those elements
   card->routing_snks = g_array_new(
     FALSE, TRUE, sizeof(struct routing_snk)
@@ -824,7 +981,7 @@ static void get_routing_snks(struct alsa_card *card) {
   int j = 0;
 
   for (int i = 0; i < elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
 
     if (!elem->is_routing_snk)
       continue;
@@ -833,12 +990,102 @@ static void get_routing_snks(struct alsa_card *card) {
       card->routing_snks, struct routing_snk, j
     );
     r->idx = j;
+    r->level_index = -1;
     j++;
     r->elem = elem;
     elem->port_num = card->routing_out_count[elem->port_category]++;
+
+    // Cache monitor group element pointers for HW analogue outputs
+    if (elem->port_category == PC_HW && elem->hw_type == HW_TYPE_ANALOGUE) {
+      char ctrl_name[64];
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Main Group Output %d Playback Switch", elem->lr_num);
+      r->main_group_switch = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Alt Group Output %d Playback Switch", elem->lr_num);
+      r->alt_group_switch = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Main Group Output %d Source Playback Enum", elem->lr_num);
+      r->main_group_source = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Alt Group Output %d Source Playback Enum", elem->lr_num);
+      r->alt_group_source = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Main Group Output %d Trim Playback Volume", elem->lr_num);
+      r->main_group_trim = get_elem_by_name(card->elems, ctrl_name);
+
+      snprintf(ctrl_name, sizeof(ctrl_name),
+               "Alt Group Output %d Trim Playback Volume", elem->lr_num);
+      r->alt_group_trim = get_elem_by_name(card->elems, ctrl_name);
+
+      // Initialize effective_source_idx to normal routing value
+      r->effective_source_idx = alsa_get_elem_value(elem);
+    } else {
+      // Non-HW-analogue sinks just use normal routing
+      r->effective_source_idx = alsa_get_elem_value(elem);
+    }
+
+    // Cache is_left status
+    // For fixed mixer inputs, use source's left/right (lr_num can be
+    // misaligned on devices with odd analogue input count)
+    if (elem->port_category == PC_MIX && !alsa_get_elem_writable(elem)) {
+      int src_id = r->effective_source_idx;
+      if (src_id > 0 && src_id < card->routing_srcs->len) {
+        struct routing_src *src = &g_array_index(
+          card->routing_srcs, struct routing_src, src_id
+        );
+        r->is_left = (src->lr_num % 2) == 1;
+      } else {
+        r->is_left = (elem->lr_num % 2) == 1;
+      }
+    } else {
+      r->is_left = (elem->lr_num % 2) == 1;
+    }
   }
 
   assert(j == count);
+  assert(card->routing_out_count[PC_MIX] <= MAX_MUX_IN);
+}
+
+// Build lookup table mapping monitor group source enum values to routing
+// source indices. The monitor group source enums (Main/Alt Group Output X
+// Source Playback Enum) have different indices than the main routing
+// sources, so we need this mapping.
+static void get_monitor_group_src_map(struct alsa_card *card) {
+  // Find any monitor group source enum to get the item names
+  struct alsa_elem *vg_elem = get_elem_by_name(
+    card->elems, "Main Group Output 1 Source Playback Enum"
+  );
+  if (!vg_elem) {
+    card->monitor_group_src_map = NULL;
+    card->monitor_group_src_map_count = 0;
+    return;
+  }
+
+  int count = alsa_get_item_count(vg_elem);
+  card->monitor_group_src_map = g_malloc(count * sizeof(int));
+  card->monitor_group_src_map_count = count;
+
+  // For each monitor group enum item, find matching routing source by name
+  for (int i = 0; i < count; i++) {
+    char *vg_name = alsa_get_item_name(vg_elem, i);
+    card->monitor_group_src_map[i] = 0;  // Default to "Off"
+
+    for (int j = 0; j < card->routing_srcs->len; j++) {
+      struct routing_src *r_src = &g_array_index(
+        card->routing_srcs, struct routing_src, j
+      );
+      if (strcmp(vg_name, r_src->name) == 0) {
+        card->monitor_group_src_map[i] = j;
+        break;
+      }
+    }
+  }
 }
 
 void alsa_get_routing_controls(struct alsa_card *card) {
@@ -865,9 +1112,30 @@ void alsa_get_routing_controls(struct alsa_card *card) {
 
   get_routing_srcs(card);
   get_routing_snks(card);
+  get_monitor_group_src_map(card);
+
+  // look up Digital I/O Mode element for HW I/O availability
+  card->digital_io_mode_elem =
+    get_elem_by_prefix(card->elems, "Digital I/O Mode");
+  if (!card->digital_io_mode_elem)
+    card->digital_io_mode_elem =
+      get_elem_by_prefix(card->elems, "S/PDIF Mode");
+  if (!card->digital_io_mode_elem) {
+    card->digital_io_mode_elem =
+      get_elem_by_prefix(card->elems, "S/PDIF Source");
+    card->digital_io_mode_live = 1;
+  }
+
+  // cache the mode value at init time
+  if (card->digital_io_mode_elem)
+    card->digital_io_mode = alsa_get_elem_value(card->digital_io_mode_elem);
+
+  // initialize HW I/O limits (sample rate unknown at this point, so
+  // limits will be set to -1 meaning all available)
+  update_hw_io_limits(card);
 }
 
-static void alsa_elem_change(struct alsa_elem *elem) {
+void alsa_elem_change(struct alsa_elem *elem) {
   if (!elem || !elem->callbacks)
     return;
 
@@ -884,29 +1152,41 @@ static void alsa_elem_change(struct alsa_elem *elem) {
 static void card_destroy_callback(void *data) {
   struct alsa_card *card = data;
 
+  // cancel the levels timer first to prevent it firing with freed data
+  if (card->levels_timer) {
+    g_source_remove(card->levels_timer);
+    card->levels_timer = 0;
+  }
+
   // close the windows associated with this card
   destroy_card_window(card);
 
   // free all elements and their callbacks
   if (card->elems) {
     for (int i = 0; i < card->elems->len; i++) {
-      struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+      struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
       // free callback list
       for (GList *l = elem->callbacks; l; l = l->next) {
         struct alsa_elem_callback *cb = l->data;
 
-        // free callback data for simulated elements (optional controls)
-        if (elem->is_simulated && cb->data)
-          optional_controls_free_callback_data(cb->data);
+        // call cleanup function if provided
+        if (cb->destroy && cb->data)
+          cb->destroy(cb->data);
 
         free(cb);
       }
       g_list_free(elem->callbacks);
 
+      // cancel pending idle callback
+      if (elem->pending_idle)
+        g_source_remove(elem->pending_idle);
+
       // free element data
       if (elem->name)
         free(elem->name);
+      if (elem->values)
+        free(elem->values);
       if (elem->bytes_value)
         free(elem->bytes_value);
       if (elem->meter_labels) {
@@ -919,15 +1199,33 @@ static void card_destroy_callback(void *data) {
           free(elem->item_names[j]);
         free(elem->item_names);
       }
+
+      // free the element struct itself
+      free(elem);
     }
-    g_array_free(card->elems, TRUE);
+    g_ptr_array_free(card->elems, TRUE);
   }
 
   // free routing arrays
-  if (card->routing_srcs)
+  if (card->routing_srcs) {
+    for (int i = 0; i < card->routing_srcs->len; i++) {
+      struct routing_src *src = &g_array_index(
+        card->routing_srcs, struct routing_src, i
+      );
+      g_free(src->display_name);
+    }
     g_array_free(card->routing_srcs, TRUE);
-  if (card->routing_snks)
+  }
+  if (card->routing_snks) {
+    for (int i = 0; i < card->routing_snks->len; i++) {
+      struct routing_snk *snk = &g_array_index(
+        card->routing_snks, struct routing_snk, i
+      );
+      g_free(snk->display_name);
+    }
     g_array_free(card->routing_snks, TRUE);
+  }
+  g_free(card->monitor_group_src_map);
 
   // close ALSA handle
   if (card->handle)
@@ -952,6 +1250,39 @@ static void card_destroy_callback(void *data) {
   }
 }
 
+void alsa_init_mixer_gains_cache(struct alsa_card *card) {
+  GPtrArray *elems = card->elems;
+
+  for (int i = 0; i < elems->len; i++) {
+    struct alsa_elem *elem = g_ptr_array_index(elems, i);
+
+    if (!elem->card)
+      continue;
+
+    if (!strstr(elem->name, "Playback Volume"))
+      continue;
+
+    // Gen 2+: "Mix X Input Y", Gen 1: "Matrix Y Mix X"
+    if (strncmp(elem->name, "Mix ", 4) &&
+        strncmp(elem->name, "Matrix ", 7))
+      continue;
+
+    char *mix_str = strstr(elem->name, "Mix ");
+    if (!mix_str || !mix_str[4])
+      continue;
+
+    int mix_num = mix_str[4] - 'A';
+    int input_num = get_num_from_string(elem->name) - 1;
+
+    if (mix_num < 0 || mix_num >= MAX_MIX_OUT)
+      continue;
+    if (input_num < 0 || input_num >= MAX_MUX_IN)
+      continue;
+
+    card->mixer_gains[mix_num][input_num] = elem;
+  }
+}
+
 // Complete card initialisation after the driver is ready
 static void complete_card_init(struct alsa_card *card) {
 
@@ -959,8 +1290,41 @@ static void complete_card_init(struct alsa_card *card) {
   alsa_get_elem_list(card);
   alsa_set_lr_nums(card);
   alsa_get_routing_controls(card);
+  alsa_init_mixer_gains_cache(card);
   optional_controls_init(card);
+  custom_names_init(card);
+  port_enable_init(card);
+  stereo_link_init(card);
+  dsp_state_init(card);
   card->best_firmware_version = scarlett2_get_best_firmware_version(card->pid);
+
+  // For FCP/scarlett4 devices, get the 4-valued best firmware version
+  // and read the current device firmware versions
+  if (card->driver_type == DRIVER_TYPE_SOCKET) {
+    card->best_firmware_version_4 = scarlett4_get_best_firmware_version(card->pid);
+
+    // Read current device firmware version
+    struct alsa_elem *fw_elem = get_elem_by_name(card->elems, "Firmware Version");
+    if (fw_elem && fw_elem->count == 4) {
+      long *values = alsa_get_elem_int_values(fw_elem);
+      if (values) {
+        for (int i = 0; i < 4; i++)
+          card->firmware_version_4[i] = values[i];
+        g_free(values);
+      }
+    }
+
+    // Read current device ESP firmware version
+    struct alsa_elem *esp_elem = get_elem_by_name(card->elems, "ESP Firmware Version");
+    if (esp_elem && esp_elem->count == 4) {
+      long *values = alsa_get_elem_int_values(esp_elem);
+      if (values) {
+        for (int i = 0; i < 4; i++)
+          card->esp_firmware_version[i] = values[i];
+        g_free(values);
+      }
+    }
+  }
 
   if (card->serial) {
     // Call the reopen callbacks for this card
@@ -972,6 +1336,9 @@ static void complete_card_init(struct alsa_card *card) {
 
     g_hash_table_remove(reopen_callbacks, card->serial);
   }
+
+  // Save initial configuration on first-ever load
+  save_initial_config(card);
 
   create_card_window(card);
 }
@@ -1071,10 +1438,29 @@ static gboolean alsa_card_callback(
     return 1;
 
   for (int i = 0; i < card->elems->len; i++) {
-    struct alsa_elem *elem = &g_array_index(card->elems, struct alsa_elem, i);
+    struct alsa_elem *elem = g_ptr_array_index(card->elems, i);
 
-    if (elem->numid == numid)
-      alsa_elem_change(elem);
+    if (elem->numid == numid) {
+      // Update cached value
+      int value_changed = 0;
+
+      if (elem->count == 1) {
+        long new_value = alsa_get_elem_value(elem);
+        value_changed = new_value != elem->value;
+        elem->value = new_value;
+      } else if (elem->count > 1) {
+        long *new_values = alsa_get_elem_int_values(elem);
+        value_changed = !elem->values ||
+          memcmp(new_values, elem->values, elem->count * sizeof(long)) != 0;
+        free(elem->values);
+        elem->values = new_values;
+      }
+
+      // Info events (writable/range changes) always need a
+      // callback; value-only events only when the value changed.
+      if (value_changed || (mask & SND_CTL_EVENT_MASK_INFO))
+        alsa_elem_change(elem);
+    }
   }
 
   return 1;
@@ -1119,7 +1505,7 @@ struct alsa_card *card_create(int card_num) {
   *card_ptr = calloc(1, sizeof(struct alsa_card));
   struct alsa_card *card = *card_ptr;
   card->num = card_num;
-  card->elems = g_array_new(FALSE, TRUE, sizeof(struct alsa_elem));
+  card->elems = g_ptr_array_new();
 
   return card;
 }
@@ -1171,140 +1557,32 @@ static void alsa_get_usbid(struct alsa_card *card) {
   card->pid = pid;
 }
 
-// get the bus and device numbers from /proc/asound/cardxx/usbbus
-// format is XXX/YYY
-static int alsa_get_usbbus(struct alsa_card *card, int *bus, int *dev) {
-  char path[256];
-  snprintf(path, 256, "/proc/asound/card%d/usbbus", card->num);
+// Read the USB serial number via sysfs.
+// controlC<N>/device points to the ALSA sound card, whose own
+// device symlink points to the USB interface; the parent of
+// that is the USB device which has the serial file.
+static void alsa_get_serial_number(struct alsa_card *card) {
+  char path[128];
+  snprintf(
+    path, sizeof(path),
+    "/sys/class/sound/controlC%d/device/device/../serial",
+    card->num
+  );
+
   FILE *f = fopen(path, "r");
   if (!f) {
-    fprintf(stderr, "can't open %s\n", path);
-    return 0;
-  }
-
-  int result = fscanf(f, "%d/%d", bus, dev);
-  fclose(f);
-
-  if (result != 2) {
-    fprintf(stderr, "can't read %s\n", path);
-    return 0;
-  }
-
-  return 1;
-}
-
-// read the devnum file in bus_path
-//   /sys/bus/usb/devices/usbBUS/BUS-PORT/devnum
-// and return the value within
-static int usb_get_devnum(const char *bus_path) {
-  char devnum_path[512];
-  snprintf(devnum_path, 512, "%s/devnum", bus_path);
-
-  FILE *f = fopen(devnum_path, "r");
-  if (!f) {
-    if (errno == ENOENT)
-      return -1;
-
-    fprintf(stderr, "can't open %s: %s\n", devnum_path, strerror(errno));
-    return -1;
-  }
-
-  int devnum;
-  int result = fscanf(f, "%d", &devnum);
-  int err = errno;
-  fclose(f);
-
-  if (result != 1) {
-    fprintf(stderr, "can't read %s: %s\n", devnum_path, strerror(err));
-    return -1;
-  }
-
-  return devnum;
-}
-
-// recursively search for the device with the given dev number
-// in the /sys/bus/usb/devices/usbX/Y-Z hierarchy
-// and return the path to the port
-static int usb_find_device_port(
-  const char *bus_path,
-  int         bus,
-  int         dev,
-  char       *port_path,
-  size_t      port_path_size
-) {
-  if (usb_get_devnum(bus_path) == dev) {
-    snprintf(port_path, port_path_size, "%s", bus_path);
-    return 1;
-  }
-
-  DIR *dir = opendir(bus_path);
-  if (!dir) {
-    fprintf(stderr, "can't open %s: %s\n", bus_path, strerror(errno));
-    return 0;
-  }
-
-  // looking for d_name beginning with the bus number followed by a "-"
-  char prefix[20];
-  snprintf(prefix, 20, "%d-", bus);
-
-  struct dirent *entry;
-  while ((entry = readdir(dir))) {
-    if (entry->d_type != DT_DIR)
-      continue;
-
-    if (strncmp(entry->d_name, prefix, strlen(prefix)) != 0)
-      continue;
-
-    char next_path[512];
-    snprintf(next_path, 512, "%s/%s", bus_path, entry->d_name);
-
-    if (usb_find_device_port(next_path, bus, dev, port_path, port_path_size)) {
-      closedir(dir);
-      return 1;
-    }
-  }
-
-  closedir(dir);
-  return 0;
-}
-
-static void alsa_get_serial_number(struct alsa_card *card) {
-
-  int result, bus, dev;
-  if (!alsa_get_usbbus(card, &bus, &dev))
-    return;
-
-  // recurse through /sys/bus/usb/devices/usbBUS/BUS-.../devnum
-  // to find the device with the matching dev number
-  char bus_path[80];
-  snprintf(bus_path, 80, "/sys/bus/usb/devices/usb%d", bus);
-
-  char port_path[512];
-
-  if (!usb_find_device_port(bus_path, bus, dev, port_path, sizeof(port_path))) {
     fprintf(
-      stderr,
-      "can't find port name in %s for dev %d (%s)\n",
-      bus_path, dev, card->name
+      stderr, "can't open %s: %s\n", path, strerror(errno)
     );
     return;
   }
 
-  // read the serial number
-  char serial_path[520];
-  snprintf(serial_path, 520, "%s/serial", port_path);
-  FILE *f = fopen(serial_path, "r");
-  if (!f) {
-    fprintf(stderr, "can't open %s\n", serial_path);
-    return;
-  }
-
   char serial[40];
-  result = fscanf(f, "%39s", serial);
+  int result = fscanf(f, "%39s", serial);
   fclose(f);
 
   if (result != 1) {
-    fprintf(stderr, "can't read %s\n", serial_path);
+    fprintf(stderr, "can't read %s\n", path);
     return;
   }
 
@@ -1471,7 +1749,8 @@ static gboolean inotify_callback(
   for (
     event = (struct inotify_event *)buf;
     (char *)event < buf + len;
-    event++
+    event = (struct inotify_event *)
+              ((char *)event + sizeof(*event) + event->len)
   ) {
     if (event->mask & IN_CREATE &&
         len &&

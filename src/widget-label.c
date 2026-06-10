@@ -23,7 +23,7 @@ GtkWidget *make_label_alsa_elem(struct alsa_elem *elem) {
   gtk_widget_set_halign(data->label, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(data->label, GTK_ALIGN_CENTER);
 
-  alsa_elem_add_callback(elem, label_updated, data);
+  alsa_elem_add_callback(elem, label_updated, data, NULL);
 
   label_updated(elem, data);
 
