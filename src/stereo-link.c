@@ -209,12 +209,18 @@ struct routing_snk *get_snk_partner(struct routing_snk *snk) {
     if (elem->port_category == PC_HW && other->elem->hw_type != elem->hw_type)
       continue;
 
-    if (other->elem->lr_num == partner_lr_num) {
-      // Cache bidirectionally
-      snk->partner = other;
-      other->partner = snk;
-      return other;
-    }
+    // Expect partner to have corresponding lr_num
+    if (other->elem->lr_num != partner_lr_num)
+      continue;
+
+    // The match must be the opposite channel (one left, one right)
+    if (is_snk_left_channel(other) == is_snk_left_channel(snk))
+      return NULL;
+
+    // Cache bidirectionally
+    snk->partner = other;
+    other->partner = snk;
+    return other;
   }
 
   return NULL;
