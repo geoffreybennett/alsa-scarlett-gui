@@ -698,7 +698,7 @@ static void draw_snk_label(
     cairo_set_source_rgb(cr, 1, 1, 1);
   } else {
     GdkRGBA color;
-    gtk_widget_get_color(overlay_widget, &color);
+    gtk_widget_get_color_compat(overlay_widget, &color);
     gdk_cairo_set_source_rgba(cr, &color);
   }
 

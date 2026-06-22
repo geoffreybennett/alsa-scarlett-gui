@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "gtkhelper.h"
 #include "widget-filter-type.h"
 
 #define FILTER_ICON_WIDTH 24
@@ -150,7 +151,7 @@ static void list_icon_draw(
 
   GtkWidget *widget = GTK_WIDGET(area);
   GdkRGBA color;
-  gtk_widget_get_color(widget, &color);
+  gtk_widget_get_color_compat(widget, &color);
   gdk_cairo_set_source_rgba(cr, &color);
 
   draw_filter_type_icon(cr, type, width, height);
@@ -168,7 +169,7 @@ static void button_icon_draw(
 
   GtkWidget *widget = GTK_WIDGET(area);
   GdkRGBA color;
-  gtk_widget_get_color(widget, &color);
+  gtk_widget_get_color_compat(widget, &color);
   gdk_cairo_set_source_rgba(cr, &color);
 
   draw_filter_type_icon(cr, data->current_type, width, height);
@@ -236,11 +237,15 @@ static void button_clicked(
   gtk_popover_popup(GTK_POPOVER(data->popover));
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->button), FALSE);
 
-  // Scroll to and focus the currently selected item
   guint selected = gtk_single_selection_get_selected(data->selection);
+#if GTK_CHECK_VERSION(4, 12, 0)
+  // Scroll to and focus the currently selected item
   gtk_list_view_scroll_to(
     GTK_LIST_VIEW(data->listview), selected, GTK_LIST_SCROLL_FOCUS, NULL
   );
+#else
+  gtk_list_view_focus_row(data->listview, selected);
+#endif
 }
 
 static void dropdown_data_destroy(struct filter_type_dropdown *data) {

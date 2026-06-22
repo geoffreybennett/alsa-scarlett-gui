@@ -115,12 +115,16 @@ static void toggle_button_clicked(GtkWidget *widget, gpointer user_data) {
   // current value and arrow keys adjust from there.
   if (data->ticked_row >= 0) {
     gtk_single_selection_set_selected(data->selection, data->ticked_row);
+#if GTK_CHECK_VERSION(4, 12, 0)
     gtk_list_view_scroll_to(
       GTK_LIST_VIEW(data->listview),
       data->ticked_row,
       GTK_LIST_SCROLL_FOCUS,
       NULL
     );
+#else
+    gtk_list_view_focus_row(data->listview, data->ticked_row);
+#endif
   }
 }
 
