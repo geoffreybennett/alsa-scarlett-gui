@@ -537,15 +537,38 @@ static void create_snk_custom_name_elem(
 }
 
 // Initialise custom name elements for all routing sources and sinks
-void custom_names_init(struct alsa_card *card) {
-  if (!card->serial || !*card->serial) {
-    // no serial number, can't persist state
-    return;
+// Initialise cached display names for any source/sink that doesn't already
+// have one (falls back to device-specific or generic constructed names).
+static void init_missing_display_names(struct alsa_card *card) {
+  for (int i = 0; i < card->routing_srcs->len; i++) {
+    struct routing_src *src = &g_array_index(
+      card->routing_srcs, struct routing_src, i
+    );
+    if (!src->display_name)
+      update_src_display_name(src);
   }
 
+  for (int i = 0; i < card->routing_snks->len; i++) {
+    struct routing_snk *snk = &g_array_index(
+      card->routing_snks, struct routing_snk, i
+    );
+    if (!snk->display_name)
+      update_snk_display_name(snk);
+  }
+}
+
+void custom_names_init(struct alsa_card *card) {
   // check if card has routing controls
   if (!card->routing_srcs || !card->routing_snks) {
     // card doesn't have routing controls
+    return;
+  }
+
+  // Without a serial number we can't persist custom names to a per-device
+  // state file, but we must still initialise display names or every routing
+  // label is blank. Some devices (e.g. the Gen 1 18i20) report no USB serial.
+  if (!card->serial || !*card->serial) {
+    init_missing_display_names(card);
     return;
   }
 
@@ -576,21 +599,7 @@ void custom_names_init(struct alsa_card *card) {
   g_hash_table_destroy(state);
 
   // initialise display names for sources/sinks without custom name elements
-  for (int i = 0; i < card->routing_srcs->len; i++) {
-    struct routing_src *src = &g_array_index(
-      card->routing_srcs, struct routing_src, i
-    );
-    if (!src->display_name)
-      update_src_display_name(src);
-  }
-
-  for (int i = 0; i < card->routing_snks->len; i++) {
-    struct routing_snk *snk = &g_array_index(
-      card->routing_snks, struct routing_snk, i
-    );
-    if (!snk->display_name)
-      update_snk_display_name(snk);
-  }
+  init_missing_display_names(card);
 }
 
 // Get display name for a routing source (returns cached value)
