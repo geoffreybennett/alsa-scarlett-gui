@@ -1557,36 +1557,63 @@ static void alsa_get_usbid(struct alsa_card *card) {
   card->pid = pid;
 }
 
+// Read a single whitespace-delimited token from a sysfs attribute of the
+// USB device backing this card. attr is e.g. "serial"/"idVendor". Returns
+// a newly strdup()'d string (free with free()) or NULL on failure.
+static char *read_usb_sysfs_attr(int card_num, const char *attr) {
+  char path[128];
+  snprintf(
+    path, sizeof(path),
+    "/sys/class/sound/controlC%d/device/device/../%s",
+    card_num, attr
+  );
+
+  FILE *f = fopen(path, "r");
+  if (!f)
+    return NULL;
+
+  char buf[40];
+  int result = fscanf(f, "%39s", buf);
+  fclose(f);
+
+  if (result != 1)
+    return NULL;
+
+  return strdup(buf);
+}
+
 // Read the USB serial number via sysfs.
 // controlC<N>/device points to the ALSA sound card, whose own
 // device symlink points to the USB interface; the parent of
 // that is the USB device which has the serial file.
 static void alsa_get_serial_number(struct alsa_card *card) {
-  char path[128];
-  snprintf(
-    path, sizeof(path),
-    "/sys/class/sound/controlC%d/device/device/../serial",
-    card->num
-  );
+  card->serial = read_usb_sysfs_attr(card->num, "serial");
+  if (card->serial)
+    return;
 
-  FILE *f = fopen(path, "r");
-  if (!f) {
+  // Some devices (notably the 1st-gen Scarlett range) report no USB serial
+  // number descriptor at all, so there is nothing to read. Without a serial
+  // we can't persist any per-device state (custom names, stereo links, saved
+  // routing) and routing labels come up blank. Synthesise a stable fallback
+  // id from the USB vendor:product ids, which are present for every device
+  // and stable across reboots and re-plugging for a given model.
+  char *vid = read_usb_sysfs_attr(card->num, "idVendor");
+  char *pid = read_usb_sysfs_attr(card->num, "idProduct");
+
+  if (vid && pid) {
+    char synth[40];
+    snprintf(synth, sizeof(synth), "noserial-%s%s", vid, pid);
+    card->serial = strdup(synth);
     fprintf(
-      stderr, "can't open %s: %s\n", path, strerror(errno)
+      stderr, "no USB serial number; using synthesised id '%s'\n",
+      card->serial
     );
-    return;
+  } else {
+    fprintf(stderr, "can't determine a serial number for card %d\n", card->num);
   }
 
-  char serial[40];
-  int result = fscanf(f, "%39s", serial);
-  fclose(f);
-
-  if (result != 1) {
-    fprintf(stderr, "can't read %s\n", path);
-    return;
-  }
-
-  card->serial = strdup(serial);
+  free(vid);
+  free(pid);
 }
 
 // return true if the Firmware Version control exists and is writable
