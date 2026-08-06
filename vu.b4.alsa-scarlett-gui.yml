@@ -50,11 +50,21 @@ modules:
       - /lib/alsa-topology
       - /null
       - /sbin
-      - /share/alsa
       - /share/locale
       - /share/man
       - /share/runtime
       - /share/sounds
+  - name: alsa-ucm
+    sources:
+      - type: git
+        url: https://github.com/alsa-project/alsa-ucm-conf.git
+        commit: acaa985df3404207ddb6beae42677f60df94deb5
+        tag: v1.2.14
+    buildsystem: simple
+    build-commands:
+      # This fails because /usr is read-only
+      - mkdir -p /usr/share/alsa/ucm2
+      - cp ucm2/ucm.conf /usr/share/alsa/ucm2/ucm.conf
   - name: alsa-scarlett-gui
     sources:
       - type: dir
