@@ -5,8 +5,8 @@ PKG_CONFIG ?= pkg-config
 
 TESTS = test-biquad
 
-CFLAGS = -I.. -Wall $(shell $(PKG_CONFIG) --cflags glib-2.0)
-LDFLAGS = -lm $(shell $(PKG_CONFIG) --libs glib-2.0)
+CFLAGS += -I.. -Wall $(shell $(PKG_CONFIG) --cflags glib-2.0)
+LDFLAGS += -lm $(shell $(PKG_CONFIG) --libs glib-2.0)
 
 all: $(TESTS)
 
