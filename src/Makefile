@@ -33,7 +33,13 @@ DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 CFLAGS ?= -ggdb -fno-omit-frame-pointer -O2
-CFLAGS += -Wall -Werror -fPIE
+
+# Treat warnings as errors by default, but allow this to be turned off
+# (e.g. WERROR= ) so that a new compiler or library version emitting a
+# new warning does not turn into a hard build failure for downstreams.
+WERROR ?= -Werror
+
+CFLAGS += -Wall $(WERROR) -fPIE
 CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 CFLAGS += -DVERSION=\"$(VERSION)\"
 CFLAGS += -Wno-error=deprecated-declarations
