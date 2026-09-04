@@ -58,6 +58,7 @@ COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 
 XML_SRC := $(wildcard *.xml)
 XML_OBJ := $(patsubst %.xml,%.c,$(XML_SRC))
+.NOTINTERMEDIATE: $(XML_OBJ)
 
 %.o: %.c
 %.o: %.c Makefile $(DEPDIR)/%.d | $(DEPDIR)
