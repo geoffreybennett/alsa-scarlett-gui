@@ -210,15 +210,15 @@ built or hence you risk bundling the artifacts when committing!
 If you get messages like these:
 
 ```
-Failed to init: Unable to find sdk org.gnome.Sdk version 45
-Failed to init: Unable to find runtime org.gnome.Platform version 45
+Failed to init: Unable to find sdk org.gnome.Sdk version 51
+Failed to init: Unable to find runtime org.gnome.Platform version 51
 ```
 
 Then install them:
 
 ```
-flatpak install org.gnome.Sdk
-flatpak install org.gnome.Platform
+flatpak install flathub org.gnome.Sdk//51
+flatpak install flathub org.gnome.Platform//51
 ```
 
 If you get:

@@ -56,7 +56,7 @@ COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
 	$(Q)echo $@: $(shell $(GLIB_COMPILE_RESOURCES) $< --generate-dependencies) > $(DEPDIR)/$*-xml.d
 	$(Q)$(GLIB_COMPILE_RESOURCES) $< --target=$@ --generate-source
 
-XML_SRC := $(wildcard *.xml)
+XML_SRC := alsa-scarlett-gui-resources.xml
 XML_OBJ := $(patsubst %.xml,%.c,$(XML_SRC))
 
 %.o: %.c
@@ -70,6 +70,8 @@ TARGET := alsa-scarlett-gui
 DOMAIN_PREFIX := vu.b4
 DESKTOP_FILE := $(DOMAIN_PREFIX).$(TARGET).desktop
 ICON_FILE := $(DOMAIN_PREFIX).$(TARGET).png
+SVG_ICON_FILE := $(DOMAIN_PREFIX).$(TARGET).svg
+METAINFO_FILE := $(DOMAIN_PREFIX).$(TARGET).metainfo.xml
 
 GLIB_COMPILE_RESOURCES := $(shell $(PKG_CONFIG) --variable=glib_compile_resources gio-2.0)
 
@@ -100,7 +102,9 @@ endif
 BINDIR := $(DESTDIR)$(PREFIX)/bin
 ICONTOP := $(DESTDIR)$(PREFIX)/share/icons/hicolor
 ICONDIR := $(ICONTOP)/256x256/apps
+SVGICONDIR := $(ICONTOP)/scalable/apps
 DESKTOPDIR := $(DESTDIR)$(PREFIX)/share/applications
+METAINFO_DIR := $(DESTDIR)$(PREFIX)/share/metainfo
 
 $(DESKTOP_FILE): $(DESKTOP_FILE).template
 	$(PRINTF) "$(COLOR_GREEN)[100%%]$(COLOR_RESET) $(COLOR_BLUE)GEN$(COLOR_RESET)  %s\n" $@
@@ -113,17 +117,27 @@ install: all
 	$(PRINTF) "$(COLOR_BLUE)INSTALL$(COLOR_RESET) %s\n" $(ICONDIR)/$(ICON_FILE)
 	$(Q)install -d $(ICONDIR)
 	$(Q)install -m 644 img/$(ICON_FILE) $(ICONDIR)
+	$(PRINTF) "$(COLOR_BLUE)INSTALL$(COLOR_RESET) %s\n" $(SVGICONDIR)/$(SVG_ICON_FILE)
+	$(Q)install -d $(SVGICONDIR)
+	$(Q)install -m 644 img/$(SVG_ICON_FILE) $(SVGICONDIR)
 	$(PRINTF) "$(COLOR_BLUE)INSTALL$(COLOR_RESET) %s\n" $(DESKTOPDIR)/$(DESKTOP_FILE)
 	$(Q)install -d $(DESKTOPDIR)
 	$(Q)install -m 644 $(DESKTOP_FILE) $(DESKTOPDIR)
+	$(PRINTF) "$(COLOR_BLUE)INSTALL$(COLOR_RESET) %s\n" $(METAINFO_DIR)/$(METAINFO_FILE)
+	$(Q)install -d $(METAINFO_DIR)
+	$(Q)install -m 644 $(METAINFO_FILE) $(METAINFO_DIR)
 
 uninstall:
 	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(BINDIR)/$(TARGET)
 	$(Q)rm -f $(BINDIR)/$(TARGET)
 	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(ICONDIR)/$(ICON_FILE)
 	$(Q)rm -f $(ICONDIR)/$(ICON_FILE)
+	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(SVGICONDIR)/$(SVG_ICON_FILE)
+	$(Q)rm -f $(SVGICONDIR)/$(SVG_ICON_FILE)
 	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(DESKTOPDIR)/$(DESKTOP_FILE)
 	$(Q)rm -f $(DESKTOPDIR)/$(DESKTOP_FILE)
+	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(METAINFO_DIR)/$(METAINFO_FILE)
+	$(Q)rm -f $(METAINFO_DIR)/$(METAINFO_FILE)
 
 test:
 	$(MAKE) -C tests test
