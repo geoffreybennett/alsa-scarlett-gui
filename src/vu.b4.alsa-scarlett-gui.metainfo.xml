@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Geoffrey D. Bennett <g@b4.vu>
+  SPDX-License-Identifier: CC0-1.0
+-->
+<component type="desktop-application">
+  <id>vu.b4.alsa-scarlett-gui</id>
+
+  <name>ALSA Scarlett Control Panel</name>
+  <summary>Control Focusrite USB audio interfaces</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <description>
+    <p>
+      ALSA Scarlett Control Panel configures supported Focusrite Scarlett,
+      Clarett, and Vocaster USB audio interfaces on Linux. It provides a
+      graphical interface for the controls exposed by the Linux kernel ALSA
+      drivers.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Audio routing and matrix mixing</li>
+      <li>Input, output, and monitoring controls</li>
+      <li>Custom port names, stereo linking, and device presets</li>
+      <li>Level meters and DSP controls on supported interfaces</li>
+      <li>Firmware updates for supported devices</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">vu.b4.alsa-scarlett-gui.desktop</launchable>
+
+  <developer id="vu.b4">
+    <name>Geoffrey D. Bennett</name>
+  </developer>
+
+  <url type="homepage">https://github.com/geoffreybennett/alsa-scarlett-gui</url>
+  <url type="bugtracker">https://github.com/geoffreybennett/alsa-scarlett-gui/issues</url>
+  <url type="vcs-browser">https://github.com/geoffreybennett/alsa-scarlett-gui</url>
+  <url type="donation">https://liberapay.com/gdb</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/geoffreybennett/alsa-scarlett-gui/092a3a009c2f5b43c902457be5222d47a51cf5e4/img/window-main.png</image>
+      <caption>Input, output, and global device controls</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/geoffreybennett/alsa-scarlett-gui/092a3a009c2f5b43c902457be5222d47a51cf5e4/img/window-routing.png</image>
+      <caption>Visual audio routing</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/geoffreybennett/alsa-scarlett-gui/092a3a009c2f5b43c902457be5222d47a51cf5e4/img/window-mixer.png</image>
+      <caption>Matrix mixer controls</caption>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+  </categories>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0-beta" date="2026-05-20" type="development">
+      <description>
+        <p>
+          Adds device configuration, presets, stereo linking, Vocaster DSP
+          controls, monitor groups, and firmware updates for large fourth
+          generation Scarlett interfaces.
+        </p>
+      </description>
+    </release>
+  </releases>
+</component>

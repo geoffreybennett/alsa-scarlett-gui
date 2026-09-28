@@ -1,7 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=ALSA Scarlett Control Panel
+GenericName=Audio Interface Control Panel
+Comment=Configure Focusrite Scarlett, Clarett, and Vocaster audio interfaces
 Icon=vu.b4.alsa-scarlett-gui
-Exec=PREFIX/bin/alsa-scarlett-gui
+Exec=alsa-scarlett-gui
 Categories=GTK;AudioVideo;Audio;Mixer;
-Keywords=focusrite;
+Keywords=Focusrite;Scarlett;Clarett;Vocaster;ALSA;audio;mixer;

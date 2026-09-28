@@ -1,6 +1,6 @@
 app-id: vu.b4.alsa-scarlett-gui
 runtime: org.gnome.Platform
-runtime-version: "47"
+runtime-version: "51"
 sdk: org.gnome.Sdk
 command: alsa-scarlett-gui
 build-options:
@@ -14,8 +14,11 @@ finish-args:
   - --socket=wayland
   # Needs access to ALSA device nodes:
   - --device=all
-  # Point to the firmware directory
+  # Connect to the host FCP service used by large 4th Gen interfaces
+  - --filesystem=/run/fcp-server
+  # Point to the bundled firmware directories
   - --env=SCARLETT2_FIRMWARE_DIR=/app/lib/firmware/scarlett2
+  - --env=SCARLETT4_FIRMWARE_DIR=/app/lib/firmware/scarlett4
 modules:
   - name: alsa-utils
     sources:
@@ -46,7 +49,6 @@ modules:
     post-install:
       - install -Dm755 /app/sbin/alsactl /app/bin/alsactl
     cleanup:
-      - /lib/debug
       - /lib/alsa-topology
       - /null
       - /sbin
@@ -59,15 +61,12 @@ modules:
     sources:
       - type: dir
         path: ./src
-      # Use the following and remove the above for Flathub publishing
-      # - type: git
-      #   url: https://github.com/geoffreybennett/alsa-scarlett-gui.git
-      #   tag: "0.2"
+      # A Flathub packaging repository should replace this local source
+      # with a release archive or a git source pinned to a tag and commit.
     buildsystem: simple
     build-commands:
       - make -j8 install PREFIX=$FLATPAK_DEST
     cleanup:
-      - /lib/debug
       - /lib/source
   - name: scarlett2-firmware
     sources:
@@ -78,3 +77,12 @@ modules:
     build-commands:
       - mkdir -p $FLATPAK_DEST/lib/firmware/scarlett2
       - cp -a LICENSE.Focusrite firmware/* $FLATPAK_DEST/lib/firmware/scarlett2
+  - name: scarlett4-firmware
+    sources:
+      - type: archive
+        url: https://github.com/geoffreybennett/scarlett4-firmware/archive/refs/tags/1.1.tar.gz
+        sha256: 24cde606b03350fd11b96079cc3a1b0db2cef315a3218affbd9e3f3a048a8077
+    buildsystem: simple
+    build-commands:
+      - mkdir -p $FLATPAK_DEST/lib/firmware/scarlett4
+      - cp -a LICENSE.Focusrite firmware/* $FLATPAK_DEST/lib/firmware/scarlett4
