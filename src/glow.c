@@ -172,6 +172,13 @@ void init_routing_level_indices(struct alsa_card *card) {
     r_snk->level_index = compute_snk_level_index(card, r_snk);
   }
 
+  update_routing_src_level_indices(card);
+}
+
+// recompute cached level meter indices for routing srcs; without
+// meter labels these depend on the current routing, so must be
+// refreshed whenever it changes
+void update_routing_src_level_indices(struct alsa_card *card) {
   for (int i = 0; i < card->routing_srcs->len; i++) {
     struct routing_src *r_src = &g_array_index(
       card->routing_srcs, struct routing_src, i
