@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "glow.h"
 #include "gtkhelper.h"
 #include "hw-io-availability.h"
 #include "iface-mixer.h"
@@ -2028,6 +2029,8 @@ static void monitor_group_changed(struct alsa_elem *elem, void *data) {
     update_snk_effective_source(r_snk);
     update_hw_output_label(r_snk);
   }
+
+  update_routing_src_level_indices(card);
 }
 
 // Callback when digital I/O mode changes
@@ -2041,6 +2044,8 @@ static void routing_updated(struct alsa_elem *elem, void *data) {
 
   if (r_snk)
     update_snk_effective_source(r_snk);
+
+  update_routing_src_level_indices(card);
 
   update_mixer_labels(card);
   gtk_widget_queue_draw(card->routing_lines);

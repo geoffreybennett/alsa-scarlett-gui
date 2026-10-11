@@ -29,6 +29,10 @@ void level_to_colour(double db, double *r, double *g, double *b);
 // compute and cache level meter indices for all routing srcs/snks
 void init_routing_level_indices(struct alsa_card *card);
 
+// recompute cached level meter indices for routing srcs after a
+// routing change
+void update_routing_src_level_indices(struct alsa_card *card);
+
 // get the cached level meter index for a routing sink
 int get_routing_snk_level_index(struct routing_snk *r_snk);
 
