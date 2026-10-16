@@ -863,6 +863,29 @@ static void get_routing_srcs(struct alsa_card *card) {
   }
 
   assert(card->routing_in_count[PC_MIX] <= MAX_MIX_OUT);
+
+  // the Forte mixer outputs are hard-wired to the analogue outputs so
+  // they aren't routing enum items, but the mixer window needs them
+  if (card->routing_in_count[PC_MIX])
+    return;
+
+  for (char mix = 'A'; mix < 'A' + MAX_MIX_OUT; mix++) {
+    char name[40];
+    snprintf(name, sizeof(name), "Matrix 01 Mix %c Playback Volume", mix);
+    if (!get_elem_by_name(card->elems, name))
+      break;
+
+    struct routing_src r = {
+      .card          = card,
+      .id            = card->routing_srcs->len,
+      .port_category = PC_MIX,
+      .port_num      = card->routing_in_count[PC_MIX]++,
+      .name          = g_strdup_printf("Mix %c", mix),
+      .lr_num        = mix - 'A' + 1,
+      .level_index   = -1
+    };
+    g_array_append_val(card->routing_srcs, r);
+  }
 }
 
 // return true if the element is an routing sink enum, e.g.:
@@ -1099,6 +1122,9 @@ void alsa_get_routing_controls(struct alsa_card *card) {
   if (!card->sample_capture_elem)
     card->sample_capture_elem =
       get_elem_by_name(card->elems, "Input Source 01 Capture Route");
+  if (!card->sample_capture_elem)
+    card->sample_capture_elem =
+      get_elem_by_name(card->elems, "Matrix 01 Input Playback Route");
 
   if (!card->sample_capture_elem) {
     fprintf(
@@ -1703,7 +1729,8 @@ static void alsa_scan_cards(void) {
 
     if (strncmp(snd_ctl_card_info_get_name(info), "Scarlett", 8) != 0 &&
         strncmp(snd_ctl_card_info_get_name(info), "Clarett", 7) != 0 &&
-        strncmp(snd_ctl_card_info_get_name(info), "Vocaster", 8) != 0)
+        strncmp(snd_ctl_card_info_get_name(info), "Vocaster", 8) != 0 &&
+        strncmp(snd_ctl_card_info_get_name(info), "Forte", 5) != 0)
       goto next;
 
     // is there already an entry for this card in alsa_cards?

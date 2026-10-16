@@ -23,6 +23,20 @@ static const char *scarlett_gen1_18i6_analogue_snk[] = {
   NULL
 };
 
+// Forte PCM outputs (sources - from computer)
+static const char *forte_pcm_src[] = {
+  "DAW (L)", "DAW (R)",
+  "Cue (L)", "Cue (R)",
+  NULL
+};
+
+// Forte mixer outputs (sources)
+static const char *forte_mix_src[] = {
+  "Line Out (L)", "Line Out (R)",
+  "Headphones (L)", "Headphones (R)",
+  NULL
+};
+
 // Scarlett 2nd Gen 6i6 analogue inputs (sources)
 static const char *scarlett_gen2_6i6_analogue_src[] = {
   "Mic/Line/Inst 1", "Mic/Line/Inst 2",
@@ -384,6 +398,16 @@ static const char *scarlett_gen1_18i6_analogue_snk_pairs[] = {
   "Line 1–2", "Headphones", NULL
 };
 
+// Forte PCM output pairs (from computer)
+static const char *forte_pcm_src_pairs[] = {
+  "DAW", "Cue", NULL
+};
+
+// Forte mixer output pairs
+static const char *forte_mix_src_pairs[] = {
+  "Line Out", "Headphones", NULL
+};
+
 // Scarlett 2nd Gen 6i6 analogue output pairs
 static const char *scarlett_gen2_6i6_analogue_snk_pairs[] = {
   "Line 1–2/Headphones 1", "Line 3–4/Headphones 2", NULL
@@ -578,6 +602,11 @@ static const struct device_pair_names device_pair_names[] = {
   { PID_SCARLETT_GEN1_18I20, PC_HW, HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12_mic_345678 },
   { PID_SCARLETT_GEN1_18I20, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_18i20_analogue_snk_pairs },
 
+  // Forte
+  { PID_FORTE, PC_HW,  HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12 },
+  { PID_FORTE, PC_PCM, 0,                0, forte_pcm_src_pairs },
+  { PID_FORTE, PC_MIX, 0,                0, forte_mix_src_pairs },
+
   // Scarlett 2nd Gen 6i6
   { PID_SCARLETT_GEN2_6I6, PC_HW, HW_TYPE_ANALOGUE, 0, analogue_src_pairs_inst_12_line_34 },
   { PID_SCARLETT_GEN2_6I6, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_6i6_analogue_snk_pairs },
@@ -690,6 +719,11 @@ static const struct device_port_names device_port_names[] = {
   // Scarlett 1st Gen 18i20 (same as Gen 2)
   { PID_SCARLETT_GEN1_18I20, PC_HW, HW_TYPE_ANALOGUE, 0, scarlett_gen2_18i20_analogue_src },
   { PID_SCARLETT_GEN1_18I20, PC_HW, HW_TYPE_ANALOGUE, 1, scarlett_gen2_18i20_analogue_snk },
+
+  // Forte
+  { PID_FORTE, PC_HW,  HW_TYPE_ANALOGUE, 0, clarett_2pre_analogue_src },
+  { PID_FORTE, PC_PCM, 0,                0, forte_pcm_src },
+  { PID_FORTE, PC_MIX, 0,                0, forte_mix_src },
 
   // Scarlett 2nd Gen 18i20
   { PID_SCARLETT_GEN2_18I20, PC_HW,  HW_TYPE_ANALOGUE, 0, scarlett_gen2_18i20_analogue_src },

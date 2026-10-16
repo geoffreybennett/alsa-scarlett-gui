@@ -831,6 +831,52 @@ static void create_input_mute_switch_control(
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
 
+static void create_input_source_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_drop_down_alsa_elem(elem, NULL);
+  gtk_widget_add_css_class(w, "source");
+  gtk_widget_set_hexpand(w, TRUE);
+  gtk_widget_set_tooltip_text(w, "Select the Mic, Line, or Inst input.");
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+}
+
+static void create_input_hpf_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "HPF", NULL);
+  gtk_widget_add_css_class(w, "hpf");
+  gtk_widget_set_hexpand(w, TRUE);
+  gtk_widget_set_tooltip_text(
+    w,
+    "Enabling HPF engages a high-pass filter which removes low "
+    "frequency rumble and pops."
+  );
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+}
+
+static void create_input_phase_control(
+  struct alsa_elem *elem,
+  GtkWidget        *grid,
+  int               current_row,
+  int               column_num
+) {
+  GtkWidget *w = make_boolean_alsa_elem(elem, "Phase", NULL);
+  gtk_widget_add_css_class(w, "phase");
+  gtk_widget_set_hexpand(w, TRUE);
+  gtk_widget_set_tooltip_text(w, "Enabling Phase inverts the input signal.");
+
+  gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
+}
+
 static void create_input_pad_control(
   struct alsa_elem *elem,
   GtkWidget        *grid,
@@ -881,7 +927,7 @@ static void create_input_phantom_control(
 
   int from, to;
   get_two_num_from_string(elem->name, &from, &to);
-  if (to == -1)
+  if (to == -1 || strstr(elem->name, "48V"))
     to = from;
 
   gtk_grid_attach(GTK_GRID(grid), w, from - 1, current_row, to - from + 1, 1);
@@ -1047,6 +1093,19 @@ static void create_input_controls(
     elems, input_grid, &current_row,
     "Impedance Switch", create_input_level_control
   );
+
+  // matching on "Source" alone would pick up clock and routing controls
+  struct alsa_elem *source_elem = NULL;
+  for (int i = 1; i <= input_count; i++) {
+    char name[30];
+    snprintf(name, sizeof(name), "Input %d Source", i);
+    source_elem = get_elem_by_name(elems, name);
+    if (source_elem)
+      create_input_source_control(source_elem, input_grid, current_row, i - 1);
+  }
+  if (source_elem)
+    current_row++;
+
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "Air Capture Switch", create_input_air_switch_control
@@ -1082,6 +1141,18 @@ static void create_input_controls(
   create_input_controls_by_type(
     elems, input_grid, &current_row,
     "Phantom Power Capture Switch", create_input_phantom_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "48V Phantom Power Switch", create_input_phantom_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "High Pass Filter Switch", create_input_hpf_control
+  );
+  create_input_controls_by_type(
+    elems, input_grid, &current_row,
+    "Phase Invert Switch", create_input_phase_control
   );
 
   (*x)++;
