@@ -620,7 +620,7 @@ static GtkWidget *create_global_box(GtkWidget *grid, int *x, int orient) {
   return controls;
 }
 
-/* 4th Gen Solo Mix switch */
+/* 4th Gen Solo & 2i2 Mix switch (Combine Inputs) */
 static void create_input_select_control(
   GPtrArray *elems,
   GtkWidget *input_grid,
@@ -635,9 +635,10 @@ static void create_input_select_control(
   gtk_widget_add_css_class(w, "pcm-input-mix");
   gtk_widget_set_tooltip_text(
     w,
-    "Enabling Input Mix selects Mix E/F as the input source for "
-    "the PCM 1/2 Inputs rather than the DSP 1/2 Inputs. This is "
-    "useful to get a mono mix of both input channels."
+    "Enabling Input Mix (Combine Inputs) routes a mono mix of both "
+    "input channels to the PCM 1/2 Inputs rather than direct inputs. "
+    "This is useful to send both inputs to applications that only "
+    "record from the first input channel."
   );
   gtk_grid_attach(GTK_GRID(input_grid), w, 0, *current_row, 2, 1);
 
@@ -1000,6 +1001,7 @@ static void create_input_controls(
 
   // 4th Gen Solo, put the Phantom Power control above the Air control
   if (get_elem_by_name(elems, "Direct Monitor Playback Switch")) {
+    create_input_select_control(elems, input_grid, &current_row);
     create_input_controls_by_type(
       elems, input_grid, &current_row,
       "Level Capture Enum", create_input_level_control
