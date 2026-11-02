@@ -15,6 +15,7 @@
 #include "widget-gain.h"
 #include "widget-input-select.h"
 #include "widget-label.h"
+#include "widget-output-meter.h"
 #include "widget-sample-rate.h"
 #include "window-configuration.h"
 #include "window-dsp.h"
@@ -25,7 +26,7 @@
 #include "window-startup.h"
 
 // find the routing sink for a hardware output by port number
-static struct routing_snk *get_output_r_snk(
+struct routing_snk *get_output_r_snk(
   struct alsa_card *card,
   int               port_num
 ) {
@@ -1154,6 +1155,12 @@ static void create_output_controls(
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 2, 1);
     }
 
+    GtkWidget *meter = gtk_output_meter_new();
+    gtk_widget_set_hexpand(meter, TRUE);
+    gtk_widget_set_vexpand(meter, TRUE);
+    gtk_grid_attach(GTK_GRID(output_grid), meter, 0, 2, 2, 1);
+    card->output_level_meter = meter;
+
     return;
   }
 
@@ -1508,6 +1515,7 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
     g_free(l->data);
   g_list_free(card->output_gain_widgets);
   card->output_gain_widgets = NULL;
+  card->output_level_meter = NULL;
 
   card->has_speaker_switching =
     get_elem_by_name(card->elems, "Speaker Switching Playback Enum") ||

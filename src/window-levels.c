@@ -11,6 +11,7 @@
 #include "iface-mixer.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
+#include "widget-output-meter.h"
 #include "window-dsp.h"
 #include "window-levels.h"
 #include "window-mixer.h"
@@ -183,6 +184,29 @@ static int update_levels_controls(void *user_data) {
       if (dial)
         gtk_dial_set_level(GTK_DIAL(dial), level_db);
     }
+  }
+
+  // update output level meter (Scarlett 4th Gen Solo/2i2)
+  if (card->output_level_meter && card->routing_levels) {
+    double left_db = -INFINITY;
+    double right_db = -INFINITY;
+
+    struct routing_snk *snk1 = get_output_r_snk(card, 1);
+    if (snk1) {
+      int idx1 = get_routing_snk_level_index(snk1);
+      if (idx1 >= 0 && idx1 < card->routing_levels_count)
+        left_db = card->routing_levels[idx1];
+    }
+    struct routing_snk *snk2 = get_output_r_snk(card, 2);
+    if (snk2) {
+      int idx2 = get_routing_snk_level_index(snk2);
+      if (idx2 >= 0 && idx2 < card->routing_levels_count)
+        right_db = card->routing_levels[idx2];
+    }
+
+    gtk_output_meter_set_levels(
+      GTK_OUTPUT_METER(card->output_level_meter), left_db, right_db
+    );
   }
 
   // update compressor curve levels if DSP window is visible

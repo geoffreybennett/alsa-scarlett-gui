@@ -116,6 +116,7 @@ static void cleanup_gain_widget_lists(struct alsa_card *card) {
     g_free(l->data);
   g_list_free(card->output_gain_widgets);
   card->output_gain_widgets = NULL;
+  card->output_level_meter = NULL;
 
   for (GList *l = card->mixer_gain_widgets; l != NULL; l = l->next) {
     struct mixer_gain_widget *mg = l->data;

@@ -19,4 +19,9 @@ struct output_gain_widget {
   struct routing_snk *r_snk;        // routing sink for level lookup
 };
 
+struct routing_snk *get_output_r_snk(
+  struct alsa_card *card,
+  int               port_num
+);
+
 GtkWidget *create_iface_mixer_main(struct alsa_card *card);

@@ -315,6 +315,7 @@ struct alsa_card {
   GList              *input_gain_widgets;
   GList              *output_gain_widgets;
   GList              *dsp_comp_widgets;
+  GtkWidget          *output_level_meter;
   GtkWidget          *routing_lines;
   GtkWidget          *routing_hw_in_grid;
   GtkWidget          *routing_hw_out_grid;
