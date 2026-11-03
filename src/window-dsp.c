@@ -6,6 +6,7 @@
 #include "custom-names.h"
 #include "dsp-state.h"
 #include "gtkhelper.h"
+#include "i18n.h"
 #include "optional-state.h"
 #include "peq-response.h"
 #include "stereo-link.h"
@@ -1046,7 +1047,7 @@ static GtkWidget *create_dsp_link_button(struct alsa_elem *link_elem) {
   gtk_button_set_child(GTK_BUTTON(link_button), label);
   gtk_widget_set_halign(link_button, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(link_button, GTK_ALIGN_CENTER);
-  gtk_widget_set_tooltip_text(link_button, "Link DSP channels as stereo pair");
+  gtk_widget_set_tooltip_text(link_button, _("Link DSP channels as stereo pair"));
   gtk_widget_add_css_class(link_button, "flat");
 
   g_signal_connect(link_button, "toggled",
@@ -1318,17 +1319,17 @@ struct precomp_preset {
 
 static const struct precomp_preset precomp_presets[] = {
   {
-    "None",
+    N_("None"),
     { 268435456, 0, 0, 0, 0 },
     { 268435456, 0, 0, 0, 0 }
   },
   {
-    "Rumble Reduction Low",
+    N_("Rumble Reduction Low"),
     { 266497594, -532995188, 266497594, 532986969, -264567952 },
     { 267626948, -535253896, 267626948, 535245642, -266826694 }
   },
   {
-    "Rumble Reduction High",
+    N_("Rumble Reduction High"),
     { 265856028, -531712056, 265856028, 531697479, -263291177 },
     { 267356697, -534713394, 267356697, 534698735, -266292598 }
   }
@@ -1348,10 +1349,10 @@ struct compressor_preset {
 };
 
 static const struct compressor_preset compressor_presets[] = {
-  { "Off",    0, 8, 3, 10, 30, 0 },
-  { "Low",  -10, 8, 3, 10, 30, 2 },
-  { "Med",  -20, 8, 3, 10, 30, 3 },
-  { "High", -30, 8, 3, 10, 30, 5 }
+  { N_("Off"),    0, 8, 3, 10, 30, 0 },
+  { N_("Low"),  -10, 8, 3, 10, 30, 2 },
+  { N_("Med"),  -20, 8, 3, 10, 30, 3 },
+  { N_("High"), -30, 8, 3, 10, 30, 5 }
 };
 
 #define NUM_COMPRESSOR_PRESETS (sizeof(compressor_presets) / sizeof(compressor_presets[0]))
@@ -1376,25 +1377,25 @@ struct peq_preset {
 
 static const struct peq_preset peq_presets[] = {
   {
-    "Radio",
+    N_("Radio"),
     { 268764056, -534822977, 266136367, 534822977, -266464967 },
     { 264343107, -475942323, 220923477, 475942323, -216831129 },
     { 280826929, -286659621, 124570994, 286659621, -136962468 }
   },
   {
-    "Clean",
+    N_("Clean"),
     { 268173186, -534243182, 266147357, 534243182, -265885087 },
     { 273994701, -484439285, 219935310, 484439285, -225494556 },
     { 285089098, -288665257, 123145223, 288665257, -139798866 }
   },
   {
-    "Warm",
+    N_("Warm"),
     { 268304503, -534385186, 266158065, 534385186, -266027113 },
     { 275408969, -485541124, 219644468, 485541124, -226617981 },
     { 260481651, -276190834, 130111172, 276190834, -122157368 }
   },
   {
-    "Bright",
+    N_("Bright"),
     { 268173186, -534243182, 266147357, 534243182, -265885087 },
     { 276834931, -486616512, 219314962, 486616512, -227714437 },
     { 293825201, -292586874, 119955124, 292586874, -145344869 }
@@ -1512,15 +1513,15 @@ static void preset_button_clicked(GtkButton *button, gpointer user_data) {
   if (data->preset_type == PRESET_TYPE_PRECOMP && data->stages) {
     model = gtk_string_list_new(NULL);
     for (size_t i = 0; i < NUM_PRECOMP_PRESETS; i++)
-      gtk_string_list_append(model, precomp_presets[i].name);
+      gtk_string_list_append(model, _(precomp_presets[i].name));
   } else if (data->preset_type == PRESET_TYPE_COMPRESSOR && data->comp_elems) {
     model = gtk_string_list_new(NULL);
     for (size_t i = 0; i < NUM_COMPRESSOR_PRESETS; i++)
-      gtk_string_list_append(model, compressor_presets[i].name);
+      gtk_string_list_append(model, _(compressor_presets[i].name));
   } else if (data->preset_type == PRESET_TYPE_PEQ && data->stages) {
     model = gtk_string_list_new(NULL);
     for (size_t i = 0; i < NUM_PEQ_PRESETS; i++)
-      gtk_string_list_append(model, peq_presets[i].name);
+      gtk_string_list_append(model, _(peq_presets[i].name));
   }
 
   if (model) {
@@ -1579,7 +1580,7 @@ static GtkWidget *create_section_box(
   gtk_box_append(GTK_BOX(header_box), label);
 
   // Presets button - callback data will be set up after stages are created
-  GtkWidget *presets_button = gtk_button_new_with_label("Presets");
+  GtkWidget *presets_button = gtk_button_new_with_label(_("Presets"));
   gtk_widget_add_css_class(presets_button, "presets-button");
   gtk_widget_set_valign(presets_button, GTK_ALIGN_CENTER);
   gtk_box_append(GTK_BOX(header_box), presets_button);
@@ -1789,7 +1790,7 @@ static void add_channel_controls(
   if (precomp_enable) {
     GtkWidget *precomp_presets_button;
     GtkWidget *precomp_box = create_section_box(
-      "Pre-Compressor Filter", PRESET_TYPE_PRECOMP, &precomp_presets_button
+      _("Pre-Compressor Filter"), PRESET_TYPE_PRECOMP, &precomp_presets_button
     );
     gtk_box_append(GTK_BOX(sections_box), precomp_box);
 
@@ -1818,7 +1819,7 @@ static void add_channel_controls(
 
       if (elem) {
         char stage_label[16];
-        snprintf(stage_label, sizeof(stage_label), "Stage %d", i);
+        snprintf(stage_label, sizeof(stage_label), _("Stage %d"), i);
         struct filter_stage *stage;
         make_filter_stage(
           card, elem, i - 1, precomp_response, stage_label, BIQUAD_TYPE_HIGHPASS,
@@ -1854,7 +1855,7 @@ static void add_channel_controls(
   if (comp_enable) {
     GtkWidget *comp_presets_button;
     GtkWidget *comp_box = create_section_box(
-      "Compressor", PRESET_TYPE_COMPRESSOR, &comp_presets_button
+      _("Compressor"), PRESET_TYPE_COMPRESSOR, &comp_presets_button
     );
     gtk_box_append(GTK_BOX(sections_box), comp_box);
 
@@ -1887,7 +1888,7 @@ static void add_channel_controls(
     g_free(name);
     if (elem) {
       comp_elems->threshold = elem;
-      w = gtk_label_new("Thresh");
+      w = gtk_label_new(_("Thresh"));
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, " dB", 1, comp_curve, update_curve_threshold);
@@ -1900,7 +1901,7 @@ static void add_channel_controls(
     g_free(name);
     if (elem) {
       comp_elems->ratio = elem;
-      w = gtk_label_new("Ratio");
+      w = gtk_label_new(_("Ratio"));
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, NULL, 2, comp_curve, update_curve_ratio);
@@ -1913,7 +1914,7 @@ static void add_channel_controls(
     g_free(name);
     if (elem) {
       comp_elems->knee = elem;
-      w = gtk_label_new("Knee");
+      w = gtk_label_new(_("Knee"));
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, " dB", 1, comp_curve, update_curve_knee);
@@ -1926,7 +1927,7 @@ static void add_channel_controls(
     g_free(name);
     if (elem) {
       comp_elems->attack = elem;
-      w = gtk_label_new("Attack");
+      w = gtk_label_new(_("Attack"));
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider(elem, " ms", 1);
@@ -1939,7 +1940,7 @@ static void add_channel_controls(
     g_free(name);
     if (elem) {
       comp_elems->release = elem;
-      w = gtk_label_new("Release");
+      w = gtk_label_new(_("Release"));
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider(elem, " ms", 1);
@@ -1952,7 +1953,7 @@ static void add_channel_controls(
     g_free(name);
     if (elem) {
       comp_elems->makeup = elem;
-      w = gtk_label_new("Makeup");
+      w = gtk_label_new(_("Makeup"));
       gtk_widget_set_halign(w, GTK_ALIGN_END);
       gtk_grid_attach(GTK_GRID(slider_grid), w, 0, row, 1, 1);
       w = make_int_slider_with_curve(elem, " dB", 1, comp_curve, update_curve_makeup);
@@ -1974,7 +1975,7 @@ static void add_channel_controls(
   if (peq_enable) {
     GtkWidget *peq_presets_button;
     GtkWidget *peq_box = create_section_box(
-      "Parametric EQ Filter", PRESET_TYPE_PEQ, &peq_presets_button
+      _("Parametric EQ Filter"), PRESET_TYPE_PEQ, &peq_presets_button
     );
     gtk_widget_set_hexpand(peq_box, TRUE);
     gtk_box_append(GTK_BOX(sections_box), peq_box);
@@ -2005,7 +2006,7 @@ static void add_channel_controls(
 
       if (elem) {
         char band_label[16];
-        snprintf(band_label, sizeof(band_label), "Band %d", i);
+        snprintf(band_label, sizeof(band_label), _("Band %d"), i);
         struct filter_stage *stage;
         make_filter_stage(
           card, elem, i - 1, peq_response, band_label, BIQUAD_TYPE_PEAKING,

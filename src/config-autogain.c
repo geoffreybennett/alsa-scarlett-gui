@@ -5,6 +5,7 @@
 
 #include "alsa.h"
 #include "config-helpers.h"
+#include "i18n.h"
 #include "widget-gain.h"
 #include "window-configuration.h"
 
@@ -16,7 +17,7 @@ void add_autogain_tab(GtkWidget *notebook, struct alsa_card *card) {
     "Autogain Mean Target",
     "Autogain Peak Target"
   };
-  static const char *labels[] = { "Hot", "Mean", "Peak" };
+  static const char *labels[] = { N_("Hot"), N_("Mean"), N_("Peak") };
 
   int count = 0;
   for (int i = 0; i < AUTOGAIN_TARGET_COUNT; i++)
@@ -33,10 +34,10 @@ void add_autogain_tab(GtkWidget *notebook, struct alsa_card *card) {
   gtk_widget_set_margin_bottom(content, 20);
 
   const char *help_text = count == 1
-    ? "Configure the target level for the Autogain feature.\n"
-      "This setting controls what signal level Autogain aims for."
-    : "Configure the target levels for the Autogain feature.\n"
-      "These settings control what signal levels Autogain aims for.";
+    ? _("Configure the target level for the Autogain feature.\n"
+        "This setting controls what signal level Autogain aims for.")
+    : _("Configure the target levels for the Autogain feature.\n"
+        "These settings control what signal levels Autogain aims for.");
   gtk_box_append(GTK_BOX(content), config_help_label(help_text));
 
   GtkWidget *grid = gtk_grid_new();
@@ -51,7 +52,7 @@ void add_autogain_tab(GtkWidget *notebook, struct alsa_card *card) {
     if (!elem)
       continue;
 
-    GtkWidget *label = gtk_label_new(labels[i]);
+    GtkWidget *label = gtk_label_new(_(labels[i]));
     gtk_widget_set_halign(label, GTK_ALIGN_CENTER);
     gtk_grid_attach(GTK_GRID(grid), label, col, 0, 1, 1);
 
@@ -70,6 +71,6 @@ void add_autogain_tab(GtkWidget *notebook, struct alsa_card *card) {
 
   g_object_set_data(G_OBJECT(content), PAGE_ID_KEY, (gpointer)"autogain");
   gtk_notebook_append_page(
-    GTK_NOTEBOOK(notebook), content, gtk_label_new("Autogain")
+    GTK_NOTEBOOK(notebook), content, gtk_label_new(_("Autogain"))
   );
 }

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2022-2025 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "i18n.h"
 #include "window-hardware.h"
 
 GtkWidget *window_hardware;
@@ -71,25 +72,25 @@ struct hw_info vocaster_info[] = {
 };
 
 struct hw_cat hw_cat[] = {
-  { "1st Gen",
+  { N_("1st Gen"),
     gen_1_info
   },
-  { "2nd Gen",
+  { N_("2nd Gen"),
     gen_2_info
   },
-  { "3rd Gen",
+  { N_("3rd Gen"),
     gen_3_info
   },
-  { "4th Gen",
+  { N_("4th Gen"),
     gen_4_info
   },
-  { "Clarett USB",
+  { N_("Clarett USB"),
     clarett_usb_info
   },
-  { "Clarett+",
+  { N_("Clarett+"),
     clarett_plus_info
   },
-  { "Vocaster",
+  { N_("Vocaster"),
     vocaster_info
   },
   { }
@@ -151,7 +152,7 @@ GtkWidget *make_notebook_page(struct hw_cat *cat) {
 void add_notebook_pages(GtkWidget *notebook) {
   for (struct hw_cat *cat = hw_cat; cat->name; cat++) {
     GtkWidget *page = make_notebook_page(cat);
-    GtkWidget *label = gtk_label_new(cat->name);
+    GtkWidget *label = gtk_label_new(_(cat->name));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), page, label);
   }
 }
@@ -173,7 +174,7 @@ void create_hardware_window(GtkApplication *app) {
 
   gtk_window_set_title(
     GTK_WINDOW(window_hardware),
-    "ALSA Scarlett Supported Hardware"
+    _("ALSA Scarlett Supported Hardware")
   );
 
   GtkWidget *top = gtk_frame_new(NULL);

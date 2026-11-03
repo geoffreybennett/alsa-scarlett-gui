@@ -2,9 +2,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <ctype.h>
+#include <stdlib.h>
 
 #include "gtkhelper.h"
+#include "i18n.h"
 #include "widget-drop-down.h"
+
+// Common ALSA enum items for gettext extraction and translation
+static const char * const common_enum_strings[] __attribute__((unused)) = {
+  N_("Off"),
+  N_("Mono"),
+  N_("Stereo"),
+  N_("Presence"),
+  N_("Presence + Drive"),
+  N_("Internal"),
+  N_("S/PDIF"),
+  N_("ADAT"),
+  N_("Locked"),
+  N_("Unlocked"),
+  N_("No Lock"),
+  N_("Main"),
+  N_("Alt")
+};
 
 // Two construction modes share this state:
 //   Enum mode (ops == NULL): model is built from alsa_get_item_name
@@ -163,7 +182,9 @@ static void bind_factory(
     GtkStringObject *so = gtk_list_item_get_item(list_item);
     gtk_label_set_text(GTK_LABEL(label), gtk_string_object_get_string(so));
   } else {
-    gtk_label_set_text(GTK_LABEL(label), alsa_get_item_name(data->elem, index));
+    char *name = alsa_get_item_name(data->elem, index);
+    gtk_label_set_text(GTK_LABEL(label), _(name));
+    free(name);
   }
 
   if (index < data->icon_count)
@@ -207,14 +228,16 @@ static void drop_down_updated(
     update_icons(data);
     gtk_single_selection_set_selected(data->selection, value);
 
+    char *name = alsa_get_item_name(elem, value);
     gtk_widget_remove_css_classes_by_prefix(data->button, "selected-");
-    add_class(data->button, alsa_get_item_name(elem, value));
+    add_class(data->button, name);
 
     if (!data->fixed_text)
       gtk_button_set_label(
         GTK_BUTTON(data->button),
-        alsa_get_item_name(elem, value)
+        _(name)
       );
+    free(name);
   }
 }
 
@@ -287,8 +310,11 @@ GtkWidget *make_drop_down_alsa_elem(
 
   data->icon_count = alsa_get_item_count(elem);
   data->icons = g_malloc0(data->icon_count * sizeof(GtkWidget *));
-  for (int i = 0; i < data->icon_count; i++)
-    gtk_string_list_append(data->model, alsa_get_item_name(elem, i));
+  for (int i = 0; i < data->icon_count; i++) {
+    char *name = alsa_get_item_name(elem, i);
+    gtk_string_list_append(data->model, _(name));
+    free(name);
+  }
 
   build_drop_down(data, label_text);
 

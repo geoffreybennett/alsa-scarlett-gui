@@ -6,6 +6,7 @@
 #include "alsa.h"
 #include "config-front-panel.h"
 #include "config-helpers.h"
+#include "i18n.h"
 #include "widget-drop-down.h"
 #include "window-configuration.h"
 
@@ -18,17 +19,17 @@ struct sleep_preset {
 // 0 = never sleep; remaining values are common timeouts up to the
 // 86400-second maximum (24 hours).
 static const struct sleep_preset sleep_presets[] = {
-  { "Off (never sleep)",   0 },
-  { "30 seconds",         30 },
-  { "1 minute",           60 },
-  { "5 minutes",         300 },
-  { "10 minutes",        600 },
-  { "30 minutes",       1800 },
-  { "1 hour",           3600 },
-  { "2 hours",          7200 },
-  { "4 hours",         14400 },
-  { "8 hours",         28800 },
-  { "24 hours",        86400 },
+  { N_("Off (never sleep)"),   0 },
+  { N_("30 seconds"),         30 },
+  { N_("1 minute"),           60 },
+  { N_("5 minutes"),         300 },
+  { N_("10 minutes"),        600 },
+  { N_("30 minutes"),       1800 },
+  { N_("1 hour"),           3600 },
+  { N_("2 hours"),          7200 },
+  { N_("4 hours"),         14400 },
+  { N_("8 hours"),         28800 },
+  { N_("24 hours"),        86400 },
 };
 
 #define SLEEP_PRESET_COUNT G_N_ELEMENTS(sleep_presets)
@@ -60,8 +61,8 @@ static int sleep_row_to_value(int row, int current_value, void *user_data) {
 static char *sleep_button_label(int value, void *user_data) {
   int idx = find_preset_index(value);
   if (idx >= 0)
-    return g_strdup(sleep_presets[idx].label);
-  return g_strdup_printf("Custom (%d s)", value);
+    return g_strdup(_(sleep_presets[idx].label));
+  return g_strdup_printf(_("Custom (%d s)"), value);
 }
 
 // Keep the model in sync with the live value: a synthetic
@@ -77,7 +78,7 @@ static void sleep_refresh_model(
   int is_preset = find_preset_index(value) >= 0;
 
   if (!is_preset) {
-    char *s = g_strdup_printf("Custom (%d s)", value);
+    char *s = g_strdup_printf(_("Custom (%d s)"), value);
     const char *additions[] = { s, NULL };
     if (has_custom)
       gtk_string_list_splice(
@@ -101,7 +102,7 @@ static const struct drop_down_value_ops sleep_ops = {
 static GtkWidget *make_sleep_time_dropdown(struct alsa_elem *elem) {
   GtkStringList *model = gtk_string_list_new(NULL);
   for (guint i = 0; i < SLEEP_PRESET_COUNT; i++)
-    gtk_string_list_append(model, sleep_presets[i].label);
+    gtk_string_list_append(model, _(sleep_presets[i].label));
 
   return make_value_mapped_drop_down_alsa_elem(
     elem, model, &sleep_ops, NULL, NULL
@@ -148,9 +149,9 @@ void add_front_panel_tab(GtkWidget *notebook, struct alsa_card *card) {
   if (brightness) {
     add_control_row(
       GTK_BOX(content),
-      "Brightness",
+      _("Brightness"),
       make_drop_down_alsa_elem(brightness, NULL),
-      "Sets the brightness of the front panel LEDs."
+      _("Sets the brightness of the front panel LEDs.")
     );
   }
 
@@ -160,16 +161,16 @@ void add_front_panel_tab(GtkWidget *notebook, struct alsa_card *card) {
 
     add_control_row(
       GTK_BOX(content),
-      "Sleep Time",
+      _("Sleep Time"),
       make_sleep_time_dropdown(sleep_time),
-      "After this much inactivity (no front panel adjustments or "
-      "passing audio), the front panel LEDs turn off. Select Off to "
-      "keep them lit indefinitely."
+      _("After this much inactivity (no front panel adjustments or "
+        "passing audio), the front panel LEDs turn off. Select Off to "
+        "keep them lit indefinitely.")
     );
   }
 
   g_object_set_data(G_OBJECT(content), PAGE_ID_KEY, (gpointer)"front-panel");
   gtk_notebook_append_page(
-    GTK_NOTEBOOK(notebook), content, gtk_label_new("Front Panel")
+    GTK_NOTEBOOK(notebook), content, gtk_label_new(_("Front Panel"))
   );
 }

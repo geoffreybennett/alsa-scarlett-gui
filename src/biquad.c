@@ -3,21 +3,22 @@
 
 #include <math.h>
 #include "biquad.h"
+#include "i18n.h"
 
 // Filter type names
 static const char *filter_type_names[] = {
-  "Peaking",
-  "Low Shelf",
-  "High Shelf",
-  "Lowpass",
-  "Highpass",
-  "Bandpass",
-  "Notch",
-  "Gain",
-  "LP 6dB/oct",
-  "HP 6dB/oct",
-  "LS 6dB/oct",
-  "HS 6dB/oct"
+  N_("Peaking"),
+  N_("Low Shelf"),
+  N_("High Shelf"),
+  N_("Lowpass"),
+  N_("Highpass"),
+  N_("Bandpass"),
+  N_("Notch"),
+  N_("Gain"),
+  N_("LP 6dB/oct"),
+  N_("HP 6dB/oct"),
+  N_("LS 6dB/oct"),
+  N_("HS 6dB/oct")
 };
 
 const char *biquad_type_name(BiquadFilterType type) {

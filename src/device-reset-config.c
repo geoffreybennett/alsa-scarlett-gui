@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 #include "device-reset-config.h"
 #include "fcp-socket.h"
+#include "i18n.h"
 #include "optional-state.h"
 #include "scarlett2.h"
 #include "scarlett2-ioctls.h"
@@ -37,7 +38,7 @@ static gpointer reset_config_hwdep(struct modal_data *modal_data) {
   if (err < 0) {
     return update_progress(
       modal_data,
-      g_strdup_printf("Unable to open hwdep interface: %s", snd_strerror(err)),
+      g_strdup_printf(_("Unable to open hwdep interface: %s"), snd_strerror(err)),
       -1
     );
   }
@@ -47,7 +48,7 @@ static gpointer reset_config_hwdep(struct modal_data *modal_data) {
     scarlett2_close(hwdep);
     return update_progress(
       modal_data,
-      g_strdup_printf("Unable to reset configuration: %s", snd_strerror(err)),
+      g_strdup_printf(_("Unable to reset configuration: %s"), snd_strerror(err)),
       -1
     );
   }
@@ -60,7 +61,7 @@ static gpointer reset_config_hwdep(struct modal_data *modal_data) {
       scarlett2_close(hwdep);
       return update_progress(
         modal_data,
-        g_strdup_printf("Unable to get erase progress: %s", snd_strerror(err)),
+        g_strdup_printf(_("Unable to get erase progress: %s"), snd_strerror(err)),
         -1
       );
     }
@@ -85,7 +86,7 @@ static gpointer reset_config_socket(struct modal_data *modal_data) {
   if (err < 0) {
     return update_progress(
       modal_data,
-      g_strdup("Unable to reset configuration via FCP socket"),
+      g_strdup(_("Unable to reset configuration via FCP socket")),
       -1
     );
   }
@@ -99,7 +100,7 @@ static gpointer reset_config_socket(struct modal_data *modal_data) {
 gpointer reset_config_thread(gpointer user_data) {
   struct modal_data *modal_data = user_data;
 
-  update_progress(modal_data, g_strdup("Resetting configuration..."), 0);
+  update_progress(modal_data, g_strdup(_("Resetting configuration...")), 0);
 
   // Remove the application config file for this device
   optional_state_remove(modal_data->card->serial);
@@ -112,7 +113,7 @@ gpointer reset_config_thread(gpointer user_data) {
 
   return update_progress(
     modal_data,
-    g_strdup("Unsupported driver type for reset configuration"),
+    g_strdup(_("Unsupported driver type for reset configuration")),
     -1
   );
 }
@@ -133,9 +134,9 @@ static void reset_config_yes_callback(struct modal_data *modal_data) {
 void create_reset_config_window(GtkWidget *w, struct alsa_card *card) {
   create_modal_window(
     w, card,
-    "Confirm Reset Configuration",
-    "Resetting Configuration",
-    "Are you sure you want to reset the configuration?",
+    _("Confirm Reset Configuration"),
+    _("Resetting Configuration"),
+    _("Are you sure you want to reset the configuration?"),
     reset_config_yes_callback
   );
 }

@@ -5,6 +5,7 @@
 #include "alsa-sim.h"
 #include "error.h"
 #include "file.h"
+#include "i18n.h"
 #include "optional-state.h"
 #include "stringhelper.h"
 
@@ -51,7 +52,7 @@ static void run_alsactl(
       : g_strdup_printf("%s", error->message);
 
   char *msg = g_strdup_printf(
-    "Error running “alsactl %s %s -f %s”: %s",
+    _("Error running “alsactl %s %s -f %s”: %s"),
     cmd, card->device, fn, error_message
   );
   show_error(w, msg);
@@ -332,13 +333,13 @@ static GListModel *create_file_filters(void) {
   GListStore *filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
 
   GtkFileFilter *conf_filter = gtk_file_filter_new();
-  gtk_file_filter_set_name(conf_filter, "alsa-scarlett-gui config (.conf)");
+  gtk_file_filter_set_name(conf_filter, _("alsa-scarlett-gui config (.conf)"));
   gtk_file_filter_add_pattern(conf_filter, "*.conf");
   g_list_store_append(filters, conf_filter);
   g_object_unref(conf_filter);
 
   GtkFileFilter *state_filter = gtk_file_filter_new();
-  gtk_file_filter_set_name(state_filter, "alsactl state file (.state)");
+  gtk_file_filter_set_name(state_filter, _("alsactl state file (.state)"));
   gtk_file_filter_add_pattern(state_filter, "*.state");
   g_list_store_append(filters, state_filter);
   g_object_unref(state_filter);
@@ -351,7 +352,7 @@ static GListModel *create_state_filter(void) {
   GListStore *filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
 
   GtkFileFilter *filter = gtk_file_filter_new();
-  gtk_file_filter_set_name(filter, "alsactl state file (.state)");
+  gtk_file_filter_set_name(filter, _("alsactl state file (.state)"));
   gtk_file_filter_add_pattern(filter, "*.state");
   g_list_store_append(filters, filter);
   g_object_unref(filter);
@@ -363,19 +364,19 @@ static GListModel *create_state_filter(void) {
 
 static void add_file_filters(GtkFileChooserNative *native) {
   GtkFileFilter *conf_filter = gtk_file_filter_new();
-  gtk_file_filter_set_name(conf_filter, "alsa-scarlett-gui config (.conf)");
+  gtk_file_filter_set_name(conf_filter, _("alsa-scarlett-gui config (.conf)"));
   gtk_file_filter_add_pattern(conf_filter, "*.conf");
   gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(native), conf_filter);
 
   GtkFileFilter *state_filter = gtk_file_filter_new();
-  gtk_file_filter_set_name(state_filter, "alsactl state file (.state)");
+  gtk_file_filter_set_name(state_filter, _("alsactl state file (.state)"));
   gtk_file_filter_add_pattern(state_filter, "*.state");
   gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(native), state_filter);
 }
 
 static void add_state_filter(GtkFileChooserNative *native) {
   GtkFileFilter *filter = gtk_file_filter_new();
-  gtk_file_filter_set_name(filter, "alsactl state file (.state)");
+  gtk_file_filter_set_name(filter, _("alsactl state file (.state)"));
   gtk_file_filter_add_pattern(filter, "*.state");
   gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(native), filter);
 }
@@ -409,7 +410,7 @@ static void load_dialog_complete(
   // determine format from extension
   if (string_ends_with(fn, ".conf")) {
     if (load_native(card, fn) < 0) {
-      char *msg = g_strdup_printf("Error loading from %s", fn);
+      char *msg = g_strdup_printf(_("Error loading from %s"), fn);
       show_error(w, msg);
       g_free(msg);
     }
@@ -429,7 +430,7 @@ void activate_load(
   struct alsa_card *card = data;
 
   GtkFileDialog *dialog = gtk_file_dialog_new();
-  gtk_file_dialog_set_title(dialog, "Load Configuration");
+  gtk_file_dialog_set_title(dialog, _("Load Configuration"));
 
   GListModel *filters = create_file_filters();
   gtk_file_dialog_set_filters(dialog, filters);
@@ -483,7 +484,7 @@ static void save_dialog_complete(
 
   if (use_native) {
     if (save_native(card, fn_with_ext) < 0) {
-      char *msg = g_strdup_printf("Error saving to %s", fn_with_ext);
+      char *msg = g_strdup_printf(_("Error saving to %s"), fn_with_ext);
       show_error(w, msg);
       g_free(msg);
     }
@@ -504,7 +505,7 @@ void activate_save(
   struct alsa_card *card = data;
 
   GtkFileDialog *dialog = gtk_file_dialog_new();
-  gtk_file_dialog_set_title(dialog, "Save Configuration");
+  gtk_file_dialog_set_title(dialog, _("Save Configuration"));
 
   GListModel *filters = create_file_filters();
   gtk_file_dialog_set_filters(dialog, filters);
@@ -557,7 +558,7 @@ void activate_sim(
 
   GtkFileDialog *dialog = gtk_file_dialog_new();
   gtk_file_dialog_set_title(
-    dialog, "Load Configuration File for Interface Simulation"
+    dialog, _("Load Configuration File for Interface Simulation")
   );
 
   GListModel *filters = create_state_filter();
@@ -594,7 +595,7 @@ static void load_response(
   // determine format from extension
   if (string_ends_with(fn, ".conf")) {
     if (load_native(card, fn) < 0) {
-      char *msg = g_strdup_printf("Error loading from %s", fn);
+      char *msg = g_strdup_printf(_("Error loading from %s"), fn);
       show_error(w, msg);
       g_free(msg);
     }
@@ -617,11 +618,11 @@ void activate_load(
   struct alsa_card *card = data;
 
   GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Load Configuration",
+    _("Load Configuration"),
     GTK_WINDOW(card->window_main),
     GTK_FILE_CHOOSER_ACTION_OPEN,
-    "_Load",
-    "_Cancel"
+    _("_Load"),
+    _("_Cancel")
   );
 
   add_file_filters(native);
@@ -659,7 +660,7 @@ static void save_response(
 
   if (use_native) {
     if (save_native(card, fn_with_ext) < 0) {
-      char *msg = g_strdup_printf("Error saving to %s", fn_with_ext);
+      char *msg = g_strdup_printf(_("Error saving to %s"), fn_with_ext);
       show_error(w, msg);
       g_free(msg);
     }
@@ -683,11 +684,11 @@ void activate_save(
   struct alsa_card *card = data;
 
   GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Save Configuration",
+    _("Save Configuration"),
     GTK_WINDOW(card->window_main),
     GTK_FILE_CHOOSER_ACTION_SAVE,
-    "_Save",
-    "_Cancel"
+    _("_Save"),
+    _("_Cancel")
   );
 
   add_file_filters(native);
@@ -726,11 +727,11 @@ void activate_sim(
   GtkWidget *w = data;
 
   GtkFileChooserNative *native = gtk_file_chooser_native_new(
-    "Load Configuration File for Interface Simulation",
+    _("Load Configuration File for Interface Simulation"),
     GTK_WINDOW(w),
     GTK_FILE_CHOOSER_ACTION_OPEN,
-    "_Load",
-    "_Cancel"
+    _("_Load"),
+    _("_Cancel")
   );
 
   add_state_filter(native);

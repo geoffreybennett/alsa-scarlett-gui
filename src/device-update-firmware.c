@@ -6,6 +6,7 @@
 #include "device-reset-config.h"
 #include "fcp-shared.h"
 #include "fcp-socket.h"
+#include "i18n.h"
 #include "scarlett2.h"
 #include "scarlett2-firmware.h"
 #include "scarlett4-firmware.h"
@@ -50,30 +51,30 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
   snd_hwdep_t *hwdep = NULL;
   struct scarlett2_firmware_file *firmware = NULL;
 
-  update_progress(modal_data, g_strdup("Checking firmware..."), 0);
+  update_progress(modal_data, g_strdup(_("Checking firmware...")), 0);
   firmware = scarlett2_get_best_firmware(card->pid);
 
   if (!firmware) {
     return update_progress(
-      modal_data, g_strdup("No update firmware found for device"), -1
+      modal_data, g_strdup(_("No update firmware found for device")), -1
     );
   }
 
   if (firmware->header.usb_pid != card->pid) {
     scarlett2_free_firmware_file(firmware);
     return update_progress(
-      modal_data, g_strdup("Firmware file does not match device"), -1
+      modal_data, g_strdup(_("Firmware file does not match device")), -1
     );
   }
 
-  update_progress(modal_data, g_strdup("Resetting configuration..."), 0);
+  update_progress(modal_data, g_strdup(_("Resetting configuration...")), 0);
 
   err = scarlett2_open_card(card->device, &hwdep);
   if (err < 0) {
     scarlett2_free_firmware_file(firmware);
     return update_progress(
       modal_data,
-      g_strdup_printf("Unable to open hwdep interface: %s", snd_strerror(err)),
+      g_strdup_printf(_("Unable to open hwdep interface: %s"), snd_strerror(err)),
       -1
     );
   }
@@ -84,7 +85,7 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
     scarlett2_free_firmware_file(firmware);
     return update_progress(
       modal_data,
-      g_strdup_printf("Unable to reset configuration: %s", snd_strerror(err)),
+      g_strdup_printf(_("Unable to reset configuration: %s"), snd_strerror(err)),
       -1
     );
   }
@@ -97,7 +98,7 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
       scarlett2_free_firmware_file(firmware);
       return update_progress(
         modal_data,
-        g_strdup_printf("Unable to get erase progress: %s", snd_strerror(err)),
+        g_strdup_printf(_("Unable to get erase progress: %s"), snd_strerror(err)),
         -1
       );
     }
@@ -106,7 +107,7 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
     update_progress(modal_data, NULL, err);
   }
 
-  update_progress(modal_data, g_strdup("Erasing flash..."), 0);
+  update_progress(modal_data, g_strdup(_("Erasing flash...")), 0);
 
   err = scarlett2_erase_firmware(hwdep);
   if (err < 0) {
@@ -114,7 +115,7 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
     scarlett2_free_firmware_file(firmware);
     return update_progress(
       modal_data,
-      g_strdup_printf("Unable to erase firmware: %s", snd_strerror(err)),
+      g_strdup_printf(_("Unable to erase firmware: %s"), snd_strerror(err)),
       -1
     );
   }
@@ -127,7 +128,7 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
       scarlett2_free_firmware_file(firmware);
       return update_progress(
         modal_data,
-        g_strdup_printf("Unable to get erase progress: %s", snd_strerror(err)),
+        g_strdup_printf(_("Unable to get erase progress: %s"), snd_strerror(err)),
         -1
       );
     }
@@ -136,7 +137,7 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
     update_progress(modal_data, NULL, err);
   }
 
-  update_progress(modal_data, g_strdup("Writing firmware..."), 0);
+  update_progress(modal_data, g_strdup(_("Writing firmware...")), 0);
 
   size_t offset = 0;
   size_t len = firmware->header.firmware_length;
@@ -149,7 +150,7 @@ static gpointer update_firmware_hwdep(struct modal_data *modal_data) {
       scarlett2_free_firmware_file(firmware);
       return update_progress(
         modal_data,
-        g_strdup_printf("Unable to write firmware: %s", snd_strerror(err)),
+        g_strdup_printf(_("Unable to write firmware: %s"), snd_strerror(err)),
         -1
       );
     }
@@ -185,19 +186,19 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
   int sock_fd = -1;
   int err;
 
-  update_progress(modal_data, g_strdup("Checking firmware..."), 0);
+  update_progress(modal_data, g_strdup(_("Checking firmware...")), 0);
   container = scarlett4_get_best_firmware(card->pid);
 
   if (!container) {
     return update_progress(
-      modal_data, g_strdup("No update firmware found for device"), -1
+      modal_data, g_strdup(_("No update firmware found for device")), -1
     );
   }
 
   if (container->usb_pid != card->pid) {
     scarlett4_free_firmware_container(container);
     return update_progress(
-      modal_data, g_strdup("Firmware file does not match device"), -1
+      modal_data, g_strdup(_("Firmware file does not match device")), -1
     );
   }
 
@@ -209,7 +210,7 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
   if (!app_fw) {
     scarlett4_free_firmware_container(container);
     return update_progress(
-      modal_data, g_strdup("No App firmware found in container"), -1
+      modal_data, g_strdup(_("No App firmware found in container")), -1
     );
   }
 
@@ -255,7 +256,7 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
   if (sock_fd < 0) {
     scarlett4_free_firmware_container(container);
     return update_progress(
-      modal_data, g_strdup("Failed to connect to device"), -1
+      modal_data, g_strdup(_("Failed to connect to device")), -1
     );
   }
 
@@ -263,17 +264,17 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
   // When device comes back running leapfrog, the upgrade prompt will appear
   // again and we'll detect leapfrog_loaded and continue with ESP + App
   if (need_leapfrog) {
-    update_progress(modal_data, g_strdup("Erasing app firmware..."), 0);
+    update_progress(modal_data, g_strdup(_("Erasing app firmware...")), 0);
     err = fcp_socket_erase_app_firmware_fd(sock_fd, fcp_progress_callback, modal_data);
     if (err < 0) {
       close(sock_fd);
       scarlett4_free_firmware_container(container);
       return update_progress(
-        modal_data, g_strdup("Failed to erase app firmware"), -1
+        modal_data, g_strdup(_("Failed to erase app firmware")), -1
       );
     }
 
-    update_progress(modal_data, g_strdup("Uploading leapfrog firmware..."), 0);
+    update_progress(modal_data, g_strdup(_("Uploading leapfrog firmware...")), 0);
     err = fcp_socket_upload_firmware_fd(
       sock_fd, FCP_SOCKET_REQUEST_APP_FIRMWARE_UPDATE,
       leapfrog_fw->firmware_data, leapfrog_fw->firmware_length,
@@ -285,7 +286,7 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
       close(sock_fd);
       scarlett4_free_firmware_container(container);
       return update_progress(
-        modal_data, g_strdup("Failed to upload leapfrog firmware"), -1
+        modal_data, g_strdup(_("Failed to upload leapfrog firmware")), -1
       );
     }
 
@@ -299,7 +300,7 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
 
   // Step 2: Upload ESP if needed (no reboot after)
   if (need_esp) {
-    update_progress(modal_data, g_strdup("Uploading ESP firmware..."), 0);
+    update_progress(modal_data, g_strdup(_("Uploading ESP firmware...")), 0);
     err = fcp_socket_upload_firmware_fd(
       sock_fd, FCP_SOCKET_REQUEST_ESP_FIRMWARE_UPDATE,
       esp_fw->firmware_data, esp_fw->firmware_length,
@@ -311,23 +312,23 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
       close(sock_fd);
       scarlett4_free_firmware_container(container);
       return update_progress(
-        modal_data, g_strdup("Failed to upload ESP firmware"), -1
+        modal_data, g_strdup(_("Failed to upload ESP firmware")), -1
       );
     }
   }
 
   // Step 3: Erase and upload App firmware
-  update_progress(modal_data, g_strdup("Erasing app firmware..."), 0);
+  update_progress(modal_data, g_strdup(_("Erasing app firmware...")), 0);
   err = fcp_socket_erase_app_firmware_fd(sock_fd, fcp_progress_callback, modal_data);
   if (err < 0) {
     close(sock_fd);
     scarlett4_free_firmware_container(container);
     return update_progress(
-      modal_data, g_strdup("Failed to erase app firmware"), -1
+      modal_data, g_strdup(_("Failed to erase app firmware")), -1
     );
   }
 
-  update_progress(modal_data, g_strdup("Uploading app firmware..."), 0);
+  update_progress(modal_data, g_strdup(_("Uploading app firmware...")), 0);
   err = fcp_socket_upload_firmware_fd(
     sock_fd, FCP_SOCKET_REQUEST_APP_FIRMWARE_UPDATE,
     app_fw->firmware_data, app_fw->firmware_length,
@@ -339,7 +340,7 @@ static gpointer update_firmware_socket(struct modal_data *modal_data) {
     close(sock_fd);
     scarlett4_free_firmware_container(container);
     return update_progress(
-      modal_data, g_strdup("Failed to upload app firmware"), -1
+      modal_data, g_strdup(_("Failed to upload app firmware")), -1
     );
   }
 
@@ -363,7 +364,7 @@ gpointer update_firmware_thread(gpointer user_data) {
     return update_firmware_socket(modal_data);
 
   return update_progress(
-    modal_data, g_strdup("Unsupported driver type for firmware update"), -1
+    modal_data, g_strdup(_("Unsupported driver type for firmware update")), -1
   );
 }
 
@@ -387,9 +388,9 @@ void create_update_firmware_window(
 ) {
   create_modal_window_autostart(
     w, card,
-    "Updating Firmware",
-    "Updating Firmware",
-    "Please do not disconnect the device while updating.",
+    _("Updating Firmware"),
+    _("Updating Firmware"),
+    _("Please do not disconnect the device while updating."),
     update_firmware_yes_callback,
     parent_label
   );

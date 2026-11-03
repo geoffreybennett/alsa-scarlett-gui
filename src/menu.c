@@ -3,6 +3,7 @@
 
 #include "about.h"
 #include "file.h"
+#include "i18n.h"
 #include "menu.h"
 #include "optional-state.h"
 #include "window-hardware.h"
@@ -122,34 +123,34 @@ struct menu_data {
 
 static const struct menu_data menus[] = {
   {
-    "_File",
+    N_("_File"),
     (struct menu_item[]){
-      { "_Load Configuration",   "win.load", { "<Control>O", NULL } },
-      { "_Save Configuration",   "win.save", { "<Control>S", NULL } },
-      { "_Interface Simulation", "win.sim",      { "<Control>I", NULL } },
-      { "_Close",                "window.close", { "<Control>W", NULL } },
-      { "E_xit",                 "app.quit",     { "<Control>Q", NULL } },
+      { N_("_Load Configuration"),   "win.load", { "<Control>O", NULL } },
+      { N_("_Save Configuration"),   "win.save", { "<Control>S", NULL } },
+      { N_("_Interface Simulation"), "win.sim",      { "<Control>I", NULL } },
+      { N_("_Close"),                "window.close", { "<Control>W", NULL } },
+      { N_("E_xit"),                 "app.quit",     { "<Control>Q", NULL } },
       {}
     }
   },
   {
-    "_View",
+    N_("_View"),
     (struct menu_item[]){
-      { "_Routing",       "win.routing",       { "<Control>R", NULL } },
-      { "_Mixer",         "win.mixer",         { "<Control>M", NULL } },
-      { "_Levels",        "win.levels",        { "<Control>L", NULL } },
-      { "_DSP",           "win.dsp",           { "<Control>D", NULL } },
-      { "_Configuration", "win.configuration", { "<Control>G", NULL } },
-      { "_Startup",       "win.startup",       { "<Control>T", NULL } },
-      { "_Preferences",   "win.preferences",   { "<Control>P", NULL } },
+      { N_("_Routing"),       "win.routing",       { "<Control>R", NULL } },
+      { N_("_Mixer"),         "win.mixer",         { "<Control>M", NULL } },
+      { N_("_Levels"),        "win.levels",        { "<Control>L", NULL } },
+      { N_("_DSP"),           "win.dsp",           { "<Control>D", NULL } },
+      { N_("_Configuration"), "win.configuration", { "<Control>G", NULL } },
+      { N_("_Startup"),       "win.startup",       { "<Control>T", NULL } },
+      { N_("_Preferences"),   "win.preferences",   { "<Control>P", NULL } },
       {}
     }
   },
   {
-    "_Help",
+    N_("_Help"),
     (struct menu_item[]){
-      { "_Supported Hardware", "app.hardware", { "<Control>H",     NULL } },
-      { "_About",              "win.about",    { "<Control>slash", NULL } },
+      { N_("_Supported Hardware"), "app.hardware", { "<Control>H",     NULL } },
+      { N_("_About"),              "win.about",    { "<Control>slash", NULL } },
       {}
     }
   },
@@ -162,11 +163,11 @@ static void populate_submenu(
   const struct menu_data *data
 ) {
   GMenu *submenu = g_menu_new();
-  g_menu_append_submenu(menu, data->label, G_MENU_MODEL(submenu));
+  g_menu_append_submenu(menu, _(data->label), G_MENU_MODEL(submenu));
 
   // An empty-initialised menu_item marks the end
   for (struct menu_item *item = data->items; item->label; item++) {
-    g_menu_append(submenu, item->label, item->action_name);
+    g_menu_append(submenu, _(item->label), item->action_name);
     gtk_application_set_accels_for_action(
       app, item->action_name, item->accelerators
     );

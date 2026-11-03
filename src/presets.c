@@ -7,6 +7,7 @@
 
 #include "error.h"
 #include "file.h"
+#include "i18n.h"
 #include "presets.h"
 
 // Data structure for the presets button and popover
@@ -229,7 +230,7 @@ static void show_save_preset_dialog(struct presets_data *data) {
 
   // Create window
   dialog_data->window = gtk_window_new();
-  gtk_window_set_title(GTK_WINDOW(dialog_data->window), "Save as Preset");
+  gtk_window_set_title(GTK_WINDOW(dialog_data->window), _("Save as Preset"));
   gtk_window_set_modal(GTK_WINDOW(dialog_data->window), TRUE);
   gtk_window_set_transient_for(
     GTK_WINDOW(dialog_data->window),
@@ -257,7 +258,7 @@ static void show_save_preset_dialog(struct presets_data *data) {
   gtk_window_set_child(GTK_WINDOW(dialog_data->window), main_box);
 
   // Label and entry
-  GtkWidget *label = gtk_label_new("Preset name:");
+  GtkWidget *label = gtk_label_new(_("Preset name:"));
   gtk_widget_set_halign(label, GTK_ALIGN_START);
   gtk_box_append(GTK_BOX(main_box), label);
 
@@ -275,11 +276,11 @@ static void show_save_preset_dialog(struct presets_data *data) {
   gtk_widget_set_halign(button_box, GTK_ALIGN_CENTER);
   gtk_box_append(GTK_BOX(main_box), button_box);
 
-  GtkWidget *cancel_btn = gtk_button_new_with_label("Cancel");
+  GtkWidget *cancel_btn = gtk_button_new_with_label(_("Cancel"));
   g_signal_connect(cancel_btn, "clicked", G_CALLBACK(cancel_button_clicked), dialog_data);
   gtk_box_append(GTK_BOX(button_box), cancel_btn);
 
-  GtkWidget *save_btn = gtk_button_new_with_label("Save");
+  GtkWidget *save_btn = gtk_button_new_with_label(_("Save"));
   g_signal_connect(save_btn, "clicked", G_CALLBACK(save_button_clicked), dialog_data);
   gtk_box_append(GTK_BOX(button_box), save_btn);
 
@@ -373,7 +374,7 @@ static GtkWidget *create_preset_row(
   GtkWidget *delete_btn = gtk_button_new_from_icon_name("window-close-symbolic");
   gtk_widget_add_css_class(delete_btn, "flat");
   gtk_widget_add_css_class(delete_btn, "circular");
-  gtk_widget_set_tooltip_text(delete_btn, "Delete preset");
+  gtk_widget_set_tooltip_text(delete_btn, _("Delete preset"));
   g_signal_connect(delete_btn, "clicked", G_CALLBACK(delete_preset_clicked), data);
   gtk_box_append(GTK_BOX(box), delete_btn);
 
@@ -421,7 +422,7 @@ static void populate_presets_list(struct presets_data *data) {
   }
 
   // Add "Save as Preset..." button
-  GtkWidget *save_btn = gtk_button_new_with_label("Save as Preset...");
+  GtkWidget *save_btn = gtk_button_new_with_label(_("Save as Preset..."));
   g_signal_connect(save_btn, "clicked", G_CALLBACK(save_preset_clicked), data);
   gtk_box_append(GTK_BOX(data->box), save_btn);
 }
@@ -467,7 +468,7 @@ GtkWidget *create_presets_button(struct alsa_card *card) {
 
   // Create menu button
   GtkWidget *button = gtk_menu_button_new();
-  gtk_menu_button_set_label(GTK_MENU_BUTTON(button), "Presets");
+  gtk_menu_button_set_label(GTK_MENU_BUTTON(button), _("Presets"));
 
   // Create popover
   data->popover = gtk_popover_new();

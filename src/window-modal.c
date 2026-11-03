@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 #include "gtkhelper.h"
+#include "i18n.h"
 #include "window-iface.h"
 #include "window-modal.h"
 
@@ -12,7 +13,7 @@ static void modal_cleanup(struct modal_data *modal_data) {
   if (modal_data->had_error && modal_data->parent_label)
     gtk_label_set_text(
       GTK_LABEL(modal_data->parent_label),
-      "Update failed. Please close the window and retry."
+      _("Update failed. Please close the window and retry.")
     );
 
   alsa_unregister_reopen_callback(modal_data->serial);
@@ -146,13 +147,13 @@ void create_modal_window(
   );
   gtk_widget_add_controller(dialog, key_controller);
 
-  GtkWidget *no_button = gtk_button_new_with_label("No");
+  GtkWidget *no_button = gtk_button_new_with_label(_("No"));
   g_signal_connect(
     no_button, "clicked", G_CALLBACK(modal_no_callback), modal_data
   );
   gtk_box_append(GTK_BOX(modal_data->button_box), no_button);
 
-  GtkWidget *yes_button = gtk_button_new_with_label("Yes");
+  GtkWidget *yes_button = gtk_button_new_with_label(_("Yes"));
   g_signal_connect(
     yes_button, "clicked", G_CALLBACK(modal_yes_callback), modal_data
   );
@@ -246,7 +247,7 @@ gboolean modal_update_progress(gpointer user_data) {
     while ((child = gtk_widget_get_first_child(modal_data->button_box)))
       gtk_box_remove(GTK_BOX(modal_data->button_box), child);
 
-    GtkWidget *ok_button = gtk_button_new_with_label("Ok");
+    GtkWidget *ok_button = gtk_button_new_with_label(_("Ok"));
     g_signal_connect(
       ok_button, "clicked", G_CALLBACK(modal_no_callback), modal_data
     );
@@ -285,7 +286,7 @@ static gboolean update_progress_bar_reboot(gpointer user_data) {
     while ((child = gtk_widget_get_first_child(modal_data->button_box)))
       gtk_box_remove(GTK_BOX(modal_data->button_box), child);
 
-    GtkWidget *ok_button = gtk_button_new_with_label("Ok");
+    GtkWidget *ok_button = gtk_button_new_with_label(_("Ok"));
     g_signal_connect(
       ok_button, "clicked", G_CALLBACK(modal_no_callback), modal_data
     );

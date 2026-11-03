@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Geoffrey D. Bennett <g@b4.vu>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "i18n.h"
 #include "optional-state.h"
 #include "window-levels.h"
 #include "window-mixer.h"
@@ -163,7 +164,7 @@ GtkWidget *create_preferences_controls(
 
   // mixer section
   gtk_box_append(
-    GTK_BOX(content), make_section_label("Mixer")
+    GTK_BOX(content), make_section_label(_("Mixer"))
   );
 
   GtkWidget *sw = gtk_switch_new();
@@ -176,13 +177,13 @@ GtkWidget *create_preferences_controls(
   );
   gtk_box_append(
     GTK_BOX(content),
-    make_pref_row("Show Bottom/Right Labels", sw)
+    make_pref_row(_("Show Bottom/Right Labels"), sw)
   );
 
   // levels section (only if card has levels)
   if (card->has_levels) {
     gtk_box_append(
-      GTK_BOX(content), make_section_label("Levels")
+      GTK_BOX(content), make_section_label(_("Levels"))
     );
 
     struct rate_buttons *rb = g_malloc0(
@@ -227,7 +228,7 @@ GtkWidget *create_preferences_controls(
 
     gtk_box_append(
       GTK_BOX(content),
-      make_pref_row("Update Rate", rate_box)
+      make_pref_row(_("Update Rate"), rate_box)
     );
 
     g_object_weak_ref(

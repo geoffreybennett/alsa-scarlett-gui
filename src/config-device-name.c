@@ -5,6 +5,7 @@
 
 #include "alsa.h"
 #include "config-helpers.h"
+#include "i18n.h"
 #include "optional-controls.h"
 #include "widget-text-entry.h"
 #include "window-configuration.h"
@@ -19,8 +20,8 @@ void add_device_name_tab(GtkWidget *notebook, struct alsa_card *card) {
   gtk_widget_set_margin_top(content, 20);
 
   gtk_box_append(GTK_BOX(content), config_help_label(
-    "This name will appear in the window title and can help you\n"
-    "identify this device if you have multiple interfaces."
+    _("This name will appear in the window title and can help you\n"
+      "identify this device if you have multiple interfaces.")
   ));
 
   GtkWidget *entry = make_text_entry_alsa_elem(name_elem);
@@ -29,6 +30,6 @@ void add_device_name_tab(GtkWidget *notebook, struct alsa_card *card) {
 
   g_object_set_data(G_OBJECT(content), PAGE_ID_KEY, (gpointer)"device-name");
   gtk_notebook_append_page(
-    GTK_NOTEBOOK(notebook), content, gtk_label_new("Device Name")
+    GTK_NOTEBOOK(notebook), content, gtk_label_new(_("Device Name"))
   );
 }

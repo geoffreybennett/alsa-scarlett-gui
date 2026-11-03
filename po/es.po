@@ -1,0 +1,1554 @@
+# Spanish translation for alsa-scarlett-gui.
+# Copyright (C) 2026 Geoffrey D. Bennett
+# This file is distributed under the same license as the alsa-scarlett-gui package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: alsa-scarlett-gui 0.5.4\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-03 00:57-0400\n"
+"PO-Revision-Date: 2026-10-29 17:00-0400\n"
+"Last-Translator: Focusrite Linux Team <g@b4.vu>\n"
+"Language-Team: Spanish <es@li.org>\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/about.c:28 src/iface-none.c:23
+msgid "ALSA Scarlett Control Panel"
+msgstr "Panel de control ALSA Scarlett"
+
+#: src/about.c:31
+msgid ""
+"Gtk4 GUI for the ALSA controls presented by the\n"
+"Linux kernel Focusrite USB drivers"
+msgstr ""
+"Interfaz gráfica en GTK4 para los controles ALSA proporcionados por\n"
+"los controladores USB de Focusrite en el kernel de Linux"
+
+#: src/about.c:37
+msgid "About ALSA Scarlett Mixer Interface"
+msgstr "Acerca de la interfaz del mezclador ALSA Scarlett"
+
+#: src/alsa.c:36 src/window-routing.c:284
+msgid "Hardware Outputs"
+msgstr "Salidas de hardware"
+
+#: src/alsa.c:37
+msgid "Mixer Inputs"
+msgstr "Entradas del mezclador"
+
+#: src/alsa.c:38
+msgid "DSP Inputs"
+msgstr "Entradas DSP"
+
+#: src/alsa.c:39 src/window-routing.c:277
+msgid "PCM Inputs"
+msgstr "Entradas PCM"
+
+#: src/biquad.c:10
+msgid "Peaking"
+msgstr "Campana (Peak)"
+
+#: src/biquad.c:11
+msgid "Low Shelf"
+msgstr "Low Shelf"
+
+#: src/biquad.c:12
+msgid "High Shelf"
+msgstr "High Shelf"
+
+#: src/biquad.c:13
+msgid "Lowpass"
+msgstr "Paso bajo"
+
+#: src/biquad.c:14
+msgid "Highpass"
+msgstr "Paso alto"
+
+#: src/biquad.c:15
+msgid "Bandpass"
+msgstr "Paso banda"
+
+#: src/biquad.c:16
+msgid "Notch"
+msgstr "Notch"
+
+#: src/biquad.c:17 src/iface-mixer.c:859
+msgid "Gain"
+msgstr "Ganancia"
+
+#: src/biquad.c:18
+msgid "LP 6dB/oct"
+msgstr "LP 6dB/oct"
+
+#: src/biquad.c:19
+msgid "HP 6dB/oct"
+msgstr "HP 6dB/oct"
+
+#: src/biquad.c:20
+msgid "LS 6dB/oct"
+msgstr "LS 6dB/oct"
+
+#: src/biquad.c:21
+msgid "HS 6dB/oct"
+msgstr "HS 6dB/oct"
+
+#: src/config-autogain.c:20
+msgid "Hot"
+msgstr "Caliente (Hot)"
+
+#: src/config-autogain.c:20
+msgid "Mean"
+msgstr "Medio (Mean)"
+
+#: src/config-autogain.c:20
+msgid "Peak"
+msgstr "Pico (Peak)"
+
+#: src/config-autogain.c:37
+msgid ""
+"Configure the target level for the Autogain feature.\n"
+"This setting controls what signal level Autogain aims for."
+msgstr ""
+"Configura el nivel objetivo para la función Autogain.\n"
+"Este ajuste controla qué nivel de señal busca alcanzar Autogain."
+
+#: src/config-autogain.c:39
+msgid ""
+"Configure the target levels for the Autogain feature.\n"
+"These settings control what signal levels Autogain aims for."
+msgstr ""
+"Configura los niveles objetivo para la función Autogain.\n"
+"Estos ajustes controlan qué niveles de señal busca alcanzar Autogain."
+
+#: src/config-autogain.c:74 src/iface-mixer.c:709
+msgid "Autogain"
+msgstr "Autogain"
+
+#: src/config-device-name.c:23
+msgid ""
+"This name will appear in the window title and can help you\n"
+"identify this device if you have multiple interfaces."
+msgstr ""
+"Este nombre aparecerá en el título de la ventana y puede ayudarle\n"
+"a identificar este dispositivo si dispone de múltiples interfaces."
+
+#: src/config-device-name.c:33
+msgid "Device Name"
+msgstr "Nombre del dispositivo"
+
+#: src/config-device-settings.c:28
+msgid "S/PDIF Source"
+msgstr "Fuente S/PDIF"
+
+#: src/config-device-settings.c:35
+msgid ""
+"Select the S/PDIF input source: None to disable S/PDIF input,\n"
+"Optical for the optical input, or RCA for the coaxial input."
+msgstr ""
+"Seleccione la fuente de entrada S/PDIF: 'Ninguno' para desactivarla,\n"
+"'Óptica' para la entrada óptica, o 'RCA' para la entrada coaxial."
+
+#: src/config-device-settings.c:41
+msgid "Device Settings"
+msgstr "Ajustes del dispositivo"
+
+#: src/config-front-panel.c:22
+msgid "Off (never sleep)"
+msgstr "Apagado (nunca suspender)"
+
+#: src/config-front-panel.c:23
+msgid "30 seconds"
+msgstr "30 segundos"
+
+#: src/config-front-panel.c:24
+msgid "1 minute"
+msgstr "1 minuto"
+
+#: src/config-front-panel.c:25
+msgid "5 minutes"
+msgstr "5 minutos"
+
+#: src/config-front-panel.c:26
+msgid "10 minutes"
+msgstr "10 minutos"
+
+#: src/config-front-panel.c:27
+msgid "30 minutes"
+msgstr "30 minutos"
+
+#: src/config-front-panel.c:28
+msgid "1 hour"
+msgstr "1 hora"
+
+#: src/config-front-panel.c:29
+msgid "2 hours"
+msgstr "2 horas"
+
+#: src/config-front-panel.c:30
+msgid "4 hours"
+msgstr "4 horas"
+
+#: src/config-front-panel.c:31
+msgid "8 hours"
+msgstr "8 horas"
+
+#: src/config-front-panel.c:32
+msgid "24 hours"
+msgstr "24 horas"
+
+#: src/config-front-panel.c:65 src/config-front-panel.c:81
+#, c-format
+msgid "Custom (%d s)"
+msgstr "Personalizado (%d s)"
+
+#: src/config-front-panel.c:152
+msgid "Brightness"
+msgstr "Brillo"
+
+#: src/config-front-panel.c:154
+msgid "Sets the brightness of the front panel LEDs."
+msgstr "Ajusta el brillo de los LEDs del panel frontal."
+
+#: src/config-front-panel.c:164
+msgid "Sleep Time"
+msgstr "Tiempo de reposo"
+
+#: src/config-front-panel.c:166
+msgid ""
+"After this much inactivity (no front panel adjustments or passing audio), "
+"the front panel LEDs turn off. Select Off to keep them lit indefinitely."
+msgstr ""
+"Tras este tiempo de inactividad (sin ajustes en el panel frontal ni paso de "
+"audio), los LEDs del panel frontal se apagan. Seleccione Apagado para "
+"mantenerlos encendidos indefinidamente."
+
+#: src/config-front-panel.c:174
+msgid "Front Panel"
+msgstr "Panel frontal"
+
+#: src/config-io.c:333
+msgid "Link as stereo pair"
+msgstr "Vincular como par estéreo"
+
+#: src/config-io.c:412
+msgid "Show/hide this port"
+msgstr "Mostrar/ocultar este puerto"
+
+#: src/config-io.c:705 src/config-io.c:712 src/config-io.c:762
+#: src/config-io.c:764 src/config-io.c:787 src/config-io.c:789
+#: src/iface-mixer.c:192 src/iface-mixer.c:228 src/iface-mixer.c:553
+#: src/widget-drop-down.c:13 src/window-dsp.c:1352
+msgid "Off"
+msgstr "Apagado"
+
+#: src/config-io.c:1665 src/config-io.c:1760 src/config-io.c:1761
+#: src/config-io.c:1968
+msgid "Inputs"
+msgstr "Entradas"
+
+#: src/config-io.c:1665 src/config-io.c:1760 src/config-io.c:1761
+#: src/config-io.c:1968
+msgid "Outputs"
+msgstr "Salidas"
+
+#: src/config-io.c:1886 src/iface-mixer.c:972
+msgid "Analogue Inputs"
+msgstr "Entradas analógicas"
+
+#: src/config-io.c:1886
+msgid "S/PDIF Inputs"
+msgstr "Entradas S/PDIF"
+
+#: src/config-io.c:1886
+msgid "ADAT Inputs"
+msgstr "Entradas ADAT"
+
+#: src/config-io.c:1891 src/window-routing.c:270
+msgid "PCM Outputs"
+msgstr "Salidas PCM"
+
+#: src/config-io.c:1931
+msgid "<b>Outputs</b>"
+msgstr "<b>Salidas</b>"
+
+#: src/config-io.c:2012 src/iface-mixer.c:1542 src/window-iface.c:77
+#: src/window-preferences.c:167
+msgid "Mixer"
+msgstr "Mezclador"
+
+#: src/config-io.c:2080
+msgid ""
+"Use the checkboxes to hide unused inputs and outputs from the display.\n"
+"You can also give each port a custom name to help identify it.\n"
+"Use the link buttons to pair adjacent channels as stereo."
+msgstr ""
+"Use las casillas de verificación para ocultar las entradas y salidas no "
+"utilizadas de la pantalla.\n"
+"También puede asignar a cada puerto un nombre personalizado para "
+"identificarlo.\n"
+"Use los botones de enlace para emparejar canales adyacentes en estéreo."
+
+#: src/config-io.c:2093
+msgid "I/O Configuration"
+msgstr "Configuración de E/S"
+
+#: src/config-monitor-groups.c:211
+msgid "<b>Main</b>"
+msgstr "<b>Principal</b>"
+
+#: src/config-monitor-groups.c:216
+msgid "<b>Alt</b>"
+msgstr "<b>Alt</b>"
+
+#: src/config-monitor-groups.c:221 src/config-monitor-groups.c:237
+msgid "Enable"
+msgstr "Habilitar"
+
+#: src/config-monitor-groups.c:226 src/config-monitor-groups.c:242
+msgid "Source"
+msgstr "Fuente"
+
+#: src/config-monitor-groups.c:232 src/config-monitor-groups.c:248
+msgid "Trim"
+msgstr "Trim"
+
+#: src/config-monitor-groups.c:529
+msgid ""
+"Monitor groups let you organise your outputs into Main and Alt sets.\n"
+"Switch between them using the Alt button on your interface or the toggle in "
+"the main window.\n"
+"The main volume knob controls the enabled group; use Trim for per-output "
+"level calibration.\n"
+"\n"
+"Examples:\n"
+"  • Connect two sets of speakers for A/B reference mixing\n"
+"  • Create a surround setup with all speakers in one group\n"
+"  • Quick DAW/Direct monitoring switch by assigning same output to both "
+"groups with different sources"
+msgstr ""
+"Los grupos de monitorización le permiten organizar sus salidas en conjuntos "
+"Principal y Alt.\n"
+"Alterne entre ellos mediante el botón Alt de su interfaz o el selector en la "
+"ventana principal.\n"
+"El mando de volumen principal controla el grupo activo; use Trim para "
+"calibrar el nivel por salida.\n"
+"\n"
+"Ejemplos:\n"
+"  • Conectar dos pares de altavoces para mezcla de referencia A/B\n"
+"  • Crear una configuración envolvente con todos los altavoces en un grupo\n"
+"  • Conmutación rápida DAW/Monitorización directa asignando la misma salida "
+"a ambos grupos con diferentes fuentes"
+
+#: src/config-monitor-groups.c:554
+msgid "Monitor Groups"
+msgstr "Grupos de monitorización"
+
+#: src/device-reset-config.c:41 src/device-update-firmware.c:77
+#, c-format
+msgid "Unable to open hwdep interface: %s"
+msgstr "No se pudo abrir la interfaz hwdep: %s"
+
+#: src/device-reset-config.c:51 src/device-update-firmware.c:88
+#, c-format
+msgid "Unable to reset configuration: %s"
+msgstr "No se pudo restablecer la configuración: %s"
+
+#: src/device-reset-config.c:64 src/device-update-firmware.c:101
+#: src/device-update-firmware.c:131
+#, c-format
+msgid "Unable to get erase progress: %s"
+msgstr "No se pudo obtener el progreso de borrado: %s"
+
+#: src/device-reset-config.c:89
+msgid "Unable to reset configuration via FCP socket"
+msgstr "No se pudo restablecer la configuración mediante el socket FCP"
+
+#: src/device-reset-config.c:103 src/device-update-firmware.c:70
+msgid "Resetting configuration..."
+msgstr "Restableciendo configuración..."
+
+#: src/device-reset-config.c:116
+msgid "Unsupported driver type for reset configuration"
+msgstr "Tipo de controlador no compatible para restablecer la configuración"
+
+#: src/device-reset-config.c:137
+msgid "Confirm Reset Configuration"
+msgstr "Confirmar restablecimiento de configuración"
+
+#: src/device-reset-config.c:138
+msgid "Resetting Configuration"
+msgstr "Restableciendo configuración"
+
+#: src/device-reset-config.c:139
+msgid "Are you sure you want to reset the configuration?"
+msgstr "¿Está seguro de que desea restablecer la configuración?"
+
+#: src/device-update-firmware.c:54 src/device-update-firmware.c:189
+msgid "Checking firmware..."
+msgstr "Comprobando firmware..."
+
+#: src/device-update-firmware.c:59 src/device-update-firmware.c:194
+msgid "No update firmware found for device"
+msgstr "No se encontró firmware de actualización para el dispositivo"
+
+#: src/device-update-firmware.c:66 src/device-update-firmware.c:201
+msgid "Firmware file does not match device"
+msgstr "El archivo de firmware no coincide con el dispositivo"
+
+#: src/device-update-firmware.c:110
+msgid "Erasing flash..."
+msgstr "Borrando memoria flash..."
+
+#: src/device-update-firmware.c:118
+#, c-format
+msgid "Unable to erase firmware: %s"
+msgstr "No se pudo borrar el firmware: %s"
+
+#: src/device-update-firmware.c:140
+msgid "Writing firmware..."
+msgstr "Escribiendo firmware..."
+
+#: src/device-update-firmware.c:153
+#, c-format
+msgid "Unable to write firmware: %s"
+msgstr "No se pudo escribir el firmware: %s"
+
+#: src/device-update-firmware.c:213
+msgid "No App firmware found in container"
+msgstr "No se encontró el firmware de la aplicación en el contenedor"
+
+#: src/device-update-firmware.c:259
+msgid "Failed to connect to device"
+msgstr "Fallo al conectar con el dispositivo"
+
+#: src/device-update-firmware.c:267 src/device-update-firmware.c:321
+msgid "Erasing app firmware..."
+msgstr "Borrando firmware de la aplicación..."
+
+#: src/device-update-firmware.c:273 src/device-update-firmware.c:327
+msgid "Failed to erase app firmware"
+msgstr "Fallo al borrar el firmware de la aplicación"
+
+#: src/device-update-firmware.c:277
+msgid "Uploading leapfrog firmware..."
+msgstr "Cargando firmware leapfrog..."
+
+#: src/device-update-firmware.c:289
+msgid "Failed to upload leapfrog firmware"
+msgstr "Fallo al cargar el firmware leapfrog"
+
+#: src/device-update-firmware.c:303
+msgid "Uploading ESP firmware..."
+msgstr "Cargando firmware ESP..."
+
+#: src/device-update-firmware.c:315
+msgid "Failed to upload ESP firmware"
+msgstr "Fallo al cargar el firmware ESP"
+
+#: src/device-update-firmware.c:331
+msgid "Uploading app firmware..."
+msgstr "Cargando firmware de la aplicación..."
+
+#: src/device-update-firmware.c:343
+msgid "Failed to upload app firmware"
+msgstr "Fallo al cargar el firmware de la aplicación"
+
+#: src/device-update-firmware.c:367
+msgid "Unsupported driver type for firmware update"
+msgstr "Tipo de controlador no compatible para la actualización de firmware"
+
+#: src/device-update-firmware.c:391 src/device-update-firmware.c:392
+msgid "Updating Firmware"
+msgstr "Actualizando firmware"
+
+#: src/device-update-firmware.c:393
+msgid "Please do not disconnect the device while updating."
+msgstr "Por favor, no desconecte el dispositivo durante la actualización."
+
+#: src/file.c:55
+#, c-format
+msgid "Error running “alsactl %s %s -f %s”: %s"
+msgstr "Error al ejecutar «alsactl %s %s -f %s»: %s"
+
+#: src/file.c:336 src/file.c:367
+msgid "alsa-scarlett-gui config (.conf)"
+msgstr "Configuración de alsa-scarlett-gui (.conf)"
+
+#: src/file.c:342 src/file.c:355 src/file.c:372 src/file.c:379
+msgid "alsactl state file (.state)"
+msgstr "Archivo de estado de alsactl (.state)"
+
+#: src/file.c:413 src/file.c:598
+#, c-format
+msgid "Error loading from %s"
+msgstr "Error al cargar desde %s"
+
+#: src/file.c:433 src/file.c:621
+msgid "Load Configuration"
+msgstr "Cargar configuración"
+
+#: src/file.c:487 src/file.c:663
+#, c-format
+msgid "Error saving to %s"
+msgstr "Error al guardar en %s"
+
+#: src/file.c:508 src/file.c:687
+msgid "Save Configuration"
+msgstr "Guardar configuración"
+
+#: src/file.c:561 src/file.c:730
+msgid "Load Configuration File for Interface Simulation"
+msgstr "Cargar archivo de configuración para simulación de interfaz"
+
+#: src/file.c:624 src/file.c:733
+msgid "_Load"
+msgstr "_Cargar"
+
+#: src/file.c:625 src/file.c:691 src/file.c:734
+msgid "_Cancel"
+msgstr "_Cancelar"
+
+#: src/file.c:690
+msgid "_Save"
+msgstr "_Guardar"
+
+#: src/iface-mixer.c:66
+msgid ""
+"Clock Source selects where the interface receives its digital clock from. If "
+"you aren’t using S/PDIF or ADAT inputs, set this to Internal."
+msgstr ""
+"La fuente de reloj selecciona de dónde recibe la interfaz su reloj digital. "
+"Si no está utilizando entradas S/PDIF o ADAT, seleccione Interno."
+
+#: src/iface-mixer.c:72
+msgid "Clock Source"
+msgstr "Fuente de reloj"
+
+#: src/iface-mixer.c:99
+msgid ""
+"Sync Status indicates if the interface is locked to a valid digital clock. "
+"If you aren’t using S/PDIF or ADAT inputs and the Sync Status is Unlocked, "
+"change the Clock Source to Internal."
+msgstr ""
+"El estado de sincronización indica si la interfaz está sincronizada con un "
+"reloj digital válido. Si no usa entradas S/PDIF o ADAT y el estado es No "
+"sincronizado, cambie la fuente de reloj a Interno."
+
+#: src/iface-mixer.c:107
+msgid ""
+"Sync Status indicates if the interface is locked to a valid digital clock. "
+"Since the Clock Source is fixed to internal on this interface, this should "
+"stay locked."
+msgstr ""
+"El estado de sincronización indica si la interfaz está sincronizada con un "
+"reloj digital válido. Dado que la fuente de reloj es fija interna en esta "
+"interfaz, debe permanecer sincronizada."
+
+#: src/iface-mixer.c:114
+msgid "Sync Status"
+msgstr "Estado de sincronización"
+
+#: src/iface-mixer.c:116 src/widget-drop-down.c:22
+msgid "Unlocked"
+msgstr "No sincronizado"
+
+#: src/iface-mixer.c:116 src/widget-drop-down.c:21
+msgid "Locked"
+msgstr "Sincronizado"
+
+#: src/iface-mixer.c:138
+msgid ""
+"Power indicates if the interface is being powered by the USB bus, an "
+"external power supply, or if there is insufficient power available and the "
+"interface has shut down."
+msgstr ""
+"Alimentación indica si la interfaz se alimenta por bus USB, por fuente "
+"externa, o si la energía es insuficiente y se ha apagado."
+
+#: src/iface-mixer.c:144
+msgid "Power"
+msgstr "Alimentación"
+
+#: src/iface-mixer.c:159
+msgid ""
+"The Sample Rate cannot be changed here because it is set by the application "
+"which is using the interface, usually a sound server like PulseAudio, JACK, "
+"or PipeWire. If this shows N/A, no application is currently using the "
+"interface.\n"
+"\n"
+"Note that not all features are available on all interfaces at sample rates "
+"above 48kHz. Please refer to the user guide for your interface for more "
+"information."
+msgstr ""
+"La frecuencia de muestreo no se puede cambiar aquí porque la establece la "
+"aplicación que utiliza la interfaz, habitualmente un servidor de sonido como "
+"PulseAudio, JACK o PipeWire. Si muestra N/D, ninguna aplicación está "
+"utilizando la interfaz actualmente.\n"
+"\n"
+"Tenga en cuenta que no todas las funciones están disponibles en todas las "
+"interfaces a frecuencias superiores a 48 kHz. Consulte el manual de usuario "
+"de su interfaz para más información."
+
+#: src/iface-mixer.c:169
+msgid "Sample Rate"
+msgstr "Frecuencia de muestreo"
+
+#: src/iface-mixer.c:191 src/iface-mixer.c:227
+msgid "Speaker Switching"
+msgstr "Conmutación de altavoces"
+
+#: src/iface-mixer.c:192 src/iface-mixer.c:228 src/iface-mixer.c:553
+msgid "On"
+msgstr "Encendido"
+
+#: src/iface-mixer.c:192 src/iface-mixer.c:229 src/iface-mixer.c:292
+#: src/widget-drop-down.c:24 src/window-routing.c:1864
+msgid "Main"
+msgstr "Principal"
+
+#: src/iface-mixer.c:192 src/iface-mixer.c:229 src/iface-mixer.c:292
+#: src/widget-drop-down.c:25 src/window-routing.c:1880
+msgid "Alt"
+msgstr "Alt"
+
+#: src/iface-mixer.c:197 src/iface-mixer.c:223
+msgid ""
+"Speaker Switching lets you swap between two pairs of monitoring speakers "
+"very easily."
+msgstr ""
+"La conmutación de altavoces le permite alternar fácilmente entre dos pares "
+"de monitores de referencia."
+
+#: src/iface-mixer.c:287
+msgid ""
+"Monitor Group lets you swap between Main and Alt monitor groups. Configure "
+"which outputs belong to each group in the Configuration window."
+msgstr ""
+"El grupo de monitorización le permite alternar entre los grupos Principal y "
+"Alt. Configure qué salidas pertenecen a cada grupo en la ventana de "
+"Configuración."
+
+#: src/iface-mixer.c:291
+msgid "Monitor Group"
+msgstr "Grupo de monitorización"
+
+#: src/iface-mixer.c:552 src/iface-mixer.c:590 src/window-routing.c:2133
+msgid "Talkback"
+msgstr "Talkback"
+
+#: src/iface-mixer.c:553 src/iface-mixer.c:591
+msgid "Disabled"
+msgstr "Desactivado"
+
+#: src/iface-mixer.c:553 src/iface-mixer.c:591
+msgid "Enabled"
+msgstr "Activado"
+
+#: src/iface-mixer.c:558 src/iface-mixer.c:585
+msgid ""
+"Talkback lets you add another channel (usually the talkback mic) to a mix "
+"with a button push, usually to talk to musicians, and without using an "
+"additional mic channel."
+msgstr ""
+"Talkback le permite agregar otro canal (habitualmente el micrófono de "
+"órdenes) a una mezcla con solo presionar un botón, normalmente para hablar "
+"con los músicos sin consumir un canal de micrófono adicional."
+
+#: src/iface-mixer.c:592
+msgid "Talk"
+msgstr "Hablar"
+
+#: src/iface-mixer.c:607
+msgid "Global"
+msgstr "Global"
+
+#: src/iface-mixer.c:635
+msgid "Mix"
+msgstr "Mezcla"
+
+#: src/iface-mixer.c:639
+msgid ""
+"Enabling Input Mix selects Mix E/F as the input source for the PCM 1/2 "
+"Inputs rather than the DSP 1/2 Inputs. This is useful to get a mono mix of "
+"both input channels."
+msgstr ""
+"Habilitar Mezcla de Entrada selecciona la mezcla Mix E/F como fuente de "
+"entrada para las entradas PCM 1/2 en lugar de las entradas DSP 1/2. Esto es "
+"útil para obtener una mezcla mono de ambos canales de entrada."
+
+#: src/iface-mixer.c:654
+msgid "Link"
+msgstr "Enlazar"
+
+#: src/iface-mixer.c:714
+msgid ""
+"Autogain will listen to the input signal for 10 seconds and automatically "
+"set the gain of the input channel to get the best signal level."
+msgstr ""
+"Autogain escuchará la señal de entrada durante 10 segundos y ajustará "
+"automáticamente la ganancia del canal de entrada para lograr el mejor nivel "
+"de señal."
+
+#: src/iface-mixer.c:739
+msgid "Safe"
+msgstr "Safe"
+
+#: src/iface-mixer.c:744
+msgid ""
+"Enabling Safe Mode prevents the input from clipping by automatically "
+"reducing the gain if the signal is too hot."
+msgstr ""
+"Habilitar el modo Safe previene la saturación (clipping) de la entrada "
+"reduciendo automáticamente la ganancia si la señal es demasiado fuerte."
+
+#: src/iface-mixer.c:757 src/iface-no-mixer.c:82
+msgid "Inst"
+msgstr "Inst"
+
+#: src/iface-mixer.c:771 src/iface-mixer.c:785 src/iface-no-mixer.c:87
+msgid "Air"
+msgstr "Air"
+
+#: src/iface-mixer.c:799
+msgid "Enhance"
+msgstr "Mejora (Enhance)"
+
+#: src/iface-mixer.c:827 src/iface-mixer.c:1223
+msgid "Mute"
+msgstr "Silenciar"
+
+#: src/iface-mixer.c:841
+msgid "Pad"
+msgstr "Pad"
+
+#: src/iface-mixer.c:846
+msgid ""
+"Enabling Pad engages a 10dB attenuator in the channel, giving you more "
+"headroom for very hot signals."
+msgstr ""
+"Habilitar Pad activa un atenuador de 10 dB en el canal, proporcionando mayor "
+"margen dinámico (headroom) para señales de nivel muy alto."
+
+#: src/iface-mixer.c:864
+msgid ""
+"Enabling Gain switches from Low gain input (0dBFS = +16dBu)\n"
+"to High gain input (0dBFS = −10dBV, approx −6dBu)."
+msgstr ""
+"Habilitar Ganancia conmuta de entrada de ganancia baja (0 dBFS = +16 dBu)\n"
+"a entrada de ganancia alta (0 dBFS = −10 dBV, aprox. −6 dBu)."
+
+#: src/iface-mixer.c:1103
+msgid "Analogue Outputs"
+msgstr "Salidas analógicas"
+
+#: src/iface-mixer.c:1133 src/iface-mixer.c:1148 src/iface-no-mixer.c:99
+#: src/iface-no-mixer.c:108
+msgid "Direct Monitor"
+msgstr "Monitor directo"
+
+#: src/iface-mixer.c:1137 src/iface-mixer.c:1152 src/iface-no-mixer.c:103
+msgid ""
+"Direct Monitor sends the analogue input signals to the analogue outputs for "
+"zero-latency monitoring."
+msgstr ""
+"El monitor directo envía las señales de entrada analógica a las salidas "
+"analógicas para monitorización de latencia cero."
+
+#: src/iface-mixer.c:1187
+msgid "Master"
+msgstr "Maestro"
+
+#: src/iface-mixer.c:1190
+msgid "Master Volume Control"
+msgstr "Control de volumen maestro"
+
+#: src/iface-mixer.c:1220
+msgid "Mute (only available when under software control)"
+msgstr "Silenciar (solo disponible bajo control de software)"
+
+#: src/iface-mixer.c:1233
+msgid ""
+"Set software-controlled (SW) or hardware-controlled (HW) volume for this "
+"analogue output."
+msgstr ""
+"Establece control de volumen por software (SW) o por hardware (HW) para esta "
+"salida analógica."
+
+#: src/iface-mixer.c:1245
+msgid "Line 1–2"
+msgstr "Línea 1–2"
+
+#: src/iface-mixer.c:1245
+msgid "HW"
+msgstr "HW"
+
+#: src/iface-mixer.c:1255
+msgid ""
+"This control shows the setting of the master volume knob, which controls the "
+"volume of the analogue line outputs 1 and 2."
+msgstr ""
+"Este control muestra el ajuste del mando de volumen maestro, que controla el "
+"volumen de las salidas de línea analógicas 1 y 2."
+
+#: src/iface-mixer.c:1258
+msgid ""
+"This control shows the setting of the physical (hardware) volume knob, which "
+"controls the volume of the analogue outputs which have been set to “HW”."
+msgstr ""
+"Este control muestra el ajuste del mando de volumen físico (hardware), que "
+"controla el volumen de las salidas analógicas configuradas en «HW»."
+
+#: src/iface-mixer.c:1264
+msgid "Headphones"
+msgstr "Auriculares"
+
+#: src/iface-mixer.c:1267
+msgid "This control shows the setting of the headphone volume knob."
+msgstr "Este control muestra el ajuste del mando de volumen de auriculares."
+
+#: src/iface-mixer.c:1277
+msgid "Mute HW controlled outputs"
+msgstr "Silenciar salidas controladas por HW"
+
+#: src/iface-mixer.c:1285
+msgid "Dim (lower volume) of HW controlled outputs"
+msgstr "Atenuar (Dim - reducir volumen) de salidas controladas por HW"
+
+#: src/iface-mixer.c:1293
+msgid "Mute speaker output"
+msgstr "Silenciar salida de altavoces"
+
+#: src/iface-mixer.c:1307
+#, c-format
+msgid "Mute headphones %d output"
+msgstr "Silenciar salida de auriculares %d"
+
+#: src/iface-mixer.c:1310
+msgid "Mute headphones output"
+msgstr "Silenciar salida de auriculares"
+
+#: src/iface-mixer.c:1534 src/window-iface.c:71
+msgid "Routing"
+msgstr "Enrutamiento"
+
+#: src/iface-mixer.c:1550 src/window-iface.c:83 src/window-preferences.c:186
+msgid "Levels"
+msgstr "Niveles"
+
+#: src/iface-mixer.c:1556 src/iface-no-mixer.c:122 src/window-iface.c:95
+msgid "Startup Configuration"
+msgstr "Configuración de inicio"
+
+#: src/iface-mixer.c:1563 src/window-iface.c:89
+msgid "Configuration"
+msgstr "Configuración"
+
+#: src/iface-mixer.c:1573 src/window-iface.c:101
+msgid "DSP"
+msgstr "DSP"
+
+#: src/iface-mixer.c:1581
+msgid "Preferences"
+msgstr "Preferencias"
+
+#: src/iface-no-mixer.c:30
+msgid "Input Controls"
+msgstr "Controles de entrada"
+
+#: src/iface-no-mixer.c:31
+msgid "Output Controls"
+msgstr "Controles de salida"
+
+#: src/iface-no-mixer.c:112
+msgid ""
+"Direct Monitor sends the analogue input signals to the analogue outputs for "
+"zero-latency monitoring. Mono sends both inputs to the left and right "
+"outputs. Stereo sends input 1 to the left, and input 2 to the right output."
+msgstr ""
+"El monitor directo envía las señales de entrada analógica a las salidas "
+"analógicas para monitorización de latencia cero. Mono envía ambas entradas a "
+"las salidas izquierda y derecha. Estéreo envía la entrada 1 a la izquierda y "
+"la entrada 2 a la derecha."
+
+#: src/iface-none.c:16
+msgid "No Scarlett/Clarett/Vocaster interface found."
+msgstr "No se encontró ninguna interfaz Scarlett/Clarett/Vocaster."
+
+#: src/iface-unknown.c:10
+msgid ""
+"Sorry, I don’t recognise the controls on this card.\n"
+"\n"
+"These Focusrite models should be supported:\n"
+"– Gen 1: 6i6/8i6/18i6/18i8/18i20\n"
+"– Gen 2: 6i6/18i8/18i20\n"
+"– Gen 3: Solo/2i2/4i4/8i6/18i8/18i20\n"
+"– Gen 4: Solo/2i2/4i4/16i16/18i16/18i20\n"
+"– Vocaster One and Two\n"
+"– Clarett USB and Clarett+ 2Pre/4Pre/8Pre\n"
+"\n"
+"Please check the prerequisites at:\n"
+"https://github.com/geoffreybennett/alsa-scarlett-gui/"
+msgstr ""
+"Lo sentimos, no se reconocen los controles de esta tarjeta.\n"
+"\n"
+"Estos modelos de Focusrite deberían ser compatibles:\n"
+"– 1.ª Gen: 6i6/8i6/18i6/18i8/18i20\n"
+"– 2.ª Gen: 6i6/18i8/18i20\n"
+"– 3.ª Gen: Solo/2i2/4i4/8i6/18i8/18i20\n"
+"– 4.ª Gen: Solo/2i2/4i4/16i16/18i16/18i20\n"
+"– Vocaster One y Two\n"
+"– Clarett USB y Clarett+ 2Pre/4Pre/8Pre\n"
+"\n"
+"Por favor, compruebe los requisitos previos en:\n"
+"https://github.com/geoffreybennett/alsa-scarlett-gui/"
+
+#: src/iface-update.c:54
+msgid "Firmware Update In Progress"
+msgstr "Actualización de firmware en curso"
+
+#: src/iface-update.c:55
+msgid "Firmware Update Available"
+msgstr "Actualización de firmware disponible"
+
+#: src/iface-update.c:56
+msgid "Firmware Update Required"
+msgstr "Actualización de firmware requerida"
+
+#: src/iface-update.c:67
+#, c-format
+msgid ""
+"A firmware update is required for this device in order to\n"
+"access all of its features. Please obtain the firmware from\n"
+"<a class=\"linktext\" href=\"%s\">%s</a>,\n"
+"and restart this application."
+msgstr ""
+"Se requiere una actualización de firmware para este dispositivo con\n"
+"el fin de acceder a todas sus funciones. Por favor, obtenga el firmware en\n"
+"<a class=\"linktext\" href=\"%s\">%s</a>,\n"
+"y reinicie esta aplicación."
+
+#: src/iface-update.c:84
+msgid ""
+"Firmware update in progress...\n"
+"Please do not disconnect the device."
+msgstr ""
+"Actualización de firmware en curso...\n"
+"Por favor, no desconecte el dispositivo."
+
+#: src/iface-update.c:95
+msgid ""
+"A firmware update is available for this device.\n"
+"This process may take a few minutes.\n"
+"Please do not disconnect the device during the update."
+msgstr ""
+"Hay una actualización de firmware disponible para este dispositivo.\n"
+"Este proceso puede tomar unos minutos.\n"
+"Por favor, no desconecte el dispositivo durante la actualización."
+
+#: src/iface-update.c:101 src/window-startup.c:407
+msgid "Update"
+msgstr "Actualizar"
+
+#: src/iface-waiting.c:31
+msgid ""
+"Driver not detected. Please ensure <span font='monospace'>fcp-server</span> "
+"from <a href=\"https://github.com/geoffreybennett/fcp-support\">https://"
+"github.com/geoffreybennett/fcp-support</a> has been installed."
+msgstr ""
+"Controlador no detectado. Por favor, asegúrese de que <span "
+"font='monospace'>fcp-server</span> de <a href=\"https://github.com/"
+"geoffreybennett/fcp-support\">https://github.com/geoffreybennett/fcp-"
+"support</a> esté instalado."
+
+#: src/iface-waiting.c:70
+msgid "<span weight='bold' size='large'>Waiting for FCP Server</span>"
+msgstr "<span weight='bold' size='large'>Esperando al servidor FCP</span>"
+
+#: src/iface-waiting.c:95
+msgid "Waiting for the user-space FCP driver to initialise..."
+msgstr ""
+"Esperando a que el controlador FCP en espacio de usuario se inicialice..."
+
+#: src/menu.c:126
+msgid "_File"
+msgstr "_Archivo"
+
+#: src/menu.c:128
+msgid "_Load Configuration"
+msgstr "_Cargar configuración"
+
+#: src/menu.c:129
+msgid "_Save Configuration"
+msgstr "_Guardar configuración"
+
+#: src/menu.c:130
+msgid "_Interface Simulation"
+msgstr "_Simulación de interfaz"
+
+#: src/menu.c:131
+msgid "_Close"
+msgstr "_Cerrar"
+
+#: src/menu.c:132
+msgid "E_xit"
+msgstr "_Salir"
+
+#: src/menu.c:137
+msgid "_View"
+msgstr "_Ver"
+
+#: src/menu.c:139
+msgid "_Routing"
+msgstr "_Enrutamiento"
+
+#: src/menu.c:140
+msgid "_Mixer"
+msgstr "_Mezclador"
+
+#: src/menu.c:141
+msgid "_Levels"
+msgstr "_Niveles"
+
+#: src/menu.c:142
+msgid "_DSP"
+msgstr "_DSP"
+
+#: src/menu.c:143
+msgid "_Configuration"
+msgstr "_Configuración"
+
+#: src/menu.c:144
+msgid "_Startup"
+msgstr "_Inicio"
+
+#: src/menu.c:145
+msgid "_Preferences"
+msgstr "_Preferencias"
+
+#: src/menu.c:150
+msgid "_Help"
+msgstr "A_yuda"
+
+#: src/menu.c:152
+msgid "_Supported Hardware"
+msgstr "_Hardware compatible"
+
+#: src/menu.c:153
+msgid "_About"
+msgstr "_Acerca de"
+
+#: src/presets.c:233
+msgid "Save as Preset"
+msgstr "Guardar como preajuste"
+
+#: src/presets.c:261
+msgid "Preset name:"
+msgstr "Nombre del preajuste:"
+
+#: src/presets.c:279
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: src/presets.c:283
+msgid "Save"
+msgstr "Guardar"
+
+#: src/presets.c:377
+msgid "Delete preset"
+msgstr "Eliminar preajuste"
+
+#: src/presets.c:425
+msgid "Save as Preset..."
+msgstr "Guardar como preajuste..."
+
+#: src/presets.c:471 src/window-dsp.c:1583 src/window-routing.c:142
+msgid "Presets"
+msgstr "Preajustes"
+
+#: src/tooltips.c:10
+msgid "Mic/Line or Instrument Level (Impedance)"
+msgstr "Nivel de Mic/Línea o Instrumento (Impedancia)"
+
+#: src/tooltips.c:13
+msgid ""
+"Enabling Air will transform your recordings and inspire you while making "
+"music."
+msgstr ""
+"Habilitar Air transformará sus grabaciones y le inspirará mientras crea "
+"música."
+
+#: src/tooltips.c:17
+msgid ""
+"Enabling 48V sends “Phantom Power” to the XLR microphone input. This is "
+"required for some microphones (such as condensor microphones), and damaging "
+"to some microphones (particularly vintage ribbon microphones)."
+msgstr ""
+"Habilitar 48V envía «alimentación phantom» a la entrada de micrófono XLR. "
+"Esto es necesario para ciertos micrófonos (como los de condensador) y "
+"potencialmente dañino para otros (en particular micrófonos de cinta vintage)."
+
+#: src/welcome.c:134
+#, c-format
+msgid "Welcome to ALSA Scarlett GUI %s"
+msgstr "Bienvenido a ALSA Scarlett GUI %s"
+
+#: src/welcome.c:153
+#, c-format
+msgid "Welcome to ALSA Scarlett GUI %s!"
+msgstr "¡Bienvenido a ALSA Scarlett GUI %s!"
+
+#: src/welcome.c:162
+msgid ""
+"Thank you for testing this beta release.\n"
+"\n"
+"Please check the release notes for what's new, join the\n"
+"discussion, and if you encounter any issues, search for\n"
+"existing reports or raise a new issue on GitHub."
+msgstr ""
+"Gracias por probar esta versión beta.\n"
+"\n"
+"Por favor, revise las notas de lanzamiento para ver las novedades, únase a\n"
+"la discusión y, si encuentra algún problema, busque informes existentes\n"
+"o reporte una nueva incidencia en GitHub."
+
+#: src/welcome.c:177
+msgid "Release Notes"
+msgstr "Notas de la versión"
+
+#: src/welcome.c:183
+msgid "Join the Discussion"
+msgstr "Unirse a la discusión"
+
+#: src/welcome.c:189
+msgid "Report or Search for Issues"
+msgstr "Informar o buscar incidencias"
+
+#: src/welcome.c:197
+msgid "Remind Me Later"
+msgstr "Recordármelo más tarde"
+
+#: src/welcome.c:203
+msgid "Got it, thanks"
+msgstr "Entendido, gracias"
+
+#: src/widget-drop-down.c:14
+msgid "Mono"
+msgstr "Mono"
+
+#: src/widget-drop-down.c:15
+msgid "Stereo"
+msgstr "Estéreo"
+
+#: src/widget-drop-down.c:16
+msgid "Presence"
+msgstr "Presencia"
+
+#: src/widget-drop-down.c:17
+msgid "Presence + Drive"
+msgstr "Presencia + Drive"
+
+#: src/widget-drop-down.c:18
+msgid "Internal"
+msgstr "Interno"
+
+#: src/widget-drop-down.c:19
+msgid "S/PDIF"
+msgstr "S/PDIF"
+
+#: src/widget-drop-down.c:20
+msgid "ADAT"
+msgstr "ADAT"
+
+#: src/widget-drop-down.c:23
+msgid "No Lock"
+msgstr "Sin bloqueo"
+
+#: src/window-dsp.c:1050
+msgid "Link DSP channels as stereo pair"
+msgstr "Vincular canales DSP como par estéreo"
+
+#: src/window-dsp.c:1322
+msgid "None"
+msgstr "Ninguno"
+
+#: src/window-dsp.c:1327
+msgid "Rumble Reduction Low"
+msgstr "Reducción de retumbo baja"
+
+#: src/window-dsp.c:1332
+msgid "Rumble Reduction High"
+msgstr "Reducción de retumbo alta"
+
+#: src/window-dsp.c:1353
+msgid "Low"
+msgstr "Bajo"
+
+#: src/window-dsp.c:1354
+msgid "Med"
+msgstr "Medio"
+
+#: src/window-dsp.c:1355
+msgid "High"
+msgstr "Alto"
+
+#: src/window-dsp.c:1380
+msgid "Radio"
+msgstr "Radio"
+
+#: src/window-dsp.c:1386
+msgid "Clean"
+msgstr "Limpio"
+
+#: src/window-dsp.c:1392
+msgid "Warm"
+msgstr "Cálido"
+
+#: src/window-dsp.c:1398
+msgid "Bright"
+msgstr "Brillante"
+
+#: src/window-dsp.c:1793
+msgid "Pre-Compressor Filter"
+msgstr "Filtro pre-compresor"
+
+#: src/window-dsp.c:1822
+#, c-format
+msgid "Stage %d"
+msgstr "Etapa %d"
+
+#: src/window-dsp.c:1858
+msgid "Compressor"
+msgstr "Compresor"
+
+#: src/window-dsp.c:1891
+msgid "Thresh"
+msgstr "Umbral"
+
+#: src/window-dsp.c:1904
+msgid "Ratio"
+msgstr "Ratio"
+
+#: src/window-dsp.c:1917
+msgid "Knee"
+msgstr "Knee"
+
+#: src/window-dsp.c:1930
+msgid "Attack"
+msgstr "Ataque"
+
+#: src/window-dsp.c:1943
+msgid "Release"
+msgstr "Relajación"
+
+#: src/window-dsp.c:1956
+msgid "Makeup"
+msgstr "Compensación"
+
+#: src/window-dsp.c:1978
+msgid "Parametric EQ Filter"
+msgstr "Filtro ecualizador paramétrico"
+
+#: src/window-dsp.c:2009
+#, c-format
+msgid "Band %d"
+msgstr "Banda %d"
+
+#: src/window-hardware.c:75
+msgid "1st Gen"
+msgstr "1.ª Gen"
+
+#: src/window-hardware.c:78
+msgid "2nd Gen"
+msgstr "2.ª Gen"
+
+#: src/window-hardware.c:81
+msgid "3rd Gen"
+msgstr "3.ª Gen"
+
+#: src/window-hardware.c:84
+msgid "4th Gen"
+msgstr "4.ª Gen"
+
+#: src/window-hardware.c:87
+msgid "Clarett USB"
+msgstr "Clarett USB"
+
+#: src/window-hardware.c:90
+msgid "Clarett+"
+msgstr "Clarett+"
+
+#: src/window-hardware.c:93
+msgid "Vocaster"
+msgstr "Vocaster"
+
+#: src/window-hardware.c:177
+msgid "ALSA Scarlett Supported Hardware"
+msgstr "Hardware compatible con ALSA Scarlett"
+
+#: src/window-mixer.c:1074
+msgid ""
+"Mixer unavailable at\n"
+"current sample rate"
+msgstr ""
+"Mezclador no disponible a la\n"
+"frecuencia de muestreo actual"
+
+#: src/window-mixer.c:1153
+msgid ""
+"<span line_height=\"1.8\">Inputs →</span>\n"
+"Outputs ↓"
+msgstr ""
+"<span line_height=\"1.8\">Entradas →</span>\n"
+"Salidas ↓"
+
+#: src/window-modal.c:16
+msgid "Update failed. Please close the window and retry."
+msgstr "La actualización falló. Por favor, cierre la ventana y reintente."
+
+#: src/window-modal.c:150
+msgid "No"
+msgstr "No"
+
+#: src/window-modal.c:156
+msgid "Yes"
+msgstr "Sí"
+
+#: src/window-modal.c:250 src/window-modal.c:289
+msgid "Ok"
+msgstr "Aceptar"
+
+#: src/window-preferences.c:180
+msgid "Show Bottom/Right Labels"
+msgstr "Mostrar etiquetas inferiores/derechas"
+
+#: src/window-preferences.c:231
+msgid "Update Rate"
+msgstr "Tasa de actualización"
+
+#: src/window-routing.c:134
+msgid "Clear"
+msgstr "Borrar"
+
+#: src/window-routing.c:135
+msgid "Direct"
+msgstr "Directo"
+
+#: src/window-routing.c:136
+msgid "Preamp"
+msgstr "Previo"
+
+#: src/window-routing.c:137
+msgid "Stereo Out"
+msgstr "Salida estéreo"
+
+#: src/window-routing.c:264
+msgid "Hardware Inputs"
+msgstr "Entradas de hardware"
+
+#: src/window-routing.c:265
+msgid "Hardware Inputs are the physical inputs on the interface"
+msgstr "Las entradas de hardware son las entradas físicas de la interfaz"
+
+#: src/window-routing.c:271
+msgid ""
+"PCM Outputs are the digital audio channels sent from the PC to the interface "
+"over USB, used for audio playback"
+msgstr ""
+"Las salidas PCM son los canales de audio digital enviados desde el PC a la "
+"interfaz por USB para reproducción"
+
+#: src/window-routing.c:278
+msgid ""
+"PCM Inputs are the digital audio channels sent from the interface to the PC "
+"over USB, use for audio recording"
+msgstr ""
+"Las entradas PCM son los canales de audio digital enviados desde la interfaz "
+"al PC por USB para grabación"
+
+#: src/window-routing.c:285
+msgid "Hardware Outputs are the physical outputs on the interface"
+msgstr "Las salidas de hardware son las salidas físicas de la interfaz"
+
+#: src/window-routing.c:297
+msgid ""
+"DSP\n"
+"Inputs"
+msgstr ""
+"Entradas\n"
+"DSP"
+
+#: src/window-routing.c:298
+msgid ""
+"DSP Inputs are used to send audio to the DSP, which is used for features "
+"such as the input level meters, Air mode, and Autogain"
+msgstr ""
+"Las entradas DSP se utilizan para enviar audio al DSP, que se emplea para "
+"funciones como medidores de nivel de entrada, modo Air y Autogain"
+
+#: src/window-routing.c:304
+msgid ""
+"DSP\n"
+"Outputs"
+msgstr ""
+"Salidas\n"
+"DSP"
+
+#: src/window-routing.c:305
+msgid ""
+"DSP Outputs are used to send audio from the DSP after it has done its "
+"processing"
+msgstr ""
+"Las salidas DSP se utilizan para enviar audio desde el DSP tras su "
+"procesamiento"
+
+#: src/window-routing.c:313 src/window-routing.c:1954
+msgid ""
+"Mixer\n"
+"Inputs"
+msgstr ""
+"Entradas\n"
+"del mezclador"
+
+#: src/window-routing.c:314
+msgid "Mixer Inputs are used to mix multiple audio channels together"
+msgstr ""
+"Las entradas del mezclador se utilizan para mezclar múltiples canales de "
+"audio"
+
+#: src/window-routing.c:320 src/window-routing.c:1959
+msgid "Mixer Outputs"
+msgstr "Salidas del mezclador"
+
+#: src/window-routing.c:320 src/window-routing.c:1959
+msgid ""
+"Mixer\n"
+"Outputs"
+msgstr ""
+"Salidas\n"
+"del mezclador"
+
+#: src/window-routing.c:321
+msgid "Mixer Outputs are used to send audio from the mixer"
+msgstr ""
+"Las salidas del mezclador se utilizan para enviar audio desde el mezclador"
+
+#: src/window-routing.c:350
+msgid ""
+"↑\n"
+"Sources →"
+msgstr ""
+"↑\n"
+"Fuentes →"
+
+#: src/window-routing.c:355
+msgid ""
+"Sinks\n"
+"↓"
+msgstr ""
+"Destinos\n"
+"↓"
+
+#: src/window-routing.c:355
+msgid ""
+"← Sinks\n"
+"↓"
+msgstr ""
+"← Destinos\n"
+"↓"
+
+#: src/window-routing.c:1065
+msgid "Unlink Stereo Pair"
+msgstr "Desvincular par estéreo"
+
+#: src/window-routing.c:1065
+msgid "Link as Stereo Pair"
+msgstr "Vincular como par estéreo"
+
+#: src/window-routing.c:1784 src/window-routing.c:1926
+msgid "Unavailable at current sample rate"
+msgstr "No disponible a la frecuencia de muestreo actual"
+
+#: src/window-routing.c:1801 src/window-routing.c:1912
+#: src/window-routing.c:1955 src/window-routing.c:1962
+msgid "Mixer unavailable at current sample rate"
+msgstr "Mezclador no disponible a la frecuencia de muestreo actual"
+
+#: src/window-routing.c:1821 src/window-routing.c:1920
+msgid "Unavailable with current Digital I/O mode and sample rate"
+msgstr ""
+"No disponible con el modo de E/S digital y frecuencia de muestreo actuales"
+
+#: src/window-routing.c:2136
+msgid ""
+"Mixer Outputs with Talkback enabled will have the level of Mixer Input 25 "
+"internally raised and lowered when the Talkback control is turned On and Off."
+msgstr ""
+"Las salidas del mezclador con Talkback activado tendrán el nivel de la "
+"entrada de mezclador 25 internamente subido y bajado al encender y apagar el "
+"control Talkback."
+
+#: src/window-startup.c:326
+msgid "Reboot Device"
+msgstr "Reiniciar dispositivo"
+
+#: src/window-startup.c:327
+msgid "Reboot"
+msgstr "Reiniciar"
+
+#: src/window-startup.c:328
+msgid ""
+"Rebooting the interface will apply changes made to the startup "
+"configuration. This will take a few seconds."
+msgstr ""
+"Reiniciar la interfaz aplicará los cambios realizados en la configuración de "
+"inicio. Esto tardará unos segundos."
+
+#: src/window-startup.c:339
+msgid "Reset Configuration"
+msgstr "Restablecer configuración"
+
+#: src/window-startup.c:340
+msgid "Reset"
+msgstr "Restablecer"
+
+#: src/window-startup.c:341
+msgid ""
+"Resetting the configuration will reset the interface to its factory default "
+"settings. The firmware will be left unchanged."
+msgstr ""
+"Restablecer la configuración devolverá la interfaz a sus ajustes "
+"predeterminados de fábrica. El firmware no se modificará."
+
+#: src/window-startup.c:378
+#, c-format
+msgid ""
+"Updating the firmware will reset the interface to its factory default "
+"settings and update the firmware from version %ld.%ld.%ld.%ld to %u.%u.%u.%u."
+msgstr ""
+"Actualizar el firmware restablecerá la interfaz a sus ajustes "
+"predeterminados de fábrica y actualizará el firmware de la versión %ld.%ld."
+"%ld.%ld a la %u.%u.%u.%u."
+
+#: src/window-startup.c:394
+#, c-format
+msgid ""
+"Updating the firmware will reset the interface to its factory default "
+"settings and update the firmware from version %d to %d."
+msgstr ""
+"Actualizar el firmware restablecerá la interfaz a sus ajustes "
+"predeterminados de fábrica y actualizará el firmware de la versión %d a la "
+"%d."
+
+#: src/window-startup.c:406
+msgid "Update Firmware"
+msgstr "Actualizar firmware"
+
+#: src/window-startup.c:417
+msgid "This device/driver combo appears to have no startup controls."
+msgstr ""
+"Esta combinación de dispositivo y controlador no parece disponer de "
+"controles de inicio."

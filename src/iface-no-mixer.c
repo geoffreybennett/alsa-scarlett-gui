@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "gtkhelper.h"
+#include "i18n.h"
 #include "iface-no-mixer.h"
 #include "stringhelper.h"
 #include "tooltips.h"
@@ -26,8 +27,8 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
   gtk_box_append(GTK_BOX(content), input_box);
   gtk_box_append(GTK_BOX(content), output_box);
 
-  GtkWidget *label_ic = gtk_label_new("Input Controls");
-  GtkWidget *label_oc = gtk_label_new("Output Controls");
+  GtkWidget *label_ic = gtk_label_new(_("Input Controls"));
+  GtkWidget *label_oc = gtk_label_new(_("Output Controls"));
 
   gtk_widget_add_css_class(label_ic, "controls-label");
   gtk_widget_add_css_class(label_oc, "controls-label");
@@ -78,12 +79,12 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
     int line_num = get_num_from_string(elem->name);
 
     if (strstr(elem->name, "Level Capture Enum")) {
-      w = make_boolean_alsa_elem(elem, "Inst", NULL);
+      w = make_boolean_alsa_elem(elem, _("Inst"), NULL);
       gtk_widget_add_css_class(w, "inst");
       gtk_widget_set_tooltip_text(w, level_descr);
       gtk_grid_attach(GTK_GRID(input_grid), w, line_num - 1, 1, 1, 1);
     } else if (strstr(elem->name, "Air Capture Switch")) {
-      w = make_boolean_alsa_elem(elem, "Air", NULL);
+      w = make_boolean_alsa_elem(elem, _("Air"), NULL);
       gtk_widget_add_css_class(w, "air");
       gtk_widget_set_tooltip_text(w, air_descr);
       gtk_grid_attach(
@@ -95,30 +96,30 @@ GtkWidget *create_iface_no_mixer_main(struct alsa_card *card) {
       gtk_widget_set_tooltip_text(w, phantom_descr);
       gtk_grid_attach(GTK_GRID(input_grid), w, 0, 3, 1 + !is_solo, 1);
     } else if (strcmp(elem->name, "Direct Monitor Playback Switch") == 0) {
-      w = make_boolean_alsa_elem(elem, "Direct Monitor", NULL);
+      w = make_boolean_alsa_elem(elem, _("Direct Monitor"), NULL);
       gtk_widget_add_css_class(w, "direct-monitor");
       gtk_widget_set_tooltip_text(
         w,
-        "Direct Monitor sends the analogue input signals to the "
-        "analogue outputs for zero-latency monitoring."
+        _("Direct Monitor sends the analogue input signals to the "
+          "analogue outputs for zero-latency monitoring.")
       );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 0, 1, 1);
     } else if (strcmp(elem->name, "Direct Monitor Playback Enum") == 0) {
-      w = make_drop_down_alsa_elem(elem, "Direct Monitor");
+      w = make_drop_down_alsa_elem(elem, _("Direct Monitor"));
       gtk_widget_add_css_class(w, "direct-monitor");
       gtk_widget_set_tooltip_text(
         w,
-        "Direct Monitor sends the analogue input signals to the "
-        "analogue outputs for zero-latency monitoring. Mono sends "
-        "both inputs to the left and right outputs. Stereo sends "
-        "input 1 to the left, and input 2 to the right output."
+        _("Direct Monitor sends the analogue input signals to the "
+          "analogue outputs for zero-latency monitoring. Mono sends "
+          "both inputs to the left and right outputs. Stereo sends "
+          "input 1 to the left, and input 2 to the right output.")
       );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 0, 1, 1);
     }
   }
 
   card->window_startup = create_subwindow(
-    card, "Startup Configuration", G_CALLBACK(window_startup_close_request)
+    card, _("Startup Configuration"), G_CALLBACK(window_startup_close_request)
   );
 
   GtkWidget *startup = create_startup_controls(card);

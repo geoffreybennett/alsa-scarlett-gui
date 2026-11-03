@@ -7,6 +7,7 @@
 #include "config-helpers.h"
 #include "custom-names.h"
 #include "device-port-names.h"
+#include "i18n.h"
 #include "stereo-link.h"
 #include "widget-text-entry.h"
 #include "window-configuration.h"
@@ -329,7 +330,7 @@ static GtkWidget *create_link_button(struct alsa_elem *link_elem) {
   gtk_button_set_child(GTK_BUTTON(link_button), label);
   gtk_widget_set_halign(link_button, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(link_button, GTK_ALIGN_CENTER);
-  gtk_widget_set_tooltip_text(link_button, "Link as stereo pair");
+  gtk_widget_set_tooltip_text(link_button, _("Link as stereo pair"));
   gtk_widget_add_css_class(link_button, "flat");
 
   g_signal_connect(link_button, "toggled",
@@ -408,7 +409,7 @@ static GtkWidget *create_enable_checkbox(struct alsa_elem *enable_elem) {
   GtkWidget *checkbox = gtk_check_button_new();
   gtk_widget_set_halign(checkbox, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(checkbox, GTK_ALIGN_CENTER);
-  gtk_widget_set_tooltip_text(checkbox, "Show/hide this port");
+  gtk_widget_set_tooltip_text(checkbox, _("Show/hide this port"));
 
   g_signal_connect(checkbox, "toggled",
     G_CALLBACK(enable_checkbox_toggled), enable_elem);
@@ -701,14 +702,14 @@ static char *get_mixer_input_label_text(
   // Format depends on whether mixer inputs are fixed
   if (card->has_fixed_mixer_inputs) {
     // For fixed mixer inputs, just show the source name
-    return g_strdup(r_src ? get_routing_src_display_name(r_src) : "Off");
+    return g_strdup(r_src ? get_routing_src_display_name(r_src) : _("Off"));
   } else {
     // For configurable mixer inputs, show "Mixer X - [Source Name]"
     char *snk_name = get_snk_generic_name(snk);
     char *result = g_strdup_printf(
       "%s - %s",
       snk_name,
-      r_src ? get_routing_src_display_name(r_src) : "Off"
+      r_src ? get_routing_src_display_name(r_src) : _("Off")
     );
     g_free(snk_name);
     return result;
@@ -758,9 +759,9 @@ static char *get_mixer_input_pair_label_text(
       return get_src_pair_display_name(r_src_l);
 
     const char *src_l =
-      r_src_l ? get_routing_src_display_name(r_src_l) : "Off";
+      r_src_l ? get_routing_src_display_name(r_src_l) : _("Off");
     const char *src_r =
-      r_src_r ? get_routing_src_display_name(r_src_r) : "Off";
+      r_src_r ? get_routing_src_display_name(r_src_r) : _("Off");
     if (strcmp(src_l, src_r) == 0)
       return g_strdup(src_l);
     return g_strdup_printf("%s / %s", src_l, src_r);
@@ -783,9 +784,9 @@ static char *get_mixer_input_pair_label_text(
 
   // Get individual source names
   const char *src_l =
-    r_src_l ? get_routing_src_display_name(r_src_l) : "Off";
+    r_src_l ? get_routing_src_display_name(r_src_l) : _("Off");
   const char *src_r =
-    r_src_r ? get_routing_src_display_name(r_src_r) : "Off";
+    r_src_r ? get_routing_src_display_name(r_src_r) : _("Off");
 
   char *result;
   if (strcmp(src_l, src_r) == 0)
@@ -1661,7 +1662,7 @@ static void add_hw_tab(
     &left_col_data, &right_col_data,
     &tab_data,
     has_inputs, has_outputs,
-    "Inputs", "Outputs"
+    _("Inputs"), _("Outputs")
   );
 
   // Left column: Inputs (sources - audio from hardware)
@@ -1704,7 +1705,7 @@ static void add_hw_tab(
   );
   gtk_box_append(GTK_BOX(tab_label_box), tab_data->tab_checkbox);
 
-  GtkWidget *tab_label_text = gtk_label_new(hw_type_names[hw_type]);
+  GtkWidget *tab_label_text = gtk_label_new(_(hw_type_names[hw_type]));
   gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
   GtkWidget *scrolled = wrap_tab_content_scrolled(content);
@@ -1756,8 +1757,8 @@ static void add_category_tab(
     &tab_data,
     pcm ? show_outputs : show_inputs,
     pcm ? show_inputs : show_outputs,
-    pcm ? "Outputs" : "Inputs",
-    pcm ? "Inputs" : "Outputs"
+    pcm ? _("Outputs") : _("Inputs"),
+    pcm ? _("Inputs") : _("Outputs")
   );
 
   if (pcm) {
@@ -1824,7 +1825,7 @@ static void add_category_tab(
   );
   gtk_box_append(GTK_BOX(tab_label_box), tab_data->tab_checkbox);
 
-  GtkWidget *tab_label_text = gtk_label_new(tab_name);
+  GtkWidget *tab_label_text = gtk_label_new(_(tab_name));
   gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
   GtkWidget *scrolled = wrap_tab_content_scrolled(content);
@@ -1882,12 +1883,12 @@ static void add_mixer_tab(GtkWidget *notebook, struct alsa_card *card) {
     tab_data->columns = g_array_new(FALSE, FALSE, sizeof(struct column_checkbox_data *));
 
     // Labels for hardware input types
-    const char *hw_labels[] = {"Analogue Inputs", "S/PDIF Inputs", "ADAT Inputs"};
+    const char *hw_labels[] = {_("Analogue Inputs"), _("S/PDIF Inputs"), _("ADAT Inputs")};
 
     // PCM Outputs column (playback from computer)
     if (has_mixer_inputs_for_src_type(card, PC_PCM, -1)) {
       struct column_checkbox_data *col = create_mixer_input_column(
-        content, card, "PCM Outputs", PC_PCM, -1, tab_data
+        content, card, _("PCM Outputs"), PC_PCM, -1, tab_data
       );
       g_array_append_val(tab_data->columns, col);
     }
@@ -1927,7 +1928,7 @@ static void add_mixer_tab(GtkWidget *notebook, struct alsa_card *card) {
 
       // Label
       GtkWidget *label = gtk_label_new(NULL);
-      gtk_label_set_markup(GTK_LABEL(label), "<b>Outputs</b>");
+      gtk_label_set_markup(GTK_LABEL(label), _("<b>Outputs</b>"));
       gtk_widget_set_halign(label, GTK_ALIGN_START);
       gtk_box_append(GTK_BOX(header), label);
 
@@ -1964,7 +1965,7 @@ static void add_mixer_tab(GtkWidget *notebook, struct alsa_card *card) {
       &left_col_data, &right_col_data,
       &tab_data,
       1, 1,
-      "Inputs", "Outputs"
+      _("Inputs"), _("Outputs")
     );
 
     // Left column: Mixer Inputs (with stereo linking, no custom names)
@@ -2008,7 +2009,7 @@ static void add_mixer_tab(GtkWidget *notebook, struct alsa_card *card) {
   );
   gtk_box_append(GTK_BOX(tab_label_box), tab_data->tab_checkbox);
 
-  GtkWidget *tab_label_text = gtk_label_new("Mixer");
+  GtkWidget *tab_label_text = gtk_label_new(_("Mixer"));
   gtk_box_append(GTK_BOX(tab_label_box), tab_label_text);
 
   GtkWidget *scrolled = wrap_tab_content_scrolled(content);
@@ -2076,9 +2077,9 @@ void add_io_tab(GtkWidget *top_notebook, struct alsa_card *card) {
     gtk_widget_set_margin_top(io_tab_content, 20);
 
     gtk_box_append(GTK_BOX(io_tab_content), config_help_label(
-      "Use the checkboxes to hide unused inputs and outputs from the display.\n"
-      "You can also give each port a custom name to help identify it.\n"
-      "Use the link buttons to pair adjacent channels as stereo."
+      _("Use the checkboxes to hide unused inputs and outputs from the display.\n"
+        "You can also give each port a custom name to help identify it.\n"
+        "Use the link buttons to pair adjacent channels as stereo.")
     ));
 
     gtk_widget_set_vexpand(notebook, TRUE);
@@ -2089,7 +2090,7 @@ void add_io_tab(GtkWidget *top_notebook, struct alsa_card *card) {
       GTK_NOTEBOOK(notebook), card, CONFIG_IO_TAB_KEY
     );
 
-    GtkWidget *io_tab_label = gtk_label_new("I/O Configuration");
+    GtkWidget *io_tab_label = gtk_label_new(_("I/O Configuration"));
     g_object_set_data(
       G_OBJECT(io_tab_content), PAGE_ID_KEY, (gpointer)"io-config"
     );

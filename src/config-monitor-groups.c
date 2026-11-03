@@ -6,6 +6,7 @@
 #include "alsa.h"
 #include "config-helpers.h"
 #include "custom-names.h"
+#include "i18n.h"
 #include "port-enable.h"
 #include "stereo-link.h"
 #include "widget-drop-down-two-level.h"
@@ -207,44 +208,44 @@ static GtkWidget *create_main_alt_group_grid(struct alsa_card *card) {
 
   // Row 0: Main group headers
   GtkWidget *main_header = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(main_header), "<b>Main</b>");
+  gtk_label_set_markup(GTK_LABEL(main_header), _("<b>Main</b>"));
   gtk_widget_set_halign(main_header, GTK_ALIGN_CENTER);
   gtk_grid_attach(GTK_GRID(grid), main_header, main_col, 0, main_span, 1);
 
   GtkWidget *alt_header = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(alt_header), "<b>Alt</b>");
+  gtk_label_set_markup(GTK_LABEL(alt_header), _("<b>Alt</b>"));
   gtk_widget_set_halign(alt_header, GTK_ALIGN_CENTER);
   gtk_grid_attach(GTK_GRID(grid), alt_header, alt_col, 0, alt_span, 1);
 
   // Row 1: Sub-headings for columns
-  GtkWidget *main_enable_label = gtk_label_new("Enable");
+  GtkWidget *main_enable_label = gtk_label_new(_("Enable"));
   gtk_widget_add_css_class(main_enable_label, "dim-label");
   gtk_grid_attach(GTK_GRID(grid), main_enable_label, main_col, 1, 1, 1);
 
   if (has_source) {
-    GtkWidget *main_source_label = gtk_label_new("Source");
+    GtkWidget *main_source_label = gtk_label_new(_("Source"));
     gtk_widget_add_css_class(main_source_label, "dim-label");
     gtk_grid_attach(GTK_GRID(grid), main_source_label, main_source_col, 1, 1, 1);
   }
 
   if (has_trim) {
-    GtkWidget *main_trim_label = gtk_label_new("Trim");
+    GtkWidget *main_trim_label = gtk_label_new(_("Trim"));
     gtk_widget_add_css_class(main_trim_label, "dim-label");
     gtk_grid_attach(GTK_GRID(grid), main_trim_label, main_trim_col, 1, 1, 1);
   }
 
-  GtkWidget *alt_enable_label = gtk_label_new("Enable");
+  GtkWidget *alt_enable_label = gtk_label_new(_("Enable"));
   gtk_widget_add_css_class(alt_enable_label, "dim-label");
   gtk_grid_attach(GTK_GRID(grid), alt_enable_label, alt_col, 1, 1, 1);
 
   if (has_source) {
-    GtkWidget *alt_source_label = gtk_label_new("Source");
+    GtkWidget *alt_source_label = gtk_label_new(_("Source"));
     gtk_widget_add_css_class(alt_source_label, "dim-label");
     gtk_grid_attach(GTK_GRID(grid), alt_source_label, alt_source_col, 1, 1, 1);
   }
 
   if (has_trim) {
-    GtkWidget *alt_trim_label = gtk_label_new("Trim");
+    GtkWidget *alt_trim_label = gtk_label_new(_("Trim"));
     gtk_widget_add_css_class(alt_trim_label, "dim-label");
     gtk_grid_attach(GTK_GRID(grid), alt_trim_label, alt_trim_col, 1, 1, 1);
   }
@@ -525,19 +526,19 @@ void add_monitor_groups_tab(GtkWidget *notebook, struct alsa_card *card) {
   gtk_widget_set_margin_bottom(content, 20);
 
   gtk_box_append(GTK_BOX(content), config_help_label(
-    "Monitor groups let you organise your outputs into Main and "
-    "Alt sets.\n"
-    "Switch between them using the Alt button on your interface "
-    "or the toggle in the main window.\n"
-    "The main volume knob controls the enabled group; use Trim "
-    "for per-output level calibration.\n\n"
-    "Examples:\n"
-    "  \xe2\x80\xa2 Connect two sets of speakers for A/B reference "
-    "mixing\n"
-    "  \xe2\x80\xa2 Create a surround setup with all speakers in one "
-    "group\n"
-    "  \xe2\x80\xa2 Quick DAW/Direct monitoring switch by assigning "
-    "same output to both groups with different sources"
+    _("Monitor groups let you organise your outputs into Main and "
+      "Alt sets.\n"
+      "Switch between them using the Alt button on your interface "
+      "or the toggle in the main window.\n"
+      "The main volume knob controls the enabled group; use Trim "
+      "for per-output level calibration.\n\n"
+      "Examples:\n"
+      "  \xe2\x80\xa2 Connect two sets of speakers for A/B reference "
+      "mixing\n"
+      "  \xe2\x80\xa2 Create a surround setup with all speakers in one "
+      "group\n"
+      "  \xe2\x80\xa2 Quick DAW/Direct monitoring switch by assigning "
+      "same output to both groups with different sources")
   ));
 
   GtkWidget *grid = create_main_alt_group_grid(card);
@@ -550,7 +551,7 @@ void add_monitor_groups_tab(GtkWidget *notebook, struct alsa_card *card) {
   );
   gtk_notebook_append_page(
     GTK_NOTEBOOK(notebook), scrolled,
-    gtk_label_new("Monitor Groups")
+    gtk_label_new(_("Monitor Groups"))
   );
 }
 

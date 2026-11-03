@@ -1,7 +1,9 @@
 *.tar.gz
 *.o
+*.mo
 .deps
 .gdb_history
+/locale
 /src/alsa-scarlett-gui
 /src/alsa-scarlett-gui-resources.c
 /src/tests/test-biquad

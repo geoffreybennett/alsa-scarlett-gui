@@ -6,6 +6,7 @@
 #include "alsa.h"
 #include "device-update-firmware.h"
 #include "gtkhelper.h"
+#include "i18n.h"
 #include "scarlett2-firmware.h"
 #include "scarlett4-firmware.h"
 
@@ -50,9 +51,9 @@ GtkWidget *create_iface_update_main(struct alsa_card *card) {
   int mid_upgrade = card->driver_type == DRIVER_TYPE_SOCKET &&
                     scarlett4_is_mid_upgrade(card);
 
-  const char *title = mid_upgrade ? "Firmware Update In Progress" :
-                      has_firmware ? "Firmware Update Available" :
-                                     "Firmware Update Required";
+  const char *title = mid_upgrade ? _("Firmware Update In Progress") :
+                      has_firmware ? _("Firmware Update Available") :
+                                     _("Firmware Update Required");
   w = gtk_label_new(title);
   gtk_widget_add_css_class(w, "window-title");
   gtk_box_append(GTK_BOX(content), w);
@@ -63,10 +64,10 @@ GtkWidget *create_iface_update_main(struct alsa_card *card) {
       : "https://github.com/geoffreybennett/scarlett2-firmware";
 
     char *markup = g_strdup_printf(
-      "A firmware update is required for this device in order to\n"
-      "access all of its features. Please obtain the firmware from\n"
-      "<a class=\"linktext\" href=\"%s\">%s</a>,\n"
-      "and restart this application.",
+      _("A firmware update is required for this device in order to\n"
+        "access all of its features. Please obtain the firmware from\n"
+        "<a class=\"linktext\" href=\"%s\">%s</a>,\n"
+        "and restart this application."),
       url, url
     );
 
@@ -80,8 +81,8 @@ GtkWidget *create_iface_update_main(struct alsa_card *card) {
 
   if (mid_upgrade) {
     w = gtk_label_new(
-      "Firmware update in progress...\n"
-      "Please do not disconnect the device."
+      _("Firmware update in progress...\n"
+        "Please do not disconnect the device.")
     );
     gtk_box_append(GTK_BOX(content), w);
 
@@ -91,13 +92,13 @@ GtkWidget *create_iface_update_main(struct alsa_card *card) {
     g_idle_add(auto_start_update, data);
   } else {
     w = gtk_label_new(
-      "A firmware update is available for this device.\n"
-      "This process may take a few minutes.\n"
-      "Please do not disconnect the device during the update."
+      _("A firmware update is available for this device.\n"
+        "This process may take a few minutes.\n"
+        "Please do not disconnect the device during the update.")
     );
     gtk_box_append(GTK_BOX(content), w);
 
-    w = gtk_button_new_with_label("Update");
+    w = gtk_button_new_with_label(_("Update"));
     g_signal_connect(
       GTK_BUTTON(w), "clicked", G_CALLBACK(update_button_clicked), card
     );

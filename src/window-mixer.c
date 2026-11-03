@@ -10,6 +10,7 @@
 #include "glow.h"
 #include "gtkhelper.h"
 #include "hw-io-availability.h"
+#include "i18n.h"
 #include "port-enable.h"
 #include "stereo-link.h"
 #include "stringhelper.h"
@@ -1070,7 +1071,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
 
   // create unavailable overlay label (hidden by default)
   GtkWidget *unavail = card->mixer_unavailable_label = gtk_label_new(
-    "Mixer unavailable at\ncurrent sample rate"
+    _("Mixer unavailable at\ncurrent sample rate")
   );
   gtk_widget_add_css_class(unavail, "mixer-unavailable");
   gtk_widget_set_halign(unavail, GTK_ALIGN_CENTER);
@@ -1149,7 +1150,7 @@ GtkWidget *create_mixer_controls(struct alsa_card *card) {
   card->mixer_corner_label = gtk_label_new(NULL);
   gtk_label_set_markup(
     GTK_LABEL(card->mixer_corner_label),
-    "<span line_height=\"1.8\">Inputs →</span>\nOutputs ↓"
+    _("<span line_height=\"1.8\">Inputs →</span>\nOutputs ↓")
   );
   gtk_label_set_justify(GTK_LABEL(card->mixer_corner_label), GTK_JUSTIFY_CENTER);
   gtk_widget_set_valign(card->mixer_corner_label, GTK_ALIGN_END);

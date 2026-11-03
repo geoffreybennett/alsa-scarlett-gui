@@ -5,6 +5,7 @@
 #include "device-update-firmware.h"
 #include "fcp-socket.h"
 #include "gtkhelper.h"
+#include "i18n.h"
 #include "scarlett2.h"
 #include "scarlett2-ioctls.h"
 #include "widget-boolean.h"
@@ -322,10 +323,10 @@ static void add_reset_actions(
       card,
       grid,
       grid_y,
-      "Reboot Device",
-      "Reboot",
-      "Rebooting the interface will apply changes made to the "
-      "startup configuration. This will take a few seconds.",
+      _("Reboot Device"),
+      _("Reboot"),
+      _("Rebooting the interface will apply changes made to the "
+        "startup configuration. This will take a few seconds."),
       G_CALLBACK(reboot_device)
     );
   }
@@ -335,10 +336,10 @@ static void add_reset_actions(
     card,
     grid,
     grid_y,
-    "Reset Configuration",
-    "Reset",
-    "Resetting the configuration will reset the interface to its "
-    "factory default settings. The firmware will be left unchanged.",
+    _("Reset Configuration"),
+    _("Reset"),
+    _("Resetting the configuration will reset the interface to its "
+      "factory default settings. The firmware will be left unchanged."),
     G_CALLBACK(create_reset_config_window)
   );
 
@@ -374,9 +375,9 @@ static void add_reset_actions(
     }
 
     s = g_strdup_printf(
-      "Updating the firmware will reset the interface to its "
-      "factory default settings and update the firmware from version "
-      "%ld.%ld.%ld.%ld to %u.%u.%u.%u.",
+      _("Updating the firmware will reset the interface to its "
+        "factory default settings and update the firmware from version "
+        "%ld.%ld.%ld.%ld to %u.%u.%u.%u."),
       current[0], current[1], current[2], current[3],
       card->best_firmware_version_4[0], card->best_firmware_version_4[1],
       card->best_firmware_version_4[2], card->best_firmware_version_4[3]
@@ -390,9 +391,9 @@ static void add_reset_actions(
       return;
 
     s = g_strdup_printf(
-      "Updating the firmware will reset the interface to its "
-      "factory default settings and update the firmware from version "
-      "%d to %d.",
+      _("Updating the firmware will reset the interface to its "
+        "factory default settings and update the firmware from version "
+        "%d to %d."),
       firmware_version,
       card->best_firmware_version
     );
@@ -402,8 +403,8 @@ static void add_reset_actions(
     card,
     grid,
     grid_y,
-    "Update Firmware",
-    "Update",
+    _("Update Firmware"),
+    _("Update"),
     s,
     G_CALLBACK(update_firmware_clicked)
   );
@@ -413,7 +414,7 @@ static void add_reset_actions(
 
 static void add_no_startup_controls_msg(GtkWidget *grid) {
   GtkWidget *w = big_label(
-    "This device/driver combo appears to have no startup controls."
+    _("This device/driver combo appears to have no startup controls.")
   );
   gtk_grid_attach(GTK_GRID(grid), w, 0, 0, 1, 1);
 }

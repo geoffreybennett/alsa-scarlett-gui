@@ -10,6 +10,7 @@
 #include "iface-unknown.h"
 #include "iface-update.h"
 #include "iface-waiting.h"
+#include "i18n.h"
 #include "main.h"
 #include "menu.h"
 #include "routing-lines.h"
@@ -67,37 +68,37 @@ static void update_window_titles(struct alsa_elem *elem, void *private) {
 
   // update sub-windows with appropriate suffixes
   if (card->window_routing) {
-    char *routing_title = g_strdup_printf("%s - Routing", title);
+    char *routing_title = g_strdup_printf("%s - %s", title, _("Routing"));
     gtk_window_set_title(GTK_WINDOW(card->window_routing), routing_title);
     g_free(routing_title);
   }
 
   if (card->window_mixer) {
-    char *mixer_title = g_strdup_printf("%s - Mixer", title);
+    char *mixer_title = g_strdup_printf("%s - %s", title, _("Mixer"));
     gtk_window_set_title(GTK_WINDOW(card->window_mixer), mixer_title);
     g_free(mixer_title);
   }
 
   if (card->window_levels) {
-    char *levels_title = g_strdup_printf("%s - Levels", title);
+    char *levels_title = g_strdup_printf("%s - %s", title, _("Levels"));
     gtk_window_set_title(GTK_WINDOW(card->window_levels), levels_title);
     g_free(levels_title);
   }
 
   if (card->window_configuration) {
-    char *config_title = g_strdup_printf("%s - Configuration", title);
+    char *config_title = g_strdup_printf("%s - %s", title, _("Configuration"));
     gtk_window_set_title(GTK_WINDOW(card->window_configuration), config_title);
     g_free(config_title);
   }
 
   if (card->window_startup) {
-    char *startup_title = g_strdup_printf("%s - Startup Configuration", title);
+    char *startup_title = g_strdup_printf("%s - %s", title, _("Startup Configuration"));
     gtk_window_set_title(GTK_WINDOW(card->window_startup), startup_title);
     g_free(startup_title);
   }
 
   if (card->window_dsp) {
-    char *dsp_title = g_strdup_printf("%s - DSP", title);
+    char *dsp_title = g_strdup_printf("%s - %s", title, _("DSP"));
     gtk_window_set_title(GTK_WINDOW(card->window_dsp), dsp_title);
     g_free(dsp_title);
   }

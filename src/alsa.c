@@ -17,6 +17,7 @@
 #include "stereo-link.h"
 #include "dsp-state.h"
 #include "hw-io-availability.h"
+#include "i18n.h"
 #include "presets.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
@@ -32,10 +33,10 @@
 // names for the port categories
 const char *port_category_names[PC_COUNT] = {
   NULL,
-  "Hardware Outputs",
-  "Mixer Inputs",
-  "DSP Inputs",
-  "PCM Inputs"
+  N_("Hardware Outputs"),
+  N_("Mixer Inputs"),
+  N_("DSP Inputs"),
+  N_("PCM Inputs")
 };
 
 // short names for the port categories (for debug output)

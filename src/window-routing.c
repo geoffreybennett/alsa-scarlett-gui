@@ -3,6 +3,7 @@
 
 #include "gtkhelper.h"
 #include "hw-io-availability.h"
+#include "i18n.h"
 #include "iface-mixer.h"
 #include "routing-drag-line.h"
 #include "routing-lines.h"
@@ -130,15 +131,15 @@ static void routing_preset(
 static GtkWidget *make_preset_menu_button(struct alsa_card *card) {
   GMenu *menu = g_menu_new();
 
-  g_menu_append(menu, "Clear", "routing.preset('clear')");
-  g_menu_append(menu, "Direct", "routing.preset('direct')");
-  g_menu_append(menu, "Preamp", "routing.preset('preamp')");
-  g_menu_append(menu, "Stereo Out", "routing.preset('stereo_out')");
+  g_menu_append(menu, _("Clear"), "routing.preset('clear')");
+  g_menu_append(menu, _("Direct"), "routing.preset('direct')");
+  g_menu_append(menu, _("Preamp"), "routing.preset('preamp')");
+  g_menu_append(menu, _("Stereo Out"), "routing.preset('stereo_out')");
 
   GtkWidget *button = gtk_menu_button_new();
   gtk_widget_set_halign(button, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(button, GTK_ALIGN_CENTER);
-  gtk_menu_button_set_label(GTK_MENU_BUTTON(button), "Presets");
+  gtk_menu_button_set_label(GTK_MENU_BUTTON(button), _("Presets"));
   gtk_menu_button_set_menu_model(
     GTK_MENU_BUTTON(button),
     G_MENU_MODEL(menu)
@@ -260,28 +261,28 @@ static void create_routing_grid(struct alsa_card *card) {
 
   // All grids: container is vbox/hbox, grid is separate for widget attachment
   GtkWidget *hw_in_container = create_routing_group_grid(
-    card, "routing_hw_in_grid", "Hardware Inputs",
-    "Hardware Inputs are the physical inputs on the interface",
+    card, "routing_hw_in_grid", _("Hardware Inputs"),
+    _("Hardware Inputs are the physical inputs on the interface"),
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END, NULL,
     &card->routing_hw_in_grid
   );
   GtkWidget *pcm_in_container = create_routing_group_grid(
-    card, "routing_pcm_in_grid", "PCM Outputs",
-    "PCM Outputs are the digital audio channels sent from the PC to "
-    "the interface over USB, used for audio playback",
+    card, "routing_pcm_in_grid", _("PCM Outputs"),
+    _("PCM Outputs are the digital audio channels sent from the PC to "
+      "the interface over USB, used for audio playback"),
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_END, NULL,
     &card->routing_pcm_in_grid
   );
   GtkWidget *pcm_out_container = create_routing_group_grid(
-    card, "routing_pcm_out_grid", "PCM Inputs",
-    "PCM Inputs are the digital audio channels sent from the interface "
-    "to the PC over USB, use for audio recording",
+    card, "routing_pcm_out_grid", _("PCM Inputs"),
+    _("PCM Inputs are the digital audio channels sent from the interface "
+      "to the PC over USB, use for audio recording"),
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START, NULL,
     &card->routing_pcm_out_grid
   );
   GtkWidget *hw_out_container = create_routing_group_grid(
-    card, "routing_hw_out_grid", "Hardware Outputs",
-    "Hardware Outputs are the physical outputs on the interface",
+    card, "routing_hw_out_grid", _("Hardware Outputs"),
+    _("Hardware Outputs are the physical outputs on the interface"),
     GTK_ORIENTATION_VERTICAL, GTK_ALIGN_START, NULL,
     &card->routing_hw_out_grid
   );
@@ -293,31 +294,31 @@ static void create_routing_grid(struct alsa_card *card) {
 
   if (has_dsp) {
     dsp_in_container = create_routing_group_grid(
-      card, "routing_dsp_in_grid", "DSP\nInputs",
-      "DSP Inputs are used to send audio to the DSP, which is used for "
-      "features such as the input level meters, Air mode, and Autogain",
+      card, "routing_dsp_in_grid", _("DSP\nInputs"),
+      _("DSP Inputs are used to send audio to the DSP, which is used for "
+        "features such as the input level meters, Air mode, and Autogain"),
       GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER, NULL,
       &card->routing_dsp_in_grid
     );
     dsp_out_container = create_routing_group_grid(
-      card, "routing_dsp_out_grid", "DSP\nOutputs",
-      "DSP Outputs are used to send audio from the DSP after it has "
-      "done its processing",
+      card, "routing_dsp_out_grid", _("DSP\nOutputs"),
+      _("DSP Outputs are used to send audio from the DSP after it has "
+        "done its processing"),
       GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER, NULL,
       &card->routing_dsp_out_grid
     );
   }
   if (!card->has_fixed_mixer_inputs)
     mixer_in_container = create_routing_group_grid(
-      card, "routing_mixer_in_grid", "Mixer\nInputs",
-      "Mixer Inputs are used to mix multiple audio channels together",
+      card, "routing_mixer_in_grid", _("Mixer\nInputs"),
+      _("Mixer Inputs are used to mix multiple audio channels together"),
       GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER,
       &card->routing_mixer_in_heading, &card->routing_mixer_in_grid
     );
   mixer_out_container = create_routing_group_grid(
     card, "routing_mixer_out_grid",
-    card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs",
-    "Mixer Outputs are used to send audio from the mixer",
+    card->has_talkback ? _("Mixer Outputs") : _("Mixer\nOutputs"),
+    _("Mixer Outputs are used to send audio from the mixer"),
     GTK_ORIENTATION_HORIZONTAL, GTK_ALIGN_CENTER,
     &card->routing_mixer_out_heading, &card->routing_mixer_out_grid
   );
@@ -346,12 +347,12 @@ static void create_routing_grid(struct alsa_card *card) {
   gtk_grid_attach(routing_grid, mixer_out_container, mix_col_num, 3, 1, 1);
   gtk_grid_set_spacing(routing_grid, 10);
 
-  card->routing_src_label = gtk_label_new("↑\nSources →");
+  card->routing_src_label = gtk_label_new(_("↑\nSources →"));
   gtk_label_set_justify(GTK_LABEL(card->routing_src_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(routing_grid, card->routing_src_label, left_col_num, 3, 1, 1);
 
   card->routing_snk_label = gtk_label_new(
-    card->has_fixed_mixer_inputs ? "Sinks\n↓" : "← Sinks\n↓"
+    card->has_fixed_mixer_inputs ? _("Sinks\n↓") : _("← Sinks\n↓")
   );
   gtk_label_set_justify(GTK_LABEL(card->routing_snk_label), GTK_JUSTIFY_CENTER);
   gtk_grid_attach(routing_grid, card->routing_snk_label, right_col_num, 0, 1, 1);
@@ -1061,7 +1062,7 @@ static void routing_overlay_right_click(
   gtk_popover_set_pointing_to(GTK_POPOVER(popover), &rect);
 
   GtkWidget *button = gtk_button_new_with_label(
-    is_linked ? "Unlink Stereo Pair" : "Link as Stereo Pair"
+    is_linked ? _("Unlink Stereo Pair") : _("Link as Stereo Pair")
   );
   gtk_widget_add_css_class(button, "flat");
   g_signal_connect(button, "clicked",
@@ -1780,7 +1781,7 @@ void update_hw_output_label(struct routing_snk *r_snk) {
       gtk_label_set_markup(GTK_LABEL(r_snk->label_widget), markup);
       gtk_widget_set_tooltip_text(
         r_snk->label_widget,
-        "Unavailable at current sample rate"
+        _("Unavailable at current sample rate")
       );
       g_free(markup);
     } else {
@@ -1797,7 +1798,7 @@ void update_hw_output_label(struct routing_snk *r_snk) {
     int available = get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
     set_availability_label(
       r_snk->label_widget, base_name, available,
-      "Mixer unavailable at current sample rate"
+      _("Mixer unavailable at current sample rate")
     );
     g_free(base_name);
     return;
@@ -1817,7 +1818,7 @@ void update_hw_output_label(struct routing_snk *r_snk) {
       int available = max_port < 0 || elem->lr_num <= max_port;
       set_availability_label(
         r_snk->label_widget, base_name, available,
-        "Unavailable with current Digital I/O mode and sample rate"
+        _("Unavailable with current Digital I/O mode and sample rate")
       );
     } else {
       gtk_label_set_text(GTK_LABEL(r_snk->label_widget), base_name);
@@ -1860,7 +1861,7 @@ void update_hw_output_label(struct routing_snk *r_snk) {
     if (in_main) {
       // Active in Main group - green indicator
       label_text = g_strdup_printf(
-        "%s <span color=\"#4a4\"><small>Main</small></span>", base_name
+        "%s <span color=\"#4a4\"><small>%s</small></span>", base_name, _("Main")
       );
       gtk_label_set_markup(GTK_LABEL(r_snk->label_widget), label_text);
     } else if (in_alt) {
@@ -1876,7 +1877,7 @@ void update_hw_output_label(struct routing_snk *r_snk) {
     if (in_alt) {
       // Active in Alt group - red indicator
       label_text = g_strdup_printf(
-        "%s <span color=\"#f66\"><small>Alt</small></span>", base_name
+        "%s <span color=\"#f66\"><small>%s</small></span>", base_name, _("Alt")
       );
       gtk_label_set_markup(GTK_LABEL(r_snk->label_widget), label_text);
     } else if (in_main) {
@@ -1908,7 +1909,7 @@ void update_routing_src_label(struct routing_src *r_src) {
     case PC_MIX:
       available =
         get_sample_rate_category(card->current_sample_rate) != SR_HIGH;
-      tooltip = "Mixer unavailable at current sample rate";
+      tooltip = _("Mixer unavailable at current sample rate");
       break;
     case PC_HW:
       if (is_digital_io_type(r_src->hw_type)) {
@@ -1916,13 +1917,13 @@ void update_routing_src_label(struct routing_src *r_src) {
           ? card->max_spdif_in : card->max_adat_in;
         available = max_port < 0 || r_src->lr_num <= max_port;
         tooltip =
-          "Unavailable with current Digital I/O mode and sample rate";
+          _("Unavailable with current Digital I/O mode and sample rate");
       }
       break;
     case PC_PCM:
       available = card->pcm_playback_channels == 0 ||
                   r_src->port_num < card->pcm_playback_channels;
-      tooltip = "Unavailable at current sample rate";
+      tooltip = _("Unavailable at current sample rate");
       break;
   }
 
@@ -1950,15 +1951,15 @@ static void update_mixer_headings(struct alsa_card *card) {
 
   if (card->routing_mixer_in_heading)
     set_availability_label(
-      card->routing_mixer_in_heading, "Mixer\nInputs", available,
-      "Mixer unavailable at current sample rate"
+      card->routing_mixer_in_heading, _("Mixer\nInputs"), available,
+      _("Mixer unavailable at current sample rate")
     );
 
   if (card->routing_mixer_out_heading) {
-    const char *name = card->has_talkback ? "Mixer Outputs" : "Mixer\nOutputs";
+    const char *name = card->has_talkback ? _("Mixer Outputs") : _("Mixer\nOutputs");
     set_availability_label(
       card->routing_mixer_out_heading, name, available,
-      "Mixer unavailable at current sample rate"
+      _("Mixer unavailable at current sample rate")
     );
   }
 }
@@ -2129,12 +2130,12 @@ static void add_routing_widgets(
 
   // Add talkback label after mixer outputs heading
   if (card->has_talkback) {
-    GtkWidget *l_talkback = gtk_label_new("Talkback");
+    GtkWidget *l_talkback = gtk_label_new(_("Talkback"));
     gtk_widget_set_tooltip_text(
       l_talkback,
-      "Mixer Outputs with Talkback enabled will have the level of "
-      "Mixer Input 25 internally raised and lowered when the "
-      "Talkback control is turned On and Off."
+      _("Mixer Outputs with Talkback enabled will have the level of "
+        "Mixer Input 25 internally raised and lowered when the "
+        "Talkback control is turned On and Off.")
     );
     GtkWidget *container = gtk_widget_get_parent(card->routing_mixer_out_heading);
     gtk_box_append(GTK_BOX(container), l_talkback);

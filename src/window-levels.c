@@ -8,6 +8,7 @@
 #include "gtkdial.h"
 #include "gtkhelper.h"
 #include "glow.h"
+#include "i18n.h"
 #include "iface-mixer.h"
 #include "stringhelper.h"
 #include "widget-gain.h"
@@ -377,7 +378,7 @@ GtkWidget *create_levels_controls(struct alsa_card *card) {
     if (card->routing_out_count[i] == 0)
       continue;
 
-    GtkWidget *l = gtk_label_new(port_category_names[i]);
+    GtkWidget *l = gtk_label_new(_(port_category_names[i]));
     gtk_widget_set_halign(l, GTK_ALIGN_END);
 
     // add the label

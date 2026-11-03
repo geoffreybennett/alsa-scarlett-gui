@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "gtkhelper.h"
+#include "i18n.h"
 #include "widget-filter-type.h"
 
 #define FILTER_ICON_WIDTH 24
@@ -209,7 +210,7 @@ static void list_item_bind(
     GTK_DRAWING_AREA(icon), list_icon_draw, GINT_TO_POINTER(type), NULL
   );
 
-  gtk_label_set_text(GTK_LABEL(label), biquad_type_name(type));
+  gtk_label_set_text(GTK_LABEL(label), _(biquad_type_name(type)));
 }
 
 static void list_activated(
@@ -220,7 +221,7 @@ static void list_activated(
   if (index < BIQUAD_TYPE_COUNT) {
     data->current_type = (BiquadFilterType)index;
     gtk_single_selection_set_selected(data->selection, index);
-    gtk_label_set_text(GTK_LABEL(data->btn_label), biquad_type_name(index));
+    gtk_label_set_text(GTK_LABEL(data->btn_label), _(biquad_type_name(index)));
     gtk_widget_queue_draw(data->btn_icon);
 
     if (data->changed_callback)
@@ -272,7 +273,7 @@ GtkWidget *make_filter_type_dropdown(BiquadFilterType initial_type) {
   );
   gtk_box_append(GTK_BOX(btn_box), data->btn_icon);
 
-  data->btn_label = gtk_label_new(biquad_type_name(initial_type));
+  data->btn_label = gtk_label_new(_(biquad_type_name(initial_type)));
   gtk_box_append(GTK_BOX(btn_box), data->btn_label);
 
   // Create popover
@@ -283,7 +284,7 @@ GtkWidget *make_filter_type_dropdown(BiquadFilterType initial_type) {
   // Build list model
   GtkStringList *model = gtk_string_list_new(NULL);
   for (int i = 0; i < BIQUAD_TYPE_COUNT; i++)
-    gtk_string_list_append(model, biquad_type_name(i));
+    gtk_string_list_append(model, _(biquad_type_name(i)));
 
   // Factory for list items
   GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
@@ -334,7 +335,7 @@ void filter_type_dropdown_set_selected(GtkWidget *widget, BiquadFilterType type)
 
   data->current_type = type;
   gtk_single_selection_set_selected(data->selection, type);
-  gtk_label_set_text(GTK_LABEL(data->btn_label), biquad_type_name(type));
+  gtk_label_set_text(GTK_LABEL(data->btn_label), _(biquad_type_name(type)));
   gtk_widget_queue_draw(data->btn_icon);
 }
 

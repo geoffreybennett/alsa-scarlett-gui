@@ -3,6 +3,7 @@
 
 #include "glow.h"
 #include "gtkhelper.h"
+#include "i18n.h"
 #include "iface-mixer.h"
 #include "presets.h"
 #include "window-preferences.h"
@@ -62,13 +63,13 @@ static void add_clock_source_control(
   GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_tooltip_text(
     b,
-    "Clock Source selects where the interface receives its digital "
-    "clock from. If you aren’t using S/PDIF or ADAT inputs, set this "
-    "to Internal."
+    _("Clock Source selects where the interface receives its digital "
+      "clock from. If you aren’t using S/PDIF or ADAT inputs, set this "
+      "to Internal.")
   );
   gtk_box_append(GTK_BOX(global_controls), b);
 
-  GtkWidget *l = gtk_label_new("Clock Source");
+  GtkWidget *l = gtk_label_new(_("Clock Source"));
   GtkWidget *w = make_drop_down_alsa_elem(clock_source, NULL);
   gtk_widget_add_css_class(w, "clock-source");
   gtk_widget_add_css_class(w, "fixed");
@@ -95,24 +96,24 @@ static void add_sync_status_control(
   if (get_elem_by_prefix(elems, "Clock Source")) {
     gtk_widget_set_tooltip_text(
       b,
-      "Sync Status indicates if the interface is locked to a valid "
-      "digital clock. If you aren’t using S/PDIF or ADAT inputs and "
-      "the Sync Status is Unlocked, change the Clock Source to "
-      "Internal."
+      _("Sync Status indicates if the interface is locked to a valid "
+        "digital clock. If you aren’t using S/PDIF or ADAT inputs and "
+        "the Sync Status is Unlocked, change the Clock Source to "
+        "Internal.")
     );
   } else {
     gtk_widget_set_tooltip_text(
       b,
-      "Sync Status indicates if the interface is locked to a valid "
-      "digital clock. Since the Clock Source is fixed to internal on "
-      "this interface, this should stay locked."
+      _("Sync Status indicates if the interface is locked to a valid "
+        "digital clock. Since the Clock Source is fixed to internal on "
+        "this interface, this should stay locked.")
     );
   }
   gtk_box_append(GTK_BOX(global_controls), b);
 
-  GtkWidget *l = gtk_label_new("Sync Status");
+  GtkWidget *l = gtk_label_new(_("Sync Status"));
   gtk_box_append(GTK_BOX(b), l);
-  GtkWidget *w = make_boolean_alsa_elem(sync_status, "Unlocked", "Locked");
+  GtkWidget *w = make_boolean_alsa_elem(sync_status, _("Unlocked"), _("Locked"));
   gtk_widget_add_css_class(w, "sync-status");
   gtk_widget_add_css_class(w, "fixed");
   gtk_box_append(GTK_BOX(b), w);
@@ -134,13 +135,13 @@ static void add_power_status_control(
   GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_tooltip_text(
     b,
-    "Power indicates if the interface is being powered by the USB "
-    "bus, an external power supply, or if there is insufficient power "
-    "available and the interface has shut down."
+    _("Power indicates if the interface is being powered by the USB "
+      "bus, an external power supply, or if there is insufficient power "
+      "available and the interface has shut down.")
   );
   gtk_box_append(GTK_BOX(global_controls), b);
 
-  GtkWidget *l = gtk_label_new("Power");
+  GtkWidget *l = gtk_label_new(_("Power"));
   gtk_box_append(GTK_BOX(b), l);
   GtkWidget *w = make_drop_down_alsa_elem(power_status, NULL);
   gtk_widget_add_css_class(w, "power-status");
@@ -155,17 +156,17 @@ static void add_sample_rate_control(
   GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_tooltip_text(
     b,
-    "The Sample Rate cannot be changed here because it is set by the "
-    "application which is using the interface, usually a sound "
-    "server like PulseAudio, JACK, or PipeWire. If this shows N/A, "
-    "no application is currently using the interface.\n\n"
-    "Note that not all features are available on all interfaces at "
-    "sample rates above 48kHz. Please refer to the user guide for "
-    "your interface for more information."
+    _("The Sample Rate cannot be changed here because it is set by the "
+      "application which is using the interface, usually a sound "
+      "server like PulseAudio, JACK, or PipeWire. If this shows N/A, "
+      "no application is currently using the interface.\n\n"
+      "Note that not all features are available on all interfaces at "
+      "sample rates above 48kHz. Please refer to the user guide for "
+      "your interface for more information.")
   );
   gtk_box_append(GTK_BOX(global_controls), b);
 
-  GtkWidget *l = gtk_label_new("Sample Rate");
+  GtkWidget *l = gtk_label_new(_("Sample Rate"));
   gtk_box_append(GTK_BOX(b), l);
   GtkWidget *w = make_sample_rate_widget(card);
   gtk_widget_add_css_class(w, "sample-rate");
@@ -187,14 +188,14 @@ static void add_speaker_switching_controls_enum(
 
   GtkWidget *w = make_dual_boolean_alsa_elems(
     speaker_switching,
-    "Speaker Switching",
-    "Off", "On", "Main", "Alt"
+    _("Speaker Switching"),
+    _("Off"), _("On"), _("Main"), _("Alt")
   );
 
   gtk_widget_set_tooltip_text(
     w,
-    "Speaker Switching lets you swap between two pairs of "
-    "monitoring speakers very easily."
+    _("Speaker Switching lets you swap between two pairs of "
+      "monitoring speakers very easily.")
   );
 
   gtk_box_append(GTK_BOX(global_controls), w);
@@ -219,13 +220,13 @@ static void add_speaker_switching_controls_switches(
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_tooltip_text(
     box,
-    "Speaker Switching lets you swap between two pairs of "
-    "monitoring speakers very easily."
+    _("Speaker Switching lets you swap between two pairs of "
+      "monitoring speakers very easily.")
   );
 
-  GtkWidget *l = gtk_label_new("Speaker Switching");
-  GtkWidget *w1 = make_boolean_alsa_elem(enable, "Off", "On");
-  GtkWidget *w2 = make_boolean_alsa_elem(alt, "Main", "Alt");
+  GtkWidget *l = gtk_label_new(_("Speaker Switching"));
+  GtkWidget *w1 = make_boolean_alsa_elem(enable, _("Off"), _("On"));
+  GtkWidget *w2 = make_boolean_alsa_elem(alt, _("Main"), _("Alt"));
 
   gtk_widget_add_css_class(w1, "speaker-switching-enable");
   gtk_widget_add_css_class(w2, "speaker-switching-alt");
@@ -283,12 +284,12 @@ static void add_speaker_switching_controls_gen4(
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_tooltip_text(
     box,
-    "Monitor Group lets you swap between Main and Alt monitor groups. "
-    "Configure which outputs belong to each group in the Configuration window."
+    _("Monitor Group lets you swap between Main and Alt monitor groups. "
+      "Configure which outputs belong to each group in the Configuration window.")
   );
 
-  GtkWidget *l = gtk_label_new("Monitor Group");
-  GtkWidget *w = make_boolean_alsa_elem(alt, "Main", "Alt");
+  GtkWidget *l = gtk_label_new(_("Monitor Group"));
+  GtkWidget *w = make_boolean_alsa_elem(alt, _("Main"), _("Alt"));
 
   gtk_widget_add_css_class(w, "speaker-switching-alt");
 
@@ -548,15 +549,15 @@ static void add_talkback_controls_enum(
 
   GtkWidget *w = make_dual_boolean_alsa_elems(
     talkback,
-    "Talkback",
-    "Disabled", "Enabled", "Off", "On"
+    _("Talkback"),
+    _("Disabled"), _("Enabled"), _("Off"), _("On")
   );
 
   gtk_widget_set_tooltip_text(
     w,
-    "Talkback lets you add another channel (usually the talkback "
-    "mic) to a mix with a button push, usually to talk to "
-    "musicians, and without using an additional mic channel."
+    _("Talkback lets you add another channel (usually the talkback "
+      "mic) to a mix with a button push, usually to talk to "
+      "musicians, and without using an additional mic channel.")
   );
 
   gtk_box_append(GTK_BOX(global_controls), w);
@@ -581,14 +582,14 @@ static void add_talkback_controls_switches(
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_tooltip_text(
     box,
-    "Talkback lets you add another channel (usually the talkback "
-    "mic) to a mix with a button push, usually to talk to "
-    "musicians, and without using an additional mic channel."
+    _("Talkback lets you add another channel (usually the talkback "
+      "mic) to a mix with a button push, usually to talk to "
+      "musicians, and without using an additional mic channel.")
   );
 
-  GtkWidget *l = gtk_label_new("Talkback");
-  GtkWidget *w1 = make_boolean_alsa_elem(enable, "Disabled", "Enabled");
-  GtkWidget *w2 = make_boolean_alsa_elem(talk, "Talk", "Talk");
+  GtkWidget *l = gtk_label_new(_("Talkback"));
+  GtkWidget *w1 = make_boolean_alsa_elem(enable, _("Disabled"), _("Enabled"));
+  GtkWidget *w2 = make_boolean_alsa_elem(talk, _("Talk"), _("Talk"));
 
   gtk_widget_add_css_class(w1, "talkback-enable");
   gtk_widget_add_css_class(w2, "talk");
@@ -603,7 +604,7 @@ static GtkWidget *create_global_box(GtkWidget *grid, int *x, int orient) {
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_widget_set_vexpand(box, TRUE);
 
-  GtkWidget *label = gtk_label_new("Global");
+  GtkWidget *label = gtk_label_new(_("Global"));
   gtk_widget_add_css_class(label, "controls-label");
   gtk_widget_set_halign(label, GTK_ALIGN_START);
   GtkWidget *controls = gtk_box_new(orient, 15);
@@ -631,13 +632,13 @@ static void create_input_select_control(
   if (!elem)
     return;
 
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Mix", "Mix");
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Mix"), _("Mix"));
   gtk_widget_add_css_class(w, "pcm-input-mix");
   gtk_widget_set_tooltip_text(
     w,
-    "Enabling Input Mix selects Mix E/F as the input source for "
-    "the PCM 1/2 Inputs rather than the DSP 1/2 Inputs. This is "
-    "useful to get a mono mix of both input channels."
+    _("Enabling Input Mix selects Mix E/F as the input source for "
+      "the PCM 1/2 Inputs rather than the DSP 1/2 Inputs. This is "
+      "useful to get a mono mix of both input channels.")
   );
   gtk_grid_attach(GTK_GRID(input_grid), w, 0, *current_row, 2, 1);
 
@@ -650,7 +651,7 @@ static void create_input_link_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Link", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Link"), NULL);
   gtk_widget_add_css_class(w, "input-link");
   gtk_widget_set_hexpand(w, TRUE);
 
@@ -705,14 +706,14 @@ static void create_input_autogain_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Autogain", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Autogain"), NULL);
   gtk_widget_add_css_class(w, "autogain");
   gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(
     w,
-    "Autogain will listen to the input signal for 10 seconds and "
-    "automatically set the gain of the input channel to get the "
-    "best signal level."
+    _("Autogain will listen to the input signal for 10 seconds and "
+      "automatically set the gain of the input channel to get the "
+      "best signal level.")
   );
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -735,13 +736,13 @@ static void create_input_safe_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Safe", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Safe"), NULL);
   gtk_widget_add_css_class(w, "safe");
   gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(
     w,
-    "Enabling Safe Mode prevents the input from clipping by "
-    "automatically reducing the gain if the signal is too hot."
+    _("Enabling Safe Mode prevents the input from clipping by "
+      "automatically reducing the gain if the signal is too hot.")
   );
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -753,10 +754,10 @@ static void create_input_level_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Inst", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Inst"), NULL);
   gtk_widget_add_css_class(w, "inst");
   gtk_widget_set_hexpand(w, TRUE);
-  gtk_widget_set_tooltip_text(w, level_descr);
+  gtk_widget_set_tooltip_text(w, _(level_descr));
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
@@ -767,10 +768,10 @@ static void create_input_air_switch_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Air", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Air"), NULL);
   gtk_widget_add_css_class(w, "air");
   gtk_widget_set_hexpand(w, TRUE);
-  gtk_widget_set_tooltip_text(w, air_descr);
+  gtk_widget_set_tooltip_text(w, _(air_descr));
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
@@ -781,10 +782,10 @@ static void create_input_air_enum_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_drop_down_alsa_elem(elem, "Air");
+  GtkWidget *w = make_drop_down_alsa_elem(elem, _("Air"));
   gtk_widget_add_css_class(w, "air");
   gtk_widget_set_hexpand(w, TRUE);
-  gtk_widget_set_tooltip_text(w, air_descr);
+  gtk_widget_set_tooltip_text(w, _(air_descr));
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
 }
@@ -795,7 +796,7 @@ static void create_input_dsp_switch_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Enhance", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Enhance"), NULL);
   gtk_widget_add_css_class(w, "dsp");
   gtk_widget_set_hexpand(w, TRUE);
 //  gtk_widget_set_tooltip_text(w, dsp_descr);
@@ -823,7 +824,7 @@ static void create_input_mute_switch_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Mute", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Mute"), NULL);
   gtk_widget_add_css_class(w, "input-mute");
   gtk_widget_set_hexpand(w, TRUE);
 //  gtk_widget_set_tooltip_text(w, dsp_descr);
@@ -837,13 +838,13 @@ static void create_input_pad_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Pad", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Pad"), NULL);
   gtk_widget_add_css_class(w, "pad");
   gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(
     w,
-    "Enabling Pad engages a 10dB attenuator in the channel, giving "
-    "you more headroom for very hot signals."
+    _("Enabling Pad engages a 10dB attenuator in the channel, giving "
+      "you more headroom for very hot signals.")
   );
 
   gtk_grid_attach(GTK_GRID(grid), w, column_num, current_row, 1, 1);
@@ -855,13 +856,13 @@ static void create_input_gain_switch_control(
   int               current_row,
   int               column_num
 ) {
-  GtkWidget *w = make_boolean_alsa_elem(elem, "Gain", NULL);
+  GtkWidget *w = make_boolean_alsa_elem(elem, _("Gain"), NULL);
   gtk_widget_add_css_class(w, "gain-switch");
   gtk_widget_set_hexpand(w, TRUE);
   gtk_widget_set_tooltip_text(
     w,
-    "Enabling Gain switches from Low gain input (0dBFS = +16dBu)\n"
-    "to High gain input (0dBFS = −10dBV, approx −6dBu)."
+    _("Enabling Gain switches from Low gain input (0dBFS = +16dBu)\n"
+      "to High gain input (0dBFS = −10dBV, approx −6dBu).")
   );
 
   // ignore current_row, always put it in the first row
@@ -877,7 +878,7 @@ static void create_input_phantom_control(
   GtkWidget *w = make_boolean_alsa_elem(elem, "48V", NULL);
   gtk_widget_add_css_class(w, "phantom");
   gtk_widget_set_hexpand(w, TRUE);
-  gtk_widget_set_tooltip_text(w, phantom_descr);
+  gtk_widget_set_tooltip_text(w, _(phantom_descr));
 
   int from, to;
   get_two_num_from_string(elem->name, &from, &to);
@@ -968,7 +969,7 @@ static void create_input_controls(
 
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 
-  GtkWidget *label_ic = gtk_label_new("Analogue Inputs");
+  GtkWidget *label_ic = gtk_label_new(_("Analogue Inputs"));
   gtk_widget_add_css_class(label_ic, "controls-label");
   gtk_widget_set_halign(label_ic, GTK_ALIGN_START);
   gtk_box_append(GTK_BOX(box), label_ic);
@@ -1099,7 +1100,7 @@ static void create_output_controls(
 
   GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 
-  GtkWidget *label_oc = gtk_label_new("Analogue Outputs");
+  GtkWidget *label_oc = gtk_label_new(_("Analogue Outputs"));
   gtk_widget_add_css_class(label_oc, "controls-label");
   gtk_widget_set_halign(label_oc, GTK_ALIGN_START);
   gtk_box_append(GTK_BOX(box), label_oc);
@@ -1129,12 +1130,12 @@ static void create_output_controls(
     elem = get_elem_by_name(elems, "Direct Monitor Playback Switch");
 
     if (elem) {
-      GtkWidget *w = make_boolean_alsa_elem(elem, "Direct Monitor", NULL);
+      GtkWidget *w = make_boolean_alsa_elem(elem, _("Direct Monitor"), NULL);
       gtk_widget_add_css_class(w, "direct-monitor");
       gtk_widget_set_tooltip_text(
         w,
-        "Direct Monitor sends the analogue input signals to the "
-        "analogue outputs for zero-latency monitoring."
+        _("Direct Monitor sends the analogue input signals to the "
+          "analogue outputs for zero-latency monitoring.")
       );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 2, 1);
     }
@@ -1144,12 +1145,12 @@ static void create_output_controls(
     elem = get_elem_by_name(elems, "Direct Monitor Playback Enum");
 
     if (elem) {
-      GtkWidget *w = make_drop_down_alsa_elem(elem, "Direct Monitor");
+      GtkWidget *w = make_drop_down_alsa_elem(elem, _("Direct Monitor"));
       gtk_widget_add_css_class(w, "direct-monitor");
       gtk_widget_set_tooltip_text(
         w,
-        "Direct Monitor sends the analogue input signals to the "
-        "analogue outputs for zero-latency monitoring."
+        _("Direct Monitor sends the analogue input signals to the "
+          "analogue outputs for zero-latency monitoring.")
       );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 1, 2, 1);
     }
@@ -1183,10 +1184,10 @@ static void create_output_controls(
 
     // Gen 1 master output control
     if (strcmp(elem->name, "Master Playback Volume") == 0) {
-      GtkWidget *l = gtk_label_new("Master");
+      GtkWidget *l = gtk_label_new(_("Master"));
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
       w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_LOG, 0, FALSE);
-      gtk_widget_set_tooltip_text(w, "Master Volume Control");
+      gtk_widget_set_tooltip_text(w, _("Master Volume Control"));
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 2, 1, 1);
 
     } else if (strncmp(elem->name, "Line", 4) == 0 ||
@@ -1216,10 +1217,10 @@ static void create_output_controls(
         if (has_sw_hw_ctrls) {
           gtk_widget_set_tooltip_text(
             w,
-            "Mute (only available when under software control)"
+            _("Mute (only available when under software control)")
           );
         } else {
-          gtk_widget_set_tooltip_text(w, "Mute");
+          gtk_widget_set_tooltip_text(w, _("Mute"));
         }
         gtk_grid_attach(
           GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 3, 1, 1
@@ -1229,8 +1230,8 @@ static void create_output_controls(
         gtk_widget_add_css_class(w, "sw-hw");
         gtk_widget_set_tooltip_text(
           w,
-          "Set software-controlled (SW) or hardware-controlled (HW) "
-          "volume for this analogue output."
+          _("Set software-controlled (SW) or hardware-controlled (HW) "
+            "volume for this analogue output.")
         );
         gtk_grid_attach(
           GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 4, 1, 1
@@ -1241,7 +1242,7 @@ static void create_output_controls(
     } else if (strcmp(elem->name, "Master HW Playback Volume") == 0) {
       int gen4 = !!strstr(card->name, "4th Gen");
 
-      GtkWidget *l = gtk_label_new(gen4 ? "Line 1–2" : "HW");
+      GtkWidget *l = gtk_label_new(gen4 ? _("Line 1–2") : _("HW"));
       gtk_grid_attach(GTK_GRID(output_grid), l, 0, 0, 1, 1);
       if (gen4) {
         w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0, FALSE);
@@ -1251,19 +1252,19 @@ static void create_output_controls(
       gtk_widget_set_tooltip_text(
         w,
         gen4
-          ? "This control shows the setting of the master volume "
-            "knob, which controls the volume of the analogue line "
-            "outputs 1 and 2."
-          : "This control shows the setting of the physical "
-            "(hardware) volume knob, which controls the volume of "
-            "the analogue outputs which have been set to “HW”."
+          ? _("This control shows the setting of the master volume "
+              "knob, which controls the volume of the analogue line "
+              "outputs 1 and 2.")
+          : _("This control shows the setting of the physical "
+              "(hardware) volume knob, which controls the volume of "
+              "the analogue outputs which have been set to “HW”.")
       );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 2, 1, 1);
     } else if (strcmp(elem->name, "Headphone Playback Volume") == 0) {
-      GtkWidget *l = gtk_label_new("Headphones");
+      GtkWidget *l = gtk_label_new(_("Headphones"));
       gtk_widget_set_tooltip_text(
         l,
-        "This control shows the setting of the headphone volume knob."
+        _("This control shows the setting of the headphone volume knob.")
       );
       gtk_grid_attach(GTK_GRID(output_grid), l, 1, 0, 1, 1);
       w = make_gain_alsa_elem(elem, 1, WIDGET_GAIN_TAPER_GEN4_VOLUME, 0, FALSE);
@@ -1273,7 +1274,7 @@ static void create_output_controls(
         elem, "*audio-volume-high", "*audio-volume-muted"
       );
       gtk_widget_add_css_class(w, "mute");
-      gtk_widget_set_tooltip_text(w, "Mute HW controlled outputs");
+      gtk_widget_set_tooltip_text(w, _("Mute HW controlled outputs"));
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 3, 1, 1);
     } else if (strcmp(elem->name, "Dim Playback Switch") == 0) {
       w = make_boolean_alsa_elem(
@@ -1281,7 +1282,7 @@ static void create_output_controls(
       );
       gtk_widget_add_css_class(w, "dim");
       gtk_widget_set_tooltip_text(
-        w, "Dim (lower volume) of HW controlled outputs"
+        w, _("Dim (lower volume) of HW controlled outputs")
       );
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 4, 1, 1);
     } else if (strcmp(elem->name, "Speaker Mute Playback Switch") == 0) {
@@ -1289,7 +1290,7 @@ static void create_output_controls(
         elem, "*audio-volume-high", "*audio-volume-muted"
       );
       gtk_widget_add_css_class(w, "mute");
-      gtk_widget_set_tooltip_text(w, "Mute speaker output");
+      gtk_widget_set_tooltip_text(w, _("Mute speaker output"));
       gtk_grid_attach(GTK_GRID(output_grid), w, 0, 5, 1, 1);
     } else if (strstr(elem->name, "Headphones") &&
                strstr(elem->name, "Mute Playback Switch")) {
@@ -1303,10 +1304,10 @@ static void create_output_controls(
 
       if (headphones_num > 0) {
         char tooltip[50];
-        snprintf(tooltip, 50, "Mute headphones %d output", headphones_num);
+        snprintf(tooltip, 50, _("Mute headphones %d output"), headphones_num);
         gtk_widget_set_tooltip_text(w, tooltip);
       } else {
-        gtk_widget_set_tooltip_text(w, "Mute headphones output");
+        gtk_widget_set_tooltip_text(w, _("Mute headphones output"));
       }
 
       gtk_grid_attach(GTK_GRID(output_grid), w, column, 5, 1, 1);
@@ -1530,7 +1531,7 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   routing_levels_init(card);
 
   card->window_routing = create_subwindow(
-    card, "Routing", G_CALLBACK(window_routing_close_request)
+    card, _("Routing"), G_CALLBACK(window_routing_close_request)
   );
 
   create_scrollable_window(card->window_routing, routing_top);
@@ -1538,7 +1539,7 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   GtkWidget *mixer_top = create_mixer_controls(card);
 
   card->window_mixer = create_subwindow(
-    card, "Mixer", G_CALLBACK(window_mixer_close_request)
+    card, _("Mixer"), G_CALLBACK(window_mixer_close_request)
   );
 
   create_scrollable_window(card->window_mixer, mixer_top);
@@ -1546,20 +1547,20 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   GtkWidget *levels_top = create_levels_controls(card);
 
   card->window_levels = create_subwindow(
-    card, "Levels", G_CALLBACK(window_levels_close_request)
+    card, _("Levels"), G_CALLBACK(window_levels_close_request)
   );
 
   gtk_window_set_child(GTK_WINDOW(card->window_levels), levels_top);
 
   card->window_startup = create_subwindow(
-    card, "Startup Configuration", G_CALLBACK(window_startup_close_request)
+    card, _("Startup Configuration"), G_CALLBACK(window_startup_close_request)
   );
 
   GtkWidget *startup = create_startup_controls(card);
   gtk_window_set_child(GTK_WINDOW(card->window_startup), startup);
 
   card->window_configuration = create_subwindow(
-    card, "Configuration", G_CALLBACK(window_configuration_close_request)
+    card, _("Configuration"), G_CALLBACK(window_configuration_close_request)
   );
   gtk_window_set_resizable(GTK_WINDOW(card->window_configuration), TRUE);
 
@@ -1569,7 +1570,7 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   // create DSP window if DSP controls are available
   if (get_elem_by_name(card->elems, "Line In 1 DSP Capture Switch")) {
     card->window_dsp = create_subwindow(
-      card, "DSP", G_CALLBACK(window_dsp_close_request)
+      card, _("DSP"), G_CALLBACK(window_dsp_close_request)
     );
 
     GtkWidget *dsp = create_dsp_controls(card);
@@ -1577,7 +1578,7 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   }
 
   card->window_preferences = create_subwindow(
-    card, "Preferences",
+    card, _("Preferences"),
     G_CALLBACK(window_preferences_close_request)
   );
 

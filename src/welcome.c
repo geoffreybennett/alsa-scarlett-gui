@@ -4,8 +4,9 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
-#include "welcome.h"
 #include "gtkhelper.h"
+#include "i18n.h"
+#include "welcome.h"
 
 #define BETA_VERSION "1.0beta"
 #define WELCOME_FILE "welcome.conf"
@@ -130,7 +131,7 @@ void show_welcome(GtkApplication *app) {
     return;
 
   GtkWidget *window = gtk_window_new();
-  char *title = g_strdup_printf("Welcome to ALSA Scarlett GUI %s", VERSION);
+  char *title = g_strdup_printf(_("Welcome to ALSA Scarlett GUI %s"), VERSION);
   gtk_window_set_title(GTK_WINDOW(window), title);
   g_free(title);
   gtk_window_set_application(GTK_WINDOW(window), app);
@@ -147,19 +148,21 @@ void show_welcome(GtkApplication *app) {
   GtkWidget *heading = gtk_label_new(NULL);
   char *heading_markup = g_strdup_printf(
     "<span size='large' weight='bold'>"
-      "Welcome to ALSA Scarlett GUI %s!"
+      "%s"
     "</span>",
-    VERSION
+    _("Welcome to ALSA Scarlett GUI %s!")
   );
-  gtk_label_set_markup(GTK_LABEL(heading), heading_markup);
+  char *formatted_heading = g_strdup_printf(heading_markup, VERSION);
+  gtk_label_set_markup(GTK_LABEL(heading), formatted_heading);
+  g_free(formatted_heading);
   g_free(heading_markup);
   gtk_box_append(GTK_BOX(content), heading);
 
   GtkWidget *message = gtk_label_new(
-    "Thank you for testing this beta release.\n\n"
-    "Please check the release notes for what's new, join the\n"
-    "discussion, and if you encounter any issues, search for\n"
-    "existing reports or raise a new issue on GitHub."
+    _("Thank you for testing this beta release.\n\n"
+      "Please check the release notes for what's new, join the\n"
+      "discussion, and if you encounter any issues, search for\n"
+      "existing reports or raise a new issue on GitHub.")
   );
   gtk_label_set_justify(GTK_LABEL(message), GTK_JUSTIFY_CENTER);
   gtk_box_append(GTK_BOX(content), message);
@@ -171,19 +174,19 @@ void show_welcome(GtkApplication *app) {
   GtkWidget *release_notes = gtk_link_button_new_with_label(
     "https://github.com/geoffreybennett/alsa-scarlett-gui/blob/"
       BETA_VERSION "/RELEASE-NOTES.md",
-    "Release Notes"
+    _("Release Notes")
   );
   gtk_box_append(GTK_BOX(links_box), release_notes);
 
   GtkWidget *discussion = gtk_link_button_new_with_label(
     "https://github.com/geoffreybennett/alsa-scarlett-gui/discussions/221",
-    "Join the Discussion"
+    _("Join the Discussion")
   );
   gtk_box_append(GTK_BOX(links_box), discussion);
 
   GtkWidget *issues = gtk_link_button_new_with_label(
     "https://github.com/geoffreybennett/alsa-scarlett-gui/issues",
-    "Report or Search for Issues"
+    _("Report or Search for Issues")
   );
   gtk_box_append(GTK_BOX(links_box), issues);
 
@@ -191,13 +194,13 @@ void show_welcome(GtkApplication *app) {
   gtk_widget_set_halign(button_box, GTK_ALIGN_CENTER);
   gtk_box_append(GTK_BOX(content), button_box);
 
-  GtkWidget *remind_button = gtk_button_new_with_label("Remind Me Later");
+  GtkWidget *remind_button = gtk_button_new_with_label(_("Remind Me Later"));
   g_signal_connect(
     remind_button, "clicked", G_CALLBACK(on_remind_later), window
   );
   gtk_box_append(GTK_BOX(button_box), remind_button);
 
-  GtkWidget *ack_button = gtk_button_new_with_label("Got it, thanks");
+  GtkWidget *ack_button = gtk_button_new_with_label(_("Got it, thanks"));
   g_signal_connect(
     ack_button, "clicked", G_CALLBACK(on_acknowledge), window
   );

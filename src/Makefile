@@ -36,6 +36,8 @@ CFLAGS ?= -ggdb -fno-omit-frame-pointer -O2
 CFLAGS += -Wall -Werror -fPIE
 CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 CFLAGS += -DVERSION=\"$(VERSION)\"
+CFLAGS += -DGETTEXT_PACKAGE=\"$(TARGET)\"
+CFLAGS += -DLOCALEDIR=\"$(PREFIX)/share/locale\"
 CFLAGS += -Wno-error=deprecated-declarations
 
 PKG_CONFIG=pkg-config
@@ -74,10 +76,12 @@ ICON_FILE := $(DOMAIN_PREFIX).$(TARGET).png
 GLIB_COMPILE_RESOURCES := $(shell $(PKG_CONFIG) --variable=glib_compile_resources gio-2.0)
 
 all: $(TARGET) $(DESKTOP_FILE)
+	$(MAKE) -C ../po all
 
 clean: depclean
 	rm -f $(TARGET) $(DESKTOP_FILE) $(OBJS) $(XML_OBJ)
 	$(MAKE) -C tests clean
+	$(MAKE) -C ../po clean
 
 depclean:
 	rm -rf $(DEPDIR)
@@ -116,6 +120,11 @@ install: all
 	$(PRINTF) "$(COLOR_BLUE)INSTALL$(COLOR_RESET) %s\n" $(DESKTOPDIR)/$(DESKTOP_FILE)
 	$(Q)install -d $(DESKTOPDIR)
 	$(Q)install -m 644 $(DESKTOP_FILE) $(DESKTOPDIR)
+	@for po in $$(cd ../po && ls *.po 2>/dev/null); do \
+	  lang=$${po%.po}; \
+	  install -d $(DESTDIR)$(PREFIX)/share/locale/$$lang/LC_MESSAGES; \
+	  install -m 644 ../po/$$lang.mo $(DESTDIR)$(PREFIX)/share/locale/$$lang/LC_MESSAGES/$(TARGET).mo; \
+	done
 
 uninstall:
 	$(PRINTF) "$(COLOR_BLUE)REMOVE$(COLOR_RESET)  %s\n" $(BINDIR)/$(TARGET)

@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 
 #include "alsa.h"
+#include "i18n.h"
 #include "iface-waiting.h"
 #include "scarlett2-ioctls.h"
 #include "window-iface.h"
@@ -27,11 +28,11 @@ static gboolean on_timeout(gpointer user_data) {
   if (data->message_label && GTK_IS_WIDGET(data->message_label))
     gtk_label_set_markup(
       GTK_LABEL(data->message_label),
-      "Driver not detected. Please ensure "
-      "<span font='monospace'>fcp-server</span> from "
-      "<a href=\"https://github.com/geoffreybennett/fcp-support\">"
-      "https://github.com/geoffreybennett/fcp-support</a> "
-      "has been installed."
+      _("Driver not detected. Please ensure "
+        "<span font='monospace'>fcp-server</span> from "
+        "<a href=\"https://github.com/geoffreybennett/fcp-support\">"
+        "https://github.com/geoffreybennett/fcp-support</a> "
+        "has been installed.")
     );
 
   // Reset the timeout ID since it won't be called again
@@ -66,7 +67,7 @@ GtkWidget *create_iface_waiting_main(struct alsa_card *card) {
   // Heading
   GtkWidget *label = gtk_label_new(NULL);
   gtk_label_set_markup(GTK_LABEL(label),
-            "<span weight='bold' size='large'>Waiting for FCP Server</span>");
+            _("<span weight='bold' size='large'>Waiting for FCP Server</span>"));
   gtk_box_append(GTK_BOX(box), label);
 
   // Add picture (scaled down properly)
@@ -91,7 +92,7 @@ GtkWidget *create_iface_waiting_main(struct alsa_card *card) {
 
   // Description
   label = gtk_label_new(
-    "Waiting for the user-space FCP driver to initialise..."
+    _("Waiting for the user-space FCP driver to initialise...")
   );
   gtk_label_set_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
