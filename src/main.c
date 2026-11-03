@@ -74,6 +74,19 @@ static void open_cb(
 int main(int argc, char **argv) {
   setlocale(LC_ALL, "");
   bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+
+  // Check development locale directory relative to binary
+  char *exe_path = g_file_read_link("/proc/self/exe", NULL);
+  if (exe_path) {
+    char *exe_dir = g_path_get_dirname(exe_path);
+    char *dev_locale = g_build_filename(exe_dir, "../locale", NULL);
+    if (g_file_test(dev_locale, G_FILE_TEST_IS_DIR))
+      bindtextdomain(GETTEXT_PACKAGE, dev_locale);
+    g_free(dev_locale);
+    g_free(exe_dir);
+    g_free(exe_path);
+  }
+
   if (g_file_test("locale", G_FILE_TEST_IS_DIR))
     bindtextdomain(GETTEXT_PACKAGE, "locale");
   else if (g_file_test("../locale", G_FILE_TEST_IS_DIR))

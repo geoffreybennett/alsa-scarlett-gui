@@ -24,6 +24,7 @@ src/optional-controls.c
 src/presets.c
 src/tooltips.c
 src/welcome.c
+src/widget-drop-down.c
 src/widget-filter-type.c
 src/window-configuration.c
 src/window-dsp.c

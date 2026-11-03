@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-29 16:50-0400\n"
+"POT-Creation-Date: 2026-11-03 00:57-0400\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -229,7 +229,7 @@ msgstr ""
 #: src/config-io.c:705 src/config-io.c:712 src/config-io.c:762
 #: src/config-io.c:764 src/config-io.c:787 src/config-io.c:789
 #: src/iface-mixer.c:192 src/iface-mixer.c:228 src/iface-mixer.c:553
-#: src/window-dsp.c:1352
+#: src/widget-drop-down.c:13 src/window-dsp.c:1352
 msgid "Off"
 msgstr ""
 
@@ -515,11 +515,11 @@ msgstr ""
 msgid "Sync Status"
 msgstr ""
 
-#: src/iface-mixer.c:116
+#: src/iface-mixer.c:116 src/widget-drop-down.c:22
 msgid "Unlocked"
 msgstr ""
 
-#: src/iface-mixer.c:116
+#: src/iface-mixer.c:116 src/widget-drop-down.c:21
 msgid "Locked"
 msgstr ""
 
@@ -559,12 +559,12 @@ msgid "On"
 msgstr ""
 
 #: src/iface-mixer.c:192 src/iface-mixer.c:229 src/iface-mixer.c:292
-#: src/window-routing.c:1864
+#: src/widget-drop-down.c:24 src/window-routing.c:1864
 msgid "Main"
 msgstr ""
 
 #: src/iface-mixer.c:192 src/iface-mixer.c:229 src/iface-mixer.c:292
-#: src/window-routing.c:1880
+#: src/widget-drop-down.c:25 src/window-routing.c:1880
 msgid "Alt"
 msgstr ""
 
@@ -1018,6 +1018,38 @@ msgstr ""
 
 #: src/welcome.c:203
 msgid "Got it, thanks"
+msgstr ""
+
+#: src/widget-drop-down.c:14
+msgid "Mono"
+msgstr ""
+
+#: src/widget-drop-down.c:15
+msgid "Stereo"
+msgstr ""
+
+#: src/widget-drop-down.c:16
+msgid "Presence"
+msgstr ""
+
+#: src/widget-drop-down.c:17
+msgid "Presence + Drive"
+msgstr ""
+
+#: src/widget-drop-down.c:18
+msgid "Internal"
+msgstr ""
+
+#: src/widget-drop-down.c:19
+msgid "S/PDIF"
+msgstr ""
+
+#: src/widget-drop-down.c:20
+msgid "ADAT"
+msgstr ""
+
+#: src/widget-drop-down.c:23
+msgid "No Lock"
 msgstr ""
 
 #: src/window-dsp.c:1050
