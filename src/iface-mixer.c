@@ -3,6 +3,7 @@
 
 #include "autogain-hold.h"
 #include "custom-names.h"
+#include "device-port-names.h"
 #include "glow.h"
 #include "gtkhelper.h"
 #include "hardware.h"
@@ -453,6 +454,24 @@ static struct routing_snk *get_analogue_output_snk(
     }
   }
   return NULL;
+}
+
+// Get the analogue output number of the left channel of headphones
+// headphones_num, or 0 if no output has that name
+static int get_headphones_output(struct alsa_card *card, int headphones_num) {
+  char name[32];
+  snprintf(name, sizeof(name), "Headphones %d (L)", headphones_num);
+
+  for (int port = 0; ; port++) {
+    const char *port_name = get_device_port_name(
+      card->pid, PC_HW, HW_TYPE_ANALOGUE, 1, port
+    );
+
+    if (!port_name)
+      return 0;
+    if (strcmp(port_name, name) == 0)
+      return port + 1;
+  }
 }
 
 // Set up monitor group sensitivity tracking for an output volume widget
@@ -2418,13 +2437,13 @@ static void setup_output_strips(
     d->num_l = i;
 
     for (int row = 2; row <= 5; row++) {
-      g_ptr_array_add(
-        d->left, gtk_grid_get_child_at(GTK_GRID(grid), col, row)
-      );
-      g_ptr_array_add(
-        d->right,
-        is_pair ? gtk_grid_get_child_at(GTK_GRID(grid), col + 1, row) : NULL
-      );
+      GtkWidget *l = gtk_grid_get_child_at(GTK_GRID(grid), col, row);
+      GtkWidget *r =
+        is_pair ? gtk_grid_get_child_at(GTK_GRID(grid), col + 1, row) : NULL;
+
+      // a widget spanning both columns belongs to the pair as a whole
+      g_ptr_array_add(d->left, l);
+      g_ptr_array_add(d->right, r != l ? r : NULL);
     }
 
     register_io_strip(d);
@@ -2708,7 +2727,17 @@ static void create_output_controls(
     } else if (strstr(elem->name, "Headphones") &&
                strstr(elem->name, "Mute Playback Switch")) {
       int headphones_num = get_num_from_string(elem->name);
-      int column = headphones_num > 0 ? headphones_num : 1;
+      int lr_num =
+        headphones_num > 0 ? get_headphones_output(card, headphones_num) : 0;
+
+      // With a named headphone output, the button goes with the line
+      // mutes across both of that output's columns, since it mutes
+      // both channels; otherwise below the first outputs
+      int column = lr_num ? lr_num - 1 + line_1_col
+                 : headphones_num > 0 ? headphones_num
+                 : 1;
+      int row = lr_num ? 3 : 5;
+      int width = lr_num ? 2 : 1;
 
       w = make_boolean_alsa_elem(
         elem, "*audio-headphones-symbolic", "*audio-headphones-symbolic"
@@ -2723,7 +2752,7 @@ static void create_output_controls(
         gtk_widget_set_tooltip_text(w, "Mute headphones output");
       }
 
-      gtk_grid_attach(GTK_GRID(output_grid), w, column, 5, 1, 1);
+      gtk_grid_attach(GTK_GRID(output_grid), w, column, row, width, 1);
     }
   }
 
