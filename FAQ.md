@@ -90,6 +90,14 @@ displays the current rate being used by applications. If it shows
 Note that not all features are available at higher sample rates; refer
 to the user manual of your interface for more information.
 
+## Why is PipeWire stuck at 48 kHz?
+
+PipeWire allows only 48 kHz unless configured otherwise. In addition,
+on larger interfaces, it opens the interface with all its channels,
+which holds it at 44.1/48 kHz; higher rates are allowed only with
+fewer channels. See [Higher Sample Rates with
+PipeWire](docs/sample-rates.md) for how to configure both.
+
 ## Why do my settings keep resetting?
 
 The settings in the ALSA Scarlett Control Panel are automatically
