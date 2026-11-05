@@ -6,6 +6,8 @@
 #include "alsa.h"
 #include "config-helpers.h"
 #include "custom-names.h"
+#include "device-port-names.h"
+#include "hardware.h"
 #include "port-enable.h"
 #include "stereo-link.h"
 #include "widget-drop-down-two-level.h"
@@ -73,11 +75,14 @@ static int snk_has_monitor_groups(struct routing_snk *snk) {
          snk->monitor_groups[0].enable;
 }
 
-// Callback when enable checkbox is toggled
+// Callback when enable checkbox is toggled; user_data is the enable
+// elements it sets, two for a tied pair and otherwise one then NULL
 static void enable_checkbox_toggled(GtkCheckButton *button, gpointer user_data) {
-  struct alsa_elem *elem = user_data;
+  struct alsa_elem **elems = user_data;
   gboolean active = gtk_check_button_get_active(button);
-  alsa_set_elem_value(elem, active ? 1 : 0);
+
+  for (int i = 0; i < 2 && elems[i]; i++)
+    alsa_set_elem_value(elems[i], active ? 1 : 0);
 }
 
 // Callback when enable element changes
@@ -119,21 +124,47 @@ static void free_group_output_label_data(void *data) {
   g_free(data);
 }
 
-// Create one trim fader, tooltipped with the output it belongs to
+// Whether the device applies one trim to both channels of this sink's
+// pair: the ISA C8X does for its headphone outputs
+static int snk_trims_tied(struct routing_snk *snk) {
+  struct alsa_card *card = snk->elem->card;
+
+  if (card->pid != PID_ISA_C8X)
+    return 0;
+
+  const char *name = get_device_port_name(
+    card->pid, PC_HW, HW_TYPE_ANALOGUE, 1, snk->elem->lr_num - 1
+  );
+
+  return name && strncmp(name, "Headphones ", 11) == 0;
+}
+
+static int snk_has_row(struct routing_snk *snk) {
+  return should_display_snk(snk) && is_routing_snk_enabled(snk);
+}
+
+// Create one trim fader over the trims of one output, or of both
+// channels of a tied pair (elem_count 2), tooltipped with the output
+// it belongs to
 static GtkWidget *create_trim_fader(
   struct alsa_card   *card,
   struct routing_snk *snk,
-  struct alsa_elem   *elem,
+  struct alsa_elem  **elems,
+  int                 elem_count,
   int                 ganged
 ) {
-  GtkWidget *fader = make_gain_alsa_elem(
-    elem, 0, WIDGET_GAIN_TAPER_LINEAR, 1, FALSE
-  );
+  GtkWidget *fader = elem_count == 1
+    ? make_gain_alsa_elem(elems[0], 0, WIDGET_GAIN_TAPER_LINEAR, 1, FALSE)
+    : make_stereo_gain_alsa_elem(
+        elems, elem_count, 0, WIDGET_GAIN_TAPER_LINEAR, 1, FALSE
+      );
   gtk_widget_set_size_request(fader, 40, 80);
   gtk_widget_set_hexpand(fader, FALSE);
   gtk_widget_set_valign(fader, GTK_ALIGN_CENTER);
 
-  char *name = get_snk_display_name_formatted(snk);
+  char *name = elem_count == 1
+    ? get_snk_display_name_formatted(snk)
+    : get_snk_pair_display_name(snk);
   char *tooltip = ganged
     ? g_strdup_printf(
         "%s trim — drag to move the pair together, "
@@ -149,6 +180,27 @@ static GtkWidget *create_trim_fader(
   );
 
   return fader;
+}
+
+// Make source and trim (either may be NULL) sensitive only while the
+// group enable is on
+static void track_group_enable(
+  struct alsa_card *card,
+  struct alsa_elem *enable,
+  GtkWidget        *source,
+  GtkWidget        *trim
+) {
+  if (!source && !trim)
+    return;
+
+  struct group_enable_data *data = g_malloc(sizeof(*data));
+  data->source_widget = source;
+  data->trim_widget = trim;
+
+  register_mg_callback(
+    card, enable, group_enable_updated, data, free_group_enable_data
+  );
+  group_enable_updated(enable, data);
 }
 
 // Create the widgets for one monitor group of one output row.
@@ -187,15 +239,41 @@ static void create_group_cells(
   // gets one fader per channel: trim calibrates each speaker, so the
   // two channels must be able to differ.  The faders are ganged, so
   // the pair moves together until Ctrl is held.
+  //
+  // A tied pair has one trim and one enable in the device, so it gets
+  // one fader and one checkbox over both channels; unlinked, they span
+  // both channels' rows, on the first row showing the pair, and the
+  // second row's source follows the shared checkbox.
+  struct routing_snk *tied = snk_trims_tied(snk) ? get_snk_partner(snk) : NULL;
+  struct monitor_group_elems *tied_elems =
+    tied ? &tied->monitor_groups[g] : NULL;
+  struct alsa_elem *tied_trims[2] = {
+    elems->trim, tied_elems ? tied_elems->trim : NULL
+  };
+  int shared_rows = tied && !snk_r && snk_has_row(tied);
+  int follower = shared_rows && !is_snk_left_channel(snk);
+  int tied_rows = shared_rows && !follower ? 2 : 1;
+
+  if (follower) {
+    if (tied_elems->enable)
+      track_group_enable(card, tied_elems->enable, source, NULL);
+    return;
+  }
+
   GtkWidget *trim = NULL;
-  if (elems->trim && has_trim) {
+  if (elems->trim && has_trim && tied_trims[1]) {
+    trim = create_trim_fader(card, snk, tied_trims, 2, FALSE);
+    gtk_grid_attach(
+      GTK_GRID(grid), trim, enable_col + 1 + has_source, row, 1, tied_rows
+    );
+  } else if (elems->trim && has_trim) {
     int ganged = elems_r && elems_r->trim;
 
-    trim = create_trim_fader(card, snk, elems->trim, ganged);
+    trim = create_trim_fader(card, snk, &elems->trim, 1, ganged);
 
     if (ganged) {
       GtkWidget *trim_r = create_trim_fader(
-        card, snk_r, elems_r->trim, ganged
+        card, snk_r, &elems_r->trim, 1, ganged
       );
       gang_gain_widgets(trim, trim_r);
 
@@ -218,8 +296,13 @@ static void create_group_cells(
   gtk_widget_set_halign(check, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(check, GTK_ALIGN_CENTER);
 
-  g_signal_connect(
-    check, "toggled", G_CALLBACK(enable_checkbox_toggled), elems->enable
+  struct alsa_elem **enables = g_new0(struct alsa_elem *, 2);
+  enables[0] = elems->enable;
+  enables[1] = tied_elems ? tied_elems->enable : NULL;
+
+  g_signal_connect_data(
+    check, "toggled", G_CALLBACK(enable_checkbox_toggled), enables,
+    (GClosureNotify)g_free, 0
   );
 
   register_mg_callback(
@@ -229,25 +312,9 @@ static void create_group_cells(
   int value = alsa_get_elem_value(elems->enable);
   gtk_check_button_set_active(GTK_CHECK_BUTTON(check), value != 0);
 
-  gtk_grid_attach(GTK_GRID(grid), check, enable_col, row, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), check, enable_col, row, 1, tied_rows);
 
-  // Register callback to enable/disable source and trim
-  if (source || trim) {
-    struct group_enable_data *enable_data =
-      g_malloc(sizeof(struct group_enable_data));
-    enable_data->source_widget = source;
-    enable_data->trim_widget = trim;
-
-    register_mg_callback(
-      card, elems->enable,
-      group_enable_updated, enable_data, free_group_enable_data
-    );
-
-    if (source)
-      gtk_widget_set_sensitive(source, value != 0);
-    if (trim)
-      gtk_widget_set_sensitive(trim, value != 0);
-  }
+  track_group_enable(card, elems->enable, source, trim);
 }
 
 // Create the monitor group grid: one column set per group
