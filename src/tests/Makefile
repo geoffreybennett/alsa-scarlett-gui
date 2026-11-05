@@ -1,9 +1,9 @@
-# SPDX-FileCopyrightText: 2025 Geoffrey D. Bennett <g@b4.vu>
+# SPDX-FileCopyrightText: 2023-2026 Geoffrey D. Bennett <g@b4.vu>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 PKG_CONFIG ?= pkg-config
 
-TESTS = test-biquad
+TESTS = test-biquad test-remote-crypto
 
 # The online update tests need the same libraries as the feature, so
 # they are only built when it is enabled
@@ -14,7 +14,7 @@ ifeq ($(ONLINE_UPDATE),1)
 endif
 
 CFLAGS = -I.. -Wall $(shell $(PKG_CONFIG) --cflags glib-2.0)
-LDFLAGS = -lm $(shell $(PKG_CONFIG) --libs glib-2.0)
+LDFLAGS = -lm -ldl $(shell $(PKG_CONFIG) --libs glib-2.0)
 
 ONLINE_PKGS = gtk4 alsa libsoup-3.0 json-glib-1.0
 ONLINE_CFLAGS = -DHAVE_ONLINE_UPDATE \
@@ -60,10 +60,8 @@ test-downloaded: test-downloaded.c alsa-stubs.c ../online-update.c \
 	  test-downloaded.c alsa-stubs.c ../online-update.c \
 	  ../scarlett4-firmware.c $(LDFLAGS) $(ONLINE_LDFLAGS)
 
+test-remote-crypto: test-remote-crypto.c ../remote-crypto.c ../remote-crypto.h
+	$(CC) $(CFLAGS) -o $@ test-remote-crypto.c ../remote-crypto.c $(LDFLAGS)
+
 test: $(TESTS)
 	@for t in $(TESTS); do echo "Running $$t..."; ./$$t || exit 1; done
-
-clean:
-	rm -f $(TESTS)
-
-.PHONY: all test clean

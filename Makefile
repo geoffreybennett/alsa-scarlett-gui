@@ -57,6 +57,7 @@ rpm: $(TARGZ_FILE)
 	rpmbuild -tb $(TARGZ_FILE)
 
 deb:
+	rm -f src/vu.b4.alsa-scarlett-gui.desktop
 	$(MAKE) -C src VERSION=$(VERSION) PREFIX=/usr
 	mkdir -p deb-build/DEBIAN \
 	         deb-build/usr/bin \

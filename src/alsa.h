@@ -26,6 +26,7 @@ struct alsa_elem;
 struct alsa_card;
 struct card_update_status;
 struct card_download;
+struct remote_server;
 
 // typedef for callbacks to update widgets when the alsa element
 // notifies of a change
@@ -326,6 +327,7 @@ struct alsa_card {
   GtkWidget          *window_modal;
   GtkWidget          *window_dsp;
   GtkWidget          *window_autogain;
+  struct remote_server *remote_server;
   GtkWidget          *window_main_contents;
   GtkWidget          *routing_grid;
   GtkWidget          *mixer_grid;

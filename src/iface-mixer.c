@@ -8,7 +8,9 @@
 #include "gtkhelper.h"
 #include "hardware.h"
 #include "iface-mixer.h"
+#include "optional-state.h"
 #include "presets.h"
+#include "remote-server.h"
 #include "routing-lines.h"
 #include "stereo-link.h"
 #include "stringhelper.h"
@@ -3127,6 +3129,18 @@ GtkWidget *create_iface_mixer_main(struct alsa_card *card) {
   card->has_talkback =
     get_elem_by_name(card->elems, "Talkback Playback Enum") ||
     get_elem_by_name(card->elems, "Talkback Enable Playback Switch");
+
+  if (!card->remote_server) {
+    card->remote_server = remote_server_create(card);
+    GHashTable *dev_state = optional_state_load(card, CONFIG_SECTION_DEVICE);
+    if (dev_state) {
+      const char *rem_en = g_hash_table_lookup(dev_state, "remote_enabled");
+      if (rem_en && strcmp(rem_en, "true") == 0)
+        remote_server_start(card->remote_server, 0);
+
+      g_hash_table_destroy(dev_state);
+    }
+  }
 
   GtkWidget *top = gtk_frame_new(NULL);
   gtk_widget_add_css_class(top, "window-frame");

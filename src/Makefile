@@ -68,7 +68,7 @@ CFLAGS += $(shell $(PKG_CONFIG) --cflags alsa)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs glib-2.0)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs gtk4)
 LDFLAGS += $(shell $(PKG_CONFIG) --libs alsa)
-LDFLAGS += -lm -lcrypto -pie
+LDFLAGS += -lm -lcrypto -ldl -pie
 
 ifeq ($(ONLINE_UPDATE),1)
   CFLAGS += -DHAVE_ONLINE_UPDATE

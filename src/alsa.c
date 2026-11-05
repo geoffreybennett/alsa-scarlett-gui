@@ -18,6 +18,7 @@
 #include "dsp-state.h"
 #include "hw-io-availability.h"
 #include "presets.h"
+#include "remote-server.h"
 
 #define MAJOR_HWDEP_VERSION_SCARLETT2 1
 #define MAJOR_HWDEP_VERSION_FCP 2
@@ -1386,7 +1387,13 @@ void alsa_get_routing_controls(struct alsa_card *card) {
 }
 
 void alsa_elem_change(struct alsa_elem *elem) {
-  if (!elem || !elem->callbacks)
+  if (!elem)
+    return;
+
+  if (elem->card && elem->card->remote_server)
+    remote_server_notify_elem_changed(elem->card->remote_server, elem);
+
+  if (!elem->callbacks)
     return;
 
   for (GList *l = elem->callbacks; l; l = l->next) {
@@ -1401,6 +1408,11 @@ void alsa_elem_change(struct alsa_elem *elem) {
 
 static void card_destroy_callback(void *data) {
   struct alsa_card *card = data;
+
+  if (card->remote_server) {
+    remote_server_free(card->remote_server);
+    card->remote_server = NULL;
+  }
 
   // cancel the levels timer first to prevent it firing with freed data
   if (card->levels_timer) {

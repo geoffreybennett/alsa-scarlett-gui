@@ -1,10 +1,12 @@
 *.tar.gz
+*.deb
 *.o
 .deps
 .gdb_history
 /src/alsa-scarlett-gui
 /src/alsa-scarlett-gui-resources.c
 /src/tests/test-biquad
+/src/tests/test-remote-crypto
 /src/vu.b4.alsa-scarlett-gui.desktop
 /.flatpak-builder
 /flatpak-build
