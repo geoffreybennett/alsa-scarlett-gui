@@ -515,6 +515,153 @@ static void setup_output_volume_monitor_group(
   gtk_widget_set_sensitive(widget, !snk_in_any_monitor_group(snk));
 }
 
+// An output's mute button, which while the output is in a monitor
+// group gives way to a disabled indicator of the master mute and dim
+// that then apply to it
+enum { MASTER_STATE_NORMAL, MASTER_STATE_DIM, MASTER_STATE_MUTE };
+
+struct output_mute_data {
+  GtkWidget          *stack;
+  GtkWidget          *button;
+  GtkWidget          *indicator;
+  GtkWidget          *icons[3];
+  struct alsa_card   *card;
+  struct routing_snk *snk;
+  struct alsa_elem   *master_mute;
+  struct alsa_elem   *master_dim;
+};
+
+// Call func for each element whose change can change the mute display
+static void for_each_output_mute_elem(
+  struct output_mute_data *d,
+  void (*func)(struct alsa_elem *elem, struct output_mute_data *d)
+) {
+  for (int g = 0; g < d->card->monitor_group_count; g++)
+    if (d->snk->monitor_groups[g].enable)
+      func(d->snk->monitor_groups[g].enable, d);
+  if (d->master_mute)
+    func(d->master_mute, d);
+  if (d->master_dim)
+    func(d->master_dim, d);
+}
+
+static void update_output_mute(struct alsa_elem *elem, void *private) {
+  struct output_mute_data *d = private;
+
+  if (!snk_in_any_monitor_group(d->snk)) {
+    gtk_stack_set_visible_child(GTK_STACK(d->stack), d->button);
+    return;
+  }
+
+  int state =
+    d->master_mute && alsa_get_elem_value(d->master_mute)
+      ? MASTER_STATE_MUTE
+    : d->master_dim && alsa_get_elem_value(d->master_dim)
+      ? MASTER_STATE_DIM
+    : MASTER_STATE_NORMAL;
+
+  gtk_button_set_child(GTK_BUTTON(d->indicator), d->icons[state]);
+  gtk_widget_remove_css_class(d->indicator, "mute");
+  gtk_widget_remove_css_class(d->indicator, "dim");
+  gtk_widget_add_css_class(
+    d->indicator, state == MASTER_STATE_DIM ? "dim" : "mute"
+  );
+  gtk_toggle_button_set_active(
+    GTK_TOGGLE_BUTTON(d->indicator), state != MASTER_STATE_NORMAL
+  );
+  gtk_stack_set_visible_child(GTK_STACK(d->stack), d->indicator);
+}
+
+static void add_output_mute_callback(
+  struct alsa_elem        *elem,
+  struct output_mute_data *d
+) {
+  alsa_elem_add_callback(elem, update_output_mute, d, NULL);
+}
+
+static void remove_output_mute_callback(
+  struct alsa_elem        *elem,
+  struct output_mute_data *d
+) {
+  alsa_elem_remove_callbacks_by_data(elem, d);
+}
+
+static void free_output_mute_data(void *private) {
+  struct output_mute_data *d = private;
+
+  for_each_output_mute_elem(d, remove_output_mute_callback);
+  for (int i = 0; i < 3; i++)
+    g_object_unref(d->icons[i]);
+  g_free(d);
+}
+
+static GtkWidget *load_icon(const char *name) {
+  char *path = g_strdup_printf(
+    "/vu/b4/alsa-scarlett-gui/icons/%s.svg", name
+  );
+  GtkWidget *icon = gtk_image_new_from_resource(path);
+
+  g_free(path);
+  gtk_widget_set_align(icon, GTK_ALIGN_CENTER, GTK_ALIGN_CENTER);
+  g_object_ref_sink(icon);
+  return icon;
+}
+
+static const char *line_mute_icons[] = {
+  "audio-volume-high", "audio-volume-low", "audio-volume-muted"
+};
+
+static const char *headphones_mute_icons[] = {
+  "audio-headphones-symbolic",
+  "audio-headphones-symbolic",
+  "audio-headphones-symbolic"
+};
+
+// Wrap an output's mute button so that it follows the master mute and
+// dim while output lr_num is in a monitor group; icon_names are for
+// the normal, dimmed, and muted states. Returns the button unchanged
+// when the output has no monitor group controls.
+static GtkWidget *make_output_mute(
+  struct alsa_card *card,
+  GtkWidget        *button,
+  int               lr_num,
+  const char      **icon_names
+) {
+  struct routing_snk *snk = get_analogue_output_snk(card, lr_num);
+
+  if (!snk || !snk->monitor_groups[0].enable)
+    return button;
+
+  struct output_mute_data *d = g_malloc0(sizeof(*d));
+
+  d->card = card;
+  d->snk = snk;
+  d->button = button;
+  d->master_mute = get_elem_by_name(card->elems, "Mute Playback Switch");
+  d->master_dim = get_elem_by_name(card->elems, "Dim Playback Switch");
+  for (int i = 0; i < 3; i++)
+    d->icons[i] = load_icon(icon_names[i]);
+
+  d->indicator = gtk_toggle_button_new();
+  gtk_widget_set_sensitive(d->indicator, FALSE);
+  gtk_widget_set_tooltip_text(
+    d->indicator, "Set by the master mute and dim of the monitor group"
+  );
+
+  d->stack = gtk_stack_new();
+  gtk_stack_add_child(GTK_STACK(d->stack), button);
+  gtk_stack_add_child(GTK_STACK(d->stack), d->indicator);
+
+  for_each_output_mute_elem(d, add_output_mute_callback);
+
+  g_object_weak_ref(
+    G_OBJECT(d->stack), (GWeakNotify)free_output_mute_data, d
+  );
+
+  update_output_mute(NULL, d);
+  return d->stack;
+}
+
 // Structure to track an output's tag widget
 struct output_tag_label_data {
   GtkWidget          *label;
@@ -2651,6 +2798,7 @@ static void create_output_controls(
         } else {
           gtk_widget_set_tooltip_text(w, "Mute");
         }
+        w = make_output_mute(card, w, elem->lr_num, line_mute_icons);
         gtk_grid_attach(
           GTK_GRID(output_grid), w, elem->lr_num - 1 + line_1_col, 3, 1, 1
         );
@@ -2751,6 +2899,9 @@ static void create_output_controls(
       } else {
         gtk_widget_set_tooltip_text(w, "Mute headphones output");
       }
+
+      if (lr_num)
+        w = make_output_mute(card, w, lr_num, headphones_mute_icons);
 
       gtk_grid_attach(GTK_GRID(output_grid), w, column, row, width, 1);
     }
